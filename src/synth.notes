@@ -19,9 +19,9 @@ D 0x4010 0x4012 ceros_tras_la_cabecera  dos ceros antes del `jp` de 0x4012
 # en el segundo: el BASIC acaba de arrancar y salta a 0x406E.
 D 0x4069 0x406E gancho_para_h_stke  `rst 0x30`, slot (lo pone INIT), 0x406E y `ret`
 
-# Relleno entre las entradas de la tabla de 8 en 8 de 0x4105.
-D 0x410A 0x410D relleno_0x410A  tres `nop` que nadie ejecuta: la entrada siguiente empieza en 0x410D
-D 0x4112 0x4115 relleno_0x4112  tres `nop` que nadie ejecuta: la entrada siguiente empieza en 0x4115
+# 0x4105 pone en la pagina 2 la RAM del ordenador (el slot que 0x40D4 guarda
+# en 0xD854) y 0x410D devuelve el cartucho (0xD855). El volcado [a]
+# (sha1 73a40e7d) cambia estos 16 bytes por out (0xFE),3 / out (0xFE),1.
 
 # ======================================================================
 # LAS TABLAS DE SALTOS (despachador 0x404A: la tabla va pegada al `call`)

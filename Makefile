@@ -8,7 +8,7 @@
 # `make comprueba` verifica su sha256.
 
 ROM      = synth.rom
-SHA      = 133eeec083f52e2a9fa8b06a63fec81edaddec8785a8d34de037bb3f9116cb4d
+SHA      = a2eea29f13662acea8d0cbe2b4e95201a29e82e0c3c38dd24e910e9325a90a0d
 SRC      = src
 WORK     = work
 ORG      = 0x4000
@@ -21,7 +21,7 @@ $(ROM):
 	@echo " Falta $(ROM), y este repositorio NO lo distribuye."
 	@echo ""
 	@echo " Es Konami's Synthesizer (Konami, RC-741) para MSX, 32768 bytes exactos,"
-	@echo " el volcado [a] (sha1 73a40e7d6da2bc8489297fd57b7b93b2aa5a6440)."
+	@echo " el volcado original (sha1 2feff37d593683ce1c7dfac33ed3207895e01a03)."
 	@echo " Ponlo aqui con ese nombre. Para comprobar que es el mismo:"
 	@echo "     shasum -a 256 $(ROM)"
 	@echo "     $(SHA)"

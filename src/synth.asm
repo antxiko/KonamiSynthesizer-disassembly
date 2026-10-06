@@ -109,7 +109,7 @@ DATA_gancho_para_h_stke:
 	defb 0f7h,000h,06eh,040h,0c9h	; 4069
 
 ; ======================================================================
-; CODIGO 0x406e..0x410a  (156 bytes)
+; CODIGO 0x406e..0x4142  (212 bytes)
 ; ======================================================================
 
 
@@ -121,7 +121,7 @@ L_406E:
 	ld (0fd9ah),a		;4076
 	ld a,(0d855h)		;4079
 	ld (0fd9bh),a		;407c
-	ld hl,04118h		;407f
+	ld hl,L_4118		;407f
 	ld (0fd9ch),hl		;4082
 	ld a,0c9h		;4085
 	ld (0fd9eh),a		;4087
@@ -193,39 +193,13 @@ L_40EF:
 	ld a,(hl)			;4103
 	ret			;4104
 L_4105:
-	ld a,003h		;4105
-	out (0feh),a		;4107
-	ret			;4109
-
-; ----------------------------------------------------------------------
-; DATOS relleno_0x410A: tres `nop` que nadie ejecuta: la entrada siguiente
-;   empieza en 0x410D
-;   0x410a..0x410d  (3 bytes)
-DATA_relleno_0x410A:
-	defb 000h,000h,000h	; 410a
-
-; ======================================================================
-; CODIGO 0x410d..0x4112  (5 bytes)
-; ======================================================================
-
-
+	ld h,080h		;4105
+	ld a,(0d854h)		;4107
+	jp 00024h		;410a   ; BIOS ENASLT - Switches to specified slot and page definitively
 L_410D:
-	ld a,001h		;410d
-	out (0feh),a		;410f
-	ret			;4111
-
-; ----------------------------------------------------------------------
-; DATOS relleno_0x4112: tres `nop` que nadie ejecuta: la entrada siguiente
-;   empieza en 0x4115
-;   0x4112..0x4115  (3 bytes)
-DATA_relleno_0x4112:
-	defb 000h,000h,000h	; 4112
-
-; ======================================================================
-; CODIGO 0x4115..0x4142  (45 bytes)
-; ======================================================================
-
-
+	ld h,080h		;410d
+	ld a,(0d855h)		;410f
+	jp 00024h		;4112   ; BIOS ENASLT - Switches to specified slot and page definitively
 L_4115:
 	jp L_BEB1		;4115
 L_4118:
