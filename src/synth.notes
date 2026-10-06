@@ -1,0 +1,179 @@
+# ======================================================================
+# KONAMI'S SYNTHESIZER (Konami RC-741, 1986) - anotaciones del desensamblado
+# ======================================================================
+# Formato: ver la cabecera de tools/mkasm.py. Los rangos D son [ini, fin).
+#
+# Cada directiva D declara un rango de datos con su nombre y la MEDIDA de la
+# que sale: el flujo se recorre con tools/flujos.py en el formato del
+# descompresor y cierra donde empieza el siguiente, o el codigo dice cuantos
+# bytes copia.
+
+# ======================================================================
+# LA CABECERA
+# ======================================================================
+D 0x4000 0x4010 cabecera_del_cartucho  "AB" y la direccion de INIT (0x4054); STATEMENT, DEVICE y TEXT a cero
+F 0x4000 w
+D 0x4010 0x4012 ceros_tras_la_cabecera  dos ceros antes del `jp` de 0x4012
+
+# INIT copia estos cinco bytes a H.STKE (0xFEDA) y pone el slot del cartucho
+# en el segundo: el BASIC acaba de arrancar y salta a 0x406E.
+D 0x4069 0x406E gancho_para_h_stke  `rst 0x30`, slot (lo pone INIT), 0x406E y `ret`
+
+# Relleno entre las entradas de la tabla de 8 en 8 de 0x4105.
+D 0x410A 0x410D relleno_0x410A  tres `nop` que nadie ejecuta: la entrada siguiente empieza en 0x410D
+D 0x4112 0x4115 relleno_0x4112  tres `nop` que nadie ejecuta: la entrada siguiente empieza en 0x4115
+
+# ======================================================================
+# LAS TABLAS DE SALTOS (despachador 0x404A: la tabla va pegada al `call`)
+# ======================================================================
+D 0x4142 0x4154 saltos_del_arranque  9 destinos por (0xD805); la tabla cierra en 0x4154, su entrada mas baja
+F 0x4142 w
+D 0x4805 0x4817 saltos_por_pantalla  9 destinos por (0xD8F4), la pantalla en curso; cierra en 0x4817, que llama 0x47F0
+F 0x4805 w
+
+# ======================================================================
+# GRAFICOS DE LA PRIMERA MITAD
+# ======================================================================
+D 0x4295 0x429D registros_del_vdp  4 pares (dato, registro) que escribe WRTVDP en 0x4284
+F 0x4295 2
+D 0x4414 0x4536 logo_konami_rle  flujo RLE de 0x4327 (tres tercios); 0x446E es una segunda entrada en el mismo flujo con HL = 0x2100
+D 0x45B9 0x4708 logo_konami_nombres  flujo RLE de 0x4352: la tabla de nombres del logotipo de Konami
+D 0x48F4 0x490B sprites_rle  flujo RLE de 0x4352 hacia 0x3AC0, la tabla de atributos de sprites
+D 0x4946 0x494E sprite_cursor  dos sprites de 4 bytes (y, x, patron, color) que copia 0x4922
+F 0x4946 4
+D 0x4B00 0x4B04 tiles_marcador  dos pares de tiles que escribe 0xBC37 (0x4AED y 0x4AF7)
+F 0x4B00 2
+D 0x4B2D 0x4BA1 tablas_del_teclado_dibujado  posiciones y tiles de las teclas que se iluminan (0x4A44-0x4B2B)
+D 0x4C5B 0x4C89 tablas_del_cursor_syn  tiles del cursor y del marco que lee 0x4BFF-0x4C4E
+D 0x4CD4 0x4D04 sprites_de_la_mano  12 sprites de 4 bytes que lee 0x48ED y 0x4CA3
+F 0x4CD4 4
+
+# ======================================================================
+# FILE: CINTA, DISCO E IMPRESORA
+# ======================================================================
+D 0x4E7A 0x4E80 direcciones_de_carga  las tres direcciones de RAM donde se carga TONE, LAYOUT y SAMP (0x4E5A, por 0xDB18)
+F 0x4E7A w
+D 0x4E80 0x4E89 rotulo_found  lista de 0x4337: "FOUND" en 0x3A07
+D 0x4FDE 0x4FF4 rotulos_end_y_no_file  "END" y "NO FILE", con los tiles de borde 0x40 y 0x96
+D 0x511F 0x512D mensajes_de_disco_punteros  7 punteros a los mensajes de error de disco
+F 0x511F w
+D 0x512D 0x5191 mensajes_de_disco  7 mensajes acabados en 0xFF: DISK I/O ERROR, FILE NOT FOUND, DISK FULL, DISK NOT READY, WRITE PROTECTED, TOO MANY FILES, BAD FILE NAME
+D 0x51D8 0x51DB extension_tks  "TKS", la extension de los ficheros en disco
+D 0x534D 0x5361 rotulo_printer_not_ready  lista de 0x4337: "PRINTER NOT READY"
+D 0x54B6 0x54E9 ordenes_de_impresora  secuencias ESC de la impresora MSX: ESC T16, ESC S0384, ESC S0768, ESC S0240, ESC A, "TIME" y "WAVE FORM DATA", acabadas en 0xFF
+D 0x54F6 0x5516 tramas_de_impresora  32 bytes de tramado que se mandan a la impresora para dibujar la onda
+
+# ======================================================================
+# EL MOTOR DE SONIDO
+# ======================================================================
+D 0x5C12 0x5C1B pasos_del_lfo  9 valores por (0xDC05) que 0x5710 copia a 0xDC38
+D 0x5C1B 0x5C24 pasos_del_lfo_2  9 valores por (0xDC05) que 0x5718 copia a 0xDC39
+D 0x5DA9 0x5E29 teclado_a_notas_jp  0x80 bytes que 0x55DC copia a 0xD230: tecla de la matriz -> nota, teclado japones
+F 0x5DA9 2
+D 0x5E29 0x5E8B teclado_a_notas_2  la segunda tabla de 0xBBDA
+F 0x5E29 2
+D 0x5E8B 0x5EA5 mezcla_dco_a  13 rutinas de mezcla, de 1 a 13 teclas a la vez; 0x5D9A carga la que toca en IX
+F 0x5E8B w
+D 0x6709 0x6723 mezcla_dco_b  13 rutinas de mezcla de la segunda variante
+F 0x6709 w
+D 0x6EBB 0x6ED5 mezcla_muestra  13 rutinas de mezcla para la muestra (SAMP)
+F 0x6EBB w
+D 0x7135 0x7200 relleno_0x7135  0xFF hasta el principio de las ondas
+
+# Las 14 formas de onda de fabrica, 256 bytes con signo cada una: la onda n
+# esta en la pagina 0x72 + n (0x56FF y 0x573F). La 14 no esta aqui: es una de
+# las 16 ondas del usuario, en la RAM de 0xC000.
+D 0x7200 0x7300 onda_00  seno
+F 0x7200 16
+D 0x7300 0x7400 onda_01  sierra descendente
+F 0x7300 16
+D 0x7400 0x7500 onda_02  sierra ascendente
+F 0x7400 16
+D 0x7500 0x7600 onda_03  cuadrada
+F 0x7500 16
+D 0x7600 0x7700 onda_04  pulso
+F 0x7600 16
+D 0x7700 0x7800 onda_05  onda muestreada
+F 0x7700 16
+D 0x7800 0x7900 onda_06  onda muestreada
+F 0x7800 16
+D 0x7900 0x7A00 onda_07  onda muestreada
+F 0x7900 16
+D 0x7A00 0x7B00 onda_08  onda muestreada
+F 0x7A00 16
+D 0x7B00 0x7C00 onda_09  onda muestreada
+F 0x7B00 16
+D 0x7C00 0x7D00 onda_10  onda muestreada
+F 0x7C00 16
+D 0x7D00 0x7E00 onda_11  onda muestreada
+F 0x7D00 16
+D 0x7E00 0x7F00 onda_12  onda muestreada
+F 0x7E00 16
+D 0x7F00 0x8000 onda_13  onda muestreada
+F 0x7F00 16
+
+# ======================================================================
+# LOS GRAFICOS DE LA PAGINA 2 (se lee con la ROM puesta en 0x8000)
+# ======================================================================
+# Todos encadenados: cada flujo acaba (tools/flujos.py) donde empieza el
+# siguiente, sin un byte suelto.
+D 0x8000 0x82A5 titulo_nombres  flujo RLE de 0x4352: la tabla de nombres que se pinta al arrancar
+D 0x82A5 0x84EB marco_colores  flujo RLE de 0x4327 hacia 0x2200: colores del marco comun
+D 0x84EB 0x8531 marco_patrones_1  flujo RLE de 0x4327 hacia 0x0008
+D 0x8531 0x8552 marco_patrones_2  flujo RLE de 0x4327 hacia 0x00D8
+D 0x8552 0x874D marco_patrones_3  flujo RLE de 0x4327 hacia 0x01D8
+D 0x874D 0x8799 wave_edit_1  flujo RLE de 0x4352 (WAVE EDIT, 0xB02A)
+D 0x8799 0x87A0 wave_edit_2  flujo RLE de 0x4352 (0xB030)
+D 0x87A0 0x87DB wave_edit_3  flujo RLE de 0x4352 (0xB036)
+D 0x87DB 0x8815 cabecera_nombres  flujo RLE de 0x4352 hacia 0x3800: la franja de arriba de las pantallas de edicion
+D 0x8815 0x8A41 wave_edit_nombres  flujo RLE de 0x4352 hacia 0x3860 (0xB052)
+D 0x8A41 0x8A81 sprites_a  0x40 bytes de patrones de sprite que 0x48C4 copia a 0x3AC0
+D 0x8A81 0x8AC1 sprites_b  la otra variante, por (0xD8F0)
+D 0x8AC1 0x8DB6 tone_edit_colores  flujo RLE de 0x4327 hacia 0x2458
+D 0x8DB6 0x8FCD tone_edit_patrones  flujo RLE de 0x4327 hacia 0x0458
+D 0x8FCD 0x9087 tone_edit_extra  flujo RLE de 0x4352 hacia 0x2900
+D 0x9087 0x925A tone_edit_nombres  flujo RLE de 0x4352 hacia 0x3860
+D 0x925A 0x92F4 teclado_colores_1  flujo RLE de 0x4327 hacia 0x2080 (SYN y PLAY)
+D 0x92F4 0x9559 teclado_colores_2  flujo RLE de 0x4327 hacia 0x2458
+D 0x9559 0x95EA teclado_patrones_1  flujo RLE de 0x4327 hacia 0x0080
+D 0x95EA 0x97FD teclado_patrones_2  flujo RLE de 0x4327 hacia 0x0458
+D 0x97FD 0x98DF rotulos_jp_colores  flujo RLE de 0x4327 hacia 0x2600: solo con teclado japones ((0x002C) & 0x0F distinto de 0)
+D 0x98DF 0x9988 rotulos_jp_patrones  flujo RLE de 0x4327 hacia 0x0600: lo mismo
+D 0x9988 0x9AC5 teclado_nombres  flujo RLE de 0x4352 hacia 0x3800
+D 0x9AC5 0x9C63 file_colores  flujo RLE de 0x4327 hacia 0x2458
+D 0x9C63 0x9D74 file_patrones  flujo RLE de 0x4327 hacia 0x0458
+D 0x9D74 0x9E37 file_nombres  flujo RLE de 0x4352 hacia 0x3860
+D 0x9E37 0x9E87 fuente_colores  0x50 bytes que 0xB341 copia a 0x2080
+D 0x9E87 0x9E8F rotulo_colores_a  8 bytes de color que 0xB363 copia diez veces (pantalla 0)
+D 0x9E8F 0x9E97 rotulo_colores_b  8 bytes de color para las demas pantallas
+D 0x9E97 0xA2BF titulo_colores  0x428 bytes que 0x4708 copia a 0x2200: el logotipo 新世SIZER
+D 0xA2BF 0xA2E5 titulo_patrones  flujo RLE de 0x4327 hacia 0x0200
+D 0xA2E5 0xA3AA titulo_nombres_logo  flujo RLE de 0x4352 hacia 0x3840
+
+# Los 16 timbres de fabrica: 0x55BC copia los 0x200 bytes a 0xD000.
+D 0xA3AA 0xA5AA timbres_de_fabrica  16 timbres de 32 bytes: parametros y nombre de 8 letras (0x21 = A, 0x41 = 1)
+F 0xA3AA 24,8
+
+# ======================================================================
+# DATOS DE LA SEGUNDA MITAD DEL CODIGO
+# ======================================================================
+D 0xA92A 0xA92D tiles_flecha  3 tiles que copia 0xA928
+D 0xA947 0xA94C limites_del_cursor  4 valores acabados en 0xFF (0xA932)
+D 0xA98B 0xAA5B tablas_de_tone_edit  posiciones y valores de los campos de TONE EDIT (0xA5F5-0xAB1F)
+D 0xAB31 0xAB58 tablas_de_tone_edit_2  lo que leen 0xAA67-0xAB14
+D 0xABD8 0xAC08 tiles_de_los_conmutadores  tiles de los conmutadores dibujados (0xABCC)
+D 0xAC12 0xACDA tablas_de_campos  0xACE0, 0xA5EF y 0xA5FC
+D 0xAEDD 0xAEE1 bits_80_40_20_10  mascaras de bit que lee 0xAED9
+D 0xB1CD 0xB1E8 tablas_de_wave_edit  lo que leen 0xB016-0xB12A
+D 0xB555 0xB5C8 tablas_de_file  listas de 0x4337 y RLE de FILE MODE (0xB494-0xB4F6)
+D 0xB729 0xB76E tablas_del_menu_file  posiciones y flujos RLE cortos del menu de FILE (0xB67E-0xB728)
+D 0xB832 0xB834 dos_bytes_0xB832  0xA8 0xD9 delante del codigo que nadie llama de 0xB834
+D 0xB841 0xB851 file_flecha  flujo RLE de 0x4352 (0xB7B6)
+D 0xBA6C 0xBB6D listas_de_file  listas de 0x4337 del menu de cinta y disco (0xB88E-0xBA66)
+D 0xBCB6 0xBCBD lista_0xBCB6  6 valores acabados en 0xFF que recorre 0xBCA2
+D 0xBCCA 0xBCFB notas_del_teclado  nota -> tecla dibujada, que recorre 0x49A3
+F 0xBCCA 2
+D 0xBD55 0xBE41 tablas_del_teclado  lo que leen 0xBC0B-0xBC49
+D 0xBE5E 0xBE62 pantalla_inicial  0, 1, 3 y 6: la pantalla con que se arranca, por (0xD80B) & 3
+D 0xBE75 0xBEA6 rotulo_push_space_key  lista de 0x4337 hacia 0x3A29: "PUSH SPACE KEY" y "(C)KONAMI 1986"; 0xBE84 es la segunda linea, que parpadea
+D 0xBF00 0xC000 tablas_del_final  punteros y datos que leen 0x4793-0x47AC y 0xBEF5-0xBEF9

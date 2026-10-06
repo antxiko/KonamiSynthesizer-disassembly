@@ -1,0 +1,43 @@
+# Puntos de entrada que el trazado NO puede deducir solo.
+0x4054   # INIT, la direccion que trae la cabecera del cartucho
+0x406E   # INIT copia `rst 0x30 / slot / 0x406E / ret` (0x4069) a H.STKE (0xFEDA): el arranque de verdad
+0x4118   # H.KEYI: INIT pone `rst 0x30` + slot + 0x4118 en 0xFD9A
+0x4015   # H.KEYI tras 0x81 cuadros: 0x4118 cambia 0xFD9C a 0x4015
+!tabla 0x4142   9   # despachador 0x404A llamado en 0x413F
+!tabla 0x4805   9   # despachador 0x404A en 0x4802 por la pantalla (0xD8F4); cierra en 0x4817, que se llama desde 0x47F0
+# Tablas de 13 punteros que 0x5D9A carga en IX para el `jp (ix)`; cada una
+# acaba donde empieza el codigo que la usa.
+!tabla 0x5E8B  13   # jp (ix) en 0x5EC7; cierra en 0x5EA5
+!tabla 0x6709  13   # jp (ix) en 0x6741; cierra en 0x6723
+!tabla 0x6EBB  13   # jp (ix) en 0x6F1A; cierra en 0x6ED5
+# Rutinas cuya direccion se guarda en RAM (`ld hl,rutina / ld (ram),hl`) y que
+# se saltan luego por esa variable; la sonda tools/omsx_cobertura.tcl las ve
+# ejecutarse (work/cob2).
+0x5829   # (0xDC25), puesta en 0x56C0
+0x58D5   # (0xDC29), puesta en 0x56CE
+0x5981   # (0xDC2D), puesta en 0x56DC
+0x5CCE   # (0xDC40), puesta en 0x5758
+0x5D39   # (0xDC40), puesta en 0x5761
+# Las fases de las maquinas de estados (tools/estados.py)
+0x5862   # (0xDC25), puesta en 0x585B
+0x590E   # (0xDC29), puesta en 0x5907
+0x59A8   # (0xDC2D), puesta en 0x59A1
+0x58A3   # (0xDC25), puesta en 0x589C
+0x594F   # (0xDC29), puesta en 0x5948
+0x59FE   # (0xDC2D), puesta en 0x59F7
+# ======================================================================
+# CODIGO QUE NADIE LLAMA: ninguna palabra de la ROM apunta ahi
+# (work/ buscado byte a byte) y la sonda tools/omsx_cobertura.tcl no lo ve
+# ejecutarse en las pasadas medidas. Es codigo (se lee de corrido y acaba en
+# `ret` o `jp`), no datos, y se traza para que el listado lo ensene asi.
+0x4012   # jp 0x455D detras de la cabecera
+0x42F5   # SETRD y puerto de lectura del VDP en C'
+0x43E0   # segunda entrada de 0x43DC con C = 0x40
+0x49CD   # cargador de graficos por tabla de 6 bytes en 0x5800
+0x520A   # guarda HL en 0xD970 y limpia la cabecera
+0x522A   # guarda DE en 0xD970
+0x54A4   # escribe la cadena de 0x54CB
+0xB4B4   # HL = 0xD000 + 0x20 * A, el timbre A
+0xB834   # pone el cartucho en la pagina 1 y salta a 0x50DE
+0xBCA2   # busca A en la lista de 0xBCB6
+0x5230   # segunda entrada de 0x522A: lee DE de 0xD970
