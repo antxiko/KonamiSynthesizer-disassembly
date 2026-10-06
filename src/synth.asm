@@ -715,10 +715,11 @@ L_43FD:
 	jp L_4316		;4411
 
 ; ----------------------------------------------------------------------
-; DATOS logo_konami_rle: flujo RLE de 0x4327 (tres tercios); 0x446E es una
-;   segunda entrada en el mismo flujo con HL = 0x2100
+; DATOS fuente_rle: la fuente: flujo RLE de 0x4327 hacia 0x2080 (tiles 0x10 en
+;   adelante); 0x446E es una segunda entrada en el mismo flujo, desde la A
+;   (tile 0x21), que usa 0xB392
 ;   0x4414..0x4536  (290 bytes)
-DATA_logo_konami_rle:
+DATA_fuente_rle:
 	defb 08bh,000h,01ch,022h,063h,063h,063h,022h,01ch,000h,018h,038h,004h,018h,0c9h,07eh	; 4414  ..."ccc"...8...~
 	defb 000h,03eh,063h,003h,00eh,03ch,070h,07fh,000h,03eh,063h,003h,00eh,003h,063h,03eh	; 4424  .>c..<p..>c...c>
 	defb 000h,00eh,01eh,036h,066h,066h,07fh,006h,000h,07fh,060h,07eh,063h,003h,063h,03eh	; 4434  ...6ff....`~c.c>
@@ -824,10 +825,10 @@ L_45A4:
 	ret			;45b8
 
 ; ----------------------------------------------------------------------
-; DATOS logo_konami_nombres: flujo RLE de 0x4352: la tabla de nombres del
-;   logotipo de Konami
+; DATOS logo_konami_patrones: flujo RLE de 0x4352 hacia 0x2A00: los 120 tiles
+;   (20 x 6) del logotipo de Konami
 ;   0x45b9..0x4708  (335 bytes)
-DATA_logo_konami_nombres:
+DATA_logo_konami_patrones:
 	defb 000h,02ah,018h,000h,002h,007h,003h,00fh,002h,01fh,081h,03fh,008h,0ffh,002h,0f8h	; 45b9  .*.........?....
 	defb 003h,0f0h,003h,0e0h,07fh,000h,005h,000h,087h,001h,003h,00fh,07fh,03fh,07fh,07fh	; 45c9  .............?..
 	defb 00ah,0ffh,082h,0fch,0f0h,003h,0c0h,002h,080h,077h,000h,083h,001h,003h,007h,003h	; 45d9  .........w......
@@ -1151,10 +1152,10 @@ L_48D9:
 	ret			;48f3
 
 ; ----------------------------------------------------------------------
-; DATOS sprites_rle: flujo RLE de 0x4352 hacia 0x3AC0, la tabla de atributos
-;   de sprites
+; DATOS menu_de_abajo_syn: flujo RLE de 0x4352 hacia 0x3AC0: las dos filas de
+;   abajo en SYN
 ;   0x48f4..0x490b  (23 bytes)
-DATA_sprites_rle:
+DATA_menu_de_abajo_syn:
 	defb 0c0h,03ah,007h,000h,082h,014h,015h,00eh,01ah,081h,02bh,00fh,000h,082h,024h,025h	; 48f4  .:........+...$%
 	defb 00eh,02ah,081h,02ch,008h,000h,000h	; 4904
 
@@ -1938,7 +1939,7 @@ L_4E72:
 ;   LAYOUT y SAMP (0x4E5A, por 0xDB18)
 ;   0x4e7a..0x4e80  (6 bytes)
 DATA_direcciones_de_carga:
-	defw 0c000h,0d200h,08000h	; 4e7a  -> 0xc000 0xd200 DATA_titulo_nombres
+	defw 0c000h,0d200h,08000h	; 4e7a  -> 0xc000 0xd200 DATA_sprites_patrones
 
 ; ----------------------------------------------------------------------
 ; DATOS rotulo_found: lista de 0x4337: "FOUND" en 0x3A07
@@ -7679,10 +7680,10 @@ DATA_onda_13:
 	defb 08dh,08eh,090h,094h,099h,09fh,0a5h,0ach,0b4h,0bch,0c4h,0cch,0d8h,0eah,004h,022h	; 7ff0  ..............."
 
 ; ----------------------------------------------------------------------
-; DATOS titulo_nombres: flujo RLE de 0x4352: la tabla de nombres que se pinta
-;   al arrancar
+; DATOS sprites_patrones: flujo RLE de 0x4352 hacia 0x1800 (0x43A1): los
+;   patrones de los sprites de 16x16
 ;   0x8000..0x82a5  (677 bytes)
-DATA_titulo_nombres:
+DATA_sprites_patrones:
 	defb 000h,018h,081h,000h,003h,003h,084h,00fh,007h,003h,001h,009h,000h,003h,0c0h,084h	; 8000  ................
 	defb 0f0h,0e0h,0c0h,080h,008h,000h,089h,007h,004h,004h,01ch,010h,008h,004h,002h,001h	; 8010  ................
 	defb 007h,000h,089h,0e0h,020h,020h,038h,008h,010h,020h,040h,080h,008h,000h,088h,008h	; 8020  ....  8.. @.....
@@ -7728,10 +7729,10 @@ DATA_titulo_nombres:
 	defb 002h,0f0h,004h,000h,000h	; 82a0
 
 ; ----------------------------------------------------------------------
-; DATOS marco_colores: flujo RLE de 0x4327 hacia 0x2200: colores del marco
+; DATOS marco_patrones: flujo RLE de 0x4327 hacia 0x2200: patrones del marco
 ;   comun
 ;   0x82a5..0x84eb  (582 bytes)
-DATA_marco_colores:
+DATA_marco_patrones:
 	defb 08bh,000h,03eh,063h,067h,06bh,073h,063h,03eh,000h,018h,038h,005h,018h,0adh,000h	; 82a5  ..>cgksc>..8....
 	defb 03eh,063h,003h,00eh,038h,060h,07fh,000h,03eh,063h,003h,00eh,003h,063h,03eh,000h	; 82b5  >c..8`..>c...c>.
 	defb 006h,00eh,01eh,036h,066h,07fh,006h,000h,07eh,060h,060h,07eh,003h,043h,03eh,000h	; 82c5  ...6f...~``~.C>.
@@ -7771,9 +7772,9 @@ DATA_marco_colores:
 	defb 0f0h,0e0h,0c0h,000h,07fh,000h	; 84e5
 
 ; ----------------------------------------------------------------------
-; DATOS marco_patrones_1: flujo RLE de 0x4327 hacia 0x0008
+; DATOS marco_colores_1: flujo RLE de 0x4327 hacia 0x0008
 ;   0x84eb..0x8531  (70 bytes)
-DATA_marco_patrones_1:
+DATA_marco_colores_1:
 	defb 008h,044h,008h,055h,008h,0eeh,083h,0ffh,0eeh,011h,005h,0cch,081h,0ffh,007h,0eeh	; 84eb  .D.U............
 	defb 003h,044h,081h,0ffh,006h,0eeh,082h,066h,0eeh,008h,011h,083h,0ffh,0eeh,066h,004h	; 84fb  .D.....f......f.
 	defb 0eeh,002h,044h,084h,011h,0ffh,0eeh,0ffh,003h,0eeh,088h,0ffh,011h,0ffh,0eeh,044h	; 850b  ..D............D
@@ -7781,17 +7782,17 @@ DATA_marco_patrones_1:
 	defb 006h,044h,082h,055h,011h,000h	; 852b
 
 ; ----------------------------------------------------------------------
-; DATOS marco_patrones_2: flujo RLE de 0x4327 hacia 0x00D8
+; DATOS marco_colores_2: flujo RLE de 0x4327 hacia 0x00D8
 ;   0x8531..0x8552  (33 bytes)
-DATA_marco_patrones_2:
+DATA_marco_colores_2:
 	defb 003h,044h,089h,0ffh,077h,044h,011h,055h,044h,044h,077h,055h,005h,011h,003h,044h	; 8531  .D..wD.UDDwU...D
 	defb 084h,011h,044h,011h,044h,004h,055h,086h,011h,055h,011h,055h,0ffh,0ffh,006h,0eeh	; 8541  ..D.D.U..U.U....
 	defb 000h	; 8551
 
 ; ----------------------------------------------------------------------
-; DATOS marco_patrones_3: flujo RLE de 0x4327 hacia 0x01D8
+; DATOS marco_colores_3: flujo RLE de 0x4327 hacia 0x01D8
 ;   0x8552..0x874d  (507 bytes)
-DATA_marco_patrones_3:
+DATA_marco_colores_3:
 	defb 088h,0ffh,0eeh,011h,0cch,0cch,022h,011h,011h,007h,0eeh,081h,011h,00dh,0cch,081h	; 8552  ......".........
 	defb 022h,003h,011h,081h,022h,006h,0cch,081h,000h,007h,0f0h,081h,000h,007h,0f0h,081h	; 8562  "..."...........
 	defb 000h,007h,0f0h,081h,000h,007h,0f0h,081h,000h,007h,0f0h,081h,000h,007h,0f0h,081h	; 8572  ................
@@ -7901,27 +7902,28 @@ DATA_wave_edit_nombres:
 	defb 094h,095h,006h,04dh,081h,0ach,004h,001h,082h,089h,076h,000h	; 8a35  ...M......v.
 
 ; ----------------------------------------------------------------------
-; DATOS sprites_a: 0x40 bytes de patrones de sprite que 0x48C4 copia a 0x3AC0
+; DATOS menu_de_abajo_a: 0x40 bytes de la tabla de nombres que 0x48C4 copia a
+;   0x3AC0: las dos filas de abajo, TONE-E WAVE-E SYN PLAY FILE
 ;   0x8a41..0x8a81  (64 bytes)
-DATA_sprites_a:
+DATA_menu_de_abajo_a:
 	defb 081h,04fh,050h,050h,050h,051h,052h,04fh,050h,050h,050h,051h,052h,04fh,050h,050h	; 8a41  .OPPPQROPPPQROPP
 	defb 050h,050h,051h,052h,04fh,050h,050h,050h,051h,052h,04fh,050h,050h,050h,051h,076h	; 8a51  PPQROPPPQROPPPQv
 	defb 081h,083h,056h,057h,058h,078h,003h,083h,059h,05ah,05bh,078h,003h,083h,053h,05ch	; 8a61  ..VWXx..YZ[x..S\
 	defb 05dh,05eh,078h,003h,083h,05fh,060h,061h,078h,003h,083h,068h,069h,06ah,078h,076h	; 8a71  ]^x.._`ax..hijxv
 
 ; ----------------------------------------------------------------------
-; DATOS sprites_b: la otra variante, por (0xD8F0)
+; DATOS menu_de_abajo_b: la otra variante, por (0xD8F0)
 ;   0x8a81..0x8ac1  (64 bytes)
-DATA_sprites_b:
+DATA_menu_de_abajo_b:
 	defb 081h,04fh,050h,050h,050h,051h,052h,04fh,050h,050h,050h,051h,052h,04fh,050h,050h	; 8a81  .OPPPQROPPPQROPP
 	defb 050h,050h,051h,052h,04fh,050h,050h,050h,051h,052h,072h,072h,072h,072h,072h,076h	; 8a91  PPQROPPPQRrrrrrv
 	defb 081h,083h,065h,066h,067h,078h,003h,083h,062h,063h,064h,078h,003h,083h,06bh,06ch	; 8aa1  ..efgx..bcdx..kl
 	defb 06dh,06eh,078h,003h,083h,06fh,070h,071h,078h,003h,003h,003h,003h,003h,003h,076h	; 8ab1  mnx..opqx......v
 
 ; ----------------------------------------------------------------------
-; DATOS tone_edit_colores: flujo RLE de 0x4327 hacia 0x2458
+; DATOS tone_edit_patrones: flujo RLE de 0x4327 hacia 0x2458
 ;   0x8ac1..0x8db6  (757 bytes)
-DATA_tone_edit_colores:
+DATA_tone_edit_patrones:
 	defb 002h,000h,085h,011h,077h,011h,077h,011h,008h,000h,083h,0aah,000h,000h,004h,03fh	; 8ac1  ....w.w........?
 	defb 084h,000h,0aah,000h,000h,004h,00fh,084h,000h,0aah,000h,000h,004h,003h,082h,000h	; 8ad1  ................
 	defb 0aah,007h,000h,081h,0aah,003h,000h,002h,07eh,008h,000h,002h,07eh,002h,000h,002h	; 8ae1  ........~...~...
@@ -7972,9 +7974,9 @@ DATA_tone_edit_colores:
 	defb 0bbh,000h,008h,0c0h,000h	; 8db1
 
 ; ----------------------------------------------------------------------
-; DATOS tone_edit_patrones: flujo RLE de 0x4327 hacia 0x0458
+; DATOS tone_edit_colores: flujo RLE de 0x4327 hacia 0x0458
 ;   0x8db6..0x8fcd  (535 bytes)
-DATA_tone_edit_patrones:
+DATA_tone_edit_colores:
 	defb 002h,0eeh,005h,0e1h,002h,0eeh,081h,011h,004h,077h,084h,011h,0e1h,0eeh,011h,004h	; 8db6  .........w......
 	defb 076h,084h,011h,0e1h,0eeh,011h,004h,076h,084h,011h,0e1h,0eeh,011h,004h,076h,084h	; 8dc6  v......v......v.
 	defb 011h,0e1h,0eeh,011h,004h,066h,082h,011h,0e1h,003h,011h,082h,031h,0c1h,003h,011h	; 8dd6  .....f......1...
@@ -8063,9 +8065,9 @@ DATA_tone_edit_nombres:
 	defb 003h,076h,000h	; 9257
 
 ; ----------------------------------------------------------------------
-; DATOS teclado_colores_1: flujo RLE de 0x4327 hacia 0x2080 (SYN y PLAY)
+; DATOS teclado_patrones_1: flujo RLE de 0x4327 hacia 0x2080 (SYN y PLAY)
 ;   0x925a..0x92f4  (154 bytes)
-DATA_teclado_colores_1:
+DATA_teclado_patrones_1:
 	defb 002h,000h,006h,07fh,002h,000h,081h,0feh,005h,0fch,005h,07fh,083h,040h,0bfh,000h	; 925a  .............@..
 	defb 005h,0fch,084h,002h,000h,000h,001h,003h,002h,085h,0f9h,003h,0f5h,009h,000h,003h	; 926a  ................
 	defb 080h,083h,07fh,000h,07fh,007h,000h,09ah,0d7h,010h,000h,000h,030h,038h,0abh,024h	; 927a  ............08.$
@@ -8078,9 +8080,9 @@ DATA_teclado_colores_1:
 	defb 00bh,000h,00bh,000h,00bh,000h,00bh,004h,000h,000h	; 92ea  ..........
 
 ; ----------------------------------------------------------------------
-; DATOS teclado_colores_2: flujo RLE de 0x4327 hacia 0x2458
+; DATOS teclado_patrones_2: flujo RLE de 0x4327 hacia 0x2458
 ;   0x92f4..0x9559  (613 bytes)
-DATA_teclado_colores_2:
+DATA_teclado_patrones_2:
 	defb 010h,000h,083h,01fh,03fh,038h,005h,037h,008h,0fbh,083h,0f0h,0f8h,018h,005h,0d8h	; 92f4  ....?8.7........
 	defb 008h,0feh,002h,000h,002h,006h,002h,007h,002h,006h,088h,000h,030h,060h,0c1h,09bh	; 9304  ............0`..
 	defb 09bh,0fbh,071h,003h,000h,085h,0cdh,06fh,06ch,06ch,0cch,003h,000h,085h,08eh,0d3h	; 9314  ..q....oll......
@@ -8122,9 +8124,9 @@ DATA_teclado_colores_2:
 	defb 081h,000h,008h,0fch,000h	; 9554
 
 ; ----------------------------------------------------------------------
-; DATOS teclado_patrones_1: flujo RLE de 0x4327 hacia 0x0080
+; DATOS teclado_colores_1: flujo RLE de 0x4327 hacia 0x0080
 ;   0x9559..0x95ea  (145 bytes)
-DATA_teclado_patrones_1:
+DATA_teclado_colores_1:
 	defb 084h,000h,011h,0f1h,0f1h,004h,0a1h,084h,000h,011h,0f1h,0f1h,00ah,0a1h,082h,010h	; 9559  ................
 	defb 011h,006h,0a1h,002h,011h,008h,050h,081h,000h,004h,050h,082h,000h,050h,005h,000h	; 9569  ......P...P..P..
 	defb 086h,055h,000h,050h,050h,000h,000h,00eh,050h,002h,000h,006h,050h,004h,000h,084h	; 9579  .U.PP...P...P...
@@ -8137,9 +8139,9 @@ DATA_teclado_patrones_1:
 	defb 000h	; 95e9
 
 ; ----------------------------------------------------------------------
-; DATOS teclado_patrones_2: flujo RLE de 0x4327 hacia 0x0458
+; DATOS teclado_colores_2: flujo RLE de 0x4327 hacia 0x0458
 ;   0x95ea..0x97fd  (531 bytes)
-DATA_teclado_patrones_2:
+DATA_teclado_colores_2:
 	defb 002h,055h,082h,011h,055h,004h,011h,002h,055h,081h,011h,005h,055h,018h,051h,008h	; 95ea  .U..U...U...U.Q.
 	defb 041h,002h,055h,006h,0f5h,081h,055h,007h,0f5h,003h,055h,005h,0f5h,003h,055h,005h	; 95fa  A.U...U...U...U.
 	defb 0f5h,003h,055h,005h,0f5h,081h,055h,007h,0f5h,006h,051h,085h,0f1h,071h,0ffh,0eeh	; 960a  ..U...U...Q..q..
@@ -8176,10 +8178,10 @@ DATA_teclado_patrones_2:
 	defb 0f1h,071h,000h	; 97fa
 
 ; ----------------------------------------------------------------------
-; DATOS rotulos_jp_colores: flujo RLE de 0x4327 hacia 0x2600: solo con teclado
-;   japones ((0x002C) & 0x0F distinto de 0)
+; DATOS rotulos_jp_patrones: flujo RLE de 0x4327 hacia 0x2600: solo con
+;   teclado japones ((0x002C) & 0x0F distinto de 0)
 ;   0x97fd..0x98df  (226 bytes)
-DATA_rotulos_jp_colores:
+DATA_rotulos_jp_patrones:
 	defb 08ch,000h,07fh,03fh,0f3h,0edh,0efh,0edh,0f3h,000h,07fh,03fh,0e3h,003h,0edh,0b5h	; 97fd  ...?.......?....
 	defb 0e3h,000h,07fh,03fh,0e1h,0efh,0e1h,0efh,0e1h,000h,07fh,03fh,0e1h,0efh,0e1h,0efh	; 980d  ...?.......?....
 	defb 0efh,000h,07fh,03fh,0f1h,0efh,0e9h,0edh,0f3h,000h,07fh,03fh,0f3h,0edh,0e1h,0edh	; 981d  ...?.......?....
@@ -8197,9 +8199,9 @@ DATA_rotulos_jp_colores:
 	defb 0e3h,000h	; 98dd
 
 ; ----------------------------------------------------------------------
-; DATOS rotulos_jp_patrones: flujo RLE de 0x4327 hacia 0x0600: lo mismo
+; DATOS rotulos_jp_colores: flujo RLE de 0x4327 hacia 0x0600: lo mismo
 ;   0x98df..0x9988  (169 bytes)
-DATA_rotulos_jp_patrones:
+DATA_rotulos_jp_colores:
 	defb 083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh	; 98df  ................
 	defb 005h,0e6h,083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh	; 98ef  ................
 	defb 0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh,005h,0ech	; 98ff  ................
@@ -8238,9 +8240,9 @@ DATA_teclado_nombres:
 	defb 0ddh,08bh,0eah,0f3h,0f8h,0e8h,0e4h,01ch,03fh,082h,0f4h,0f8h,000h	; 9ab8  ........?....
 
 ; ----------------------------------------------------------------------
-; DATOS file_colores: flujo RLE de 0x4327 hacia 0x2458
+; DATOS file_patrones: flujo RLE de 0x4327 hacia 0x2458
 ;   0x9ac5..0x9c63  (414 bytes)
-DATA_file_colores:
+DATA_file_patrones:
 	defb 028h,000h,082h,03eh,063h,003h,060h,087h,063h,03eh,000h,07ch,062h,062h,07ch,003h	; 9ac5  (..>c.`.c>.|bb|.
 	defb 060h,085h,000h,066h,066h,03ch,03ch,003h,018h,08bh,000h,07eh,066h,060h,07eh,006h	; 9ad5  `..ff<<....~f`~.
 	defb 066h,07eh,000h,07eh,07eh,005h,018h,00ch,000h,002h,018h,005h,000h,084h,0e7h,0c3h	; 9ae5  f~.~~...........
@@ -8269,9 +8271,9 @@ DATA_file_colores:
 	defb 07fh,006h,000h,008h,060h,081h,00fh,006h,003h,081h,00fh,060h,000h,000h	; 9c55  ....`......`..
 
 ; ----------------------------------------------------------------------
-; DATOS file_patrones: flujo RLE de 0x4327 hacia 0x0458
+; DATOS file_colores: flujo RLE de 0x4327 hacia 0x0458
 ;   0x9c63..0x9d74  (273 bytes)
-DATA_file_patrones:
+DATA_file_colores:
 	defb 028h,000h,007h,091h,081h,0ffh,007h,091h,081h,0ffh,007h,091h,081h,0ffh,007h,091h	; 9c63  (...............
 	defb 081h,0ffh,007h,091h,081h,0ffh,008h,000h,003h,011h,002h,0f1h,003h,011h,002h,0eeh	; 9c73  ................
 	defb 004h,0e1h,004h,0eeh,004h,0e8h,002h,0eeh,007h,091h,081h,0ffh,007h,091h,081h,0ffh	; 9c83  ................
@@ -8310,9 +8312,10 @@ DATA_file_nombres:
 	defb 0d1h,076h,000h	; 9e34
 
 ; ----------------------------------------------------------------------
-; DATOS fuente_colores: 0x50 bytes que 0xB341 copia a 0x2080
+; DATOS digitos_patrones: 0x50 bytes que 0xB34A copia a 0x2080 en los tres
+;   tercios: los patrones de los diez digitos (tiles 0x10-0x19)
 ;   0x9e37..0x9e87  (80 bytes)
-DATA_fuente_colores:
+DATA_digitos_patrones:
 	defb 000h,000h,018h,024h,024h,024h,018h,000h,000h,000h,008h,018h,008h,008h,008h,000h	; 9e37  ...$$$..........
 	defb 000h,000h,018h,024h,008h,010h,03ch,000h,000h,000h,018h,024h,008h,024h,018h,000h	; 9e47  ...$..<....$.$..
 	defb 000h,000h,008h,018h,028h,03ch,008h,000h,000h,000h,038h,020h,038h,004h,038h,000h	; 9e57  ....(<....8 8.8.
@@ -8320,8 +8323,8 @@ DATA_fuente_colores:
 	defb 000h,000h,018h,024h,018h,024h,018h,000h,000h,000h,018h,024h,01ch,004h,018h,000h	; 9e77  ...$.$.....$....
 
 ; ----------------------------------------------------------------------
-; DATOS rotulo_colores_a: 8 bytes de color que 0xB363 copia diez veces
-;   (pantalla 0)
+; DATOS rotulo_colores_a: 8 bytes de color que 0xB363 copia a los diez digitos
+;   (TONE EDIT)
 ;   0x9e87..0x9e8f  (8 bytes)
 DATA_rotulo_colores_a:
 	defb 0eeh,000h,070h,070h,070h,070h,070h,000h	; 9e87  ..ppppp.
@@ -8333,10 +8336,11 @@ DATA_rotulo_colores_b:
 	defb 005h,000h,070h,070h,070h,070h,070h,000h	; 9e8f  ..ppppp.
 
 ; ----------------------------------------------------------------------
-; DATOS titulo_colores: 0x428 bytes que 0x4708 copia a 0x2200: el logotipo
-;   新世SIZER
+; DATOS titulo_patrones: 0x428 bytes de patrones del logotipo 新世SIZER: 0x4708
+;   los copia de golpe a 0x2200 y 0x418A de byte en byte, que es la animacion
+;   de la pincelada
 ;   0x9e97..0xa2bf  (1064 bytes)
-DATA_titulo_colores:
+DATA_titulo_patrones:
 	defb 000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,000h,0e0h,000h,000h	; 9e97  ................
 	defb 000h,000h,000h,000h,000h,03fh,0e0h,000h,000h,000h,000h,000h,000h,000h,00fh,0f8h	; 9ea7  .....?..........
 	defb 000h,000h,000h,000h,000h,000h,000h,001h,080h,000h,000h,000h,000h,000h,000h,000h	; 9eb7  ................
@@ -8406,9 +8410,10 @@ DATA_titulo_colores:
 	defb 00fh,000h,000h,000h,000h,000h,000h,000h	; a2b7  ........
 
 ; ----------------------------------------------------------------------
-; DATOS titulo_patrones: flujo RLE de 0x4327 hacia 0x0200
+; DATOS titulo_colores: flujo RLE de 0x4327 hacia 0x0200, los colores del
+;   logotipo
 ;   0xa2bf..0xa2e5  (38 bytes)
-DATA_titulo_patrones:
+DATA_titulo_colores:
 	defb 00dh,000h,081h,060h,007h,000h,082h,060h,080h,007h,000h,082h,080h,090h,007h,000h	; a2bf  ...`...`........
 	defb 082h,090h,0a0h,007h,000h,083h,0a0h,0b0h,0f0h,007h,000h,081h,0f0h,003h,070h,006h	; a2cf  ..............p.
 	defb 000h,002h,070h,002h,070h,000h	; a2df

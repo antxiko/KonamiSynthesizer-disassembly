@@ -123,7 +123,8 @@ class Flujos(unittest.TestCase):
                 fin, _ = flujos.lista(rom, de)
             if nombre == "rotulo_push_space_key":
                 fin += 0x11  # la segunda linea, 0xBE84, cierra en 0xBEA6
-            self.assertEqual((de, fin), d[nombre], nombre)
+            por_inicio = {v[0]: v for v in d.values()}
+            self.assertEqual((de, fin), por_inicio[de], nombre)
 
     def test_la_pagina_2_encadena_sin_huecos(self):
         """De 0x8000 a 0xA5AA, cada rango D empieza donde acaba el anterior."""

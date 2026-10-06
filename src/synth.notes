@@ -36,9 +36,9 @@ F 0x4805 w
 # ======================================================================
 D 0x4295 0x429D registros_del_vdp  4 pares (dato, registro) que escribe WRTVDP en 0x4284
 F 0x4295 2
-D 0x4414 0x4536 logo_konami_rle  flujo RLE de 0x4327 (tres tercios); 0x446E es una segunda entrada en el mismo flujo con HL = 0x2100
-D 0x45B9 0x4708 logo_konami_nombres  flujo RLE de 0x4352: la tabla de nombres del logotipo de Konami
-D 0x48F4 0x490B sprites_rle  flujo RLE de 0x4352 hacia 0x3AC0, la tabla de atributos de sprites
+D 0x4414 0x4536 fuente_rle  la fuente: flujo RLE de 0x4327 hacia 0x2080 (tiles 0x10 en adelante); 0x446E es una segunda entrada en el mismo flujo, desde la A (tile 0x21), que usa 0xB392
+D 0x45B9 0x4708 logo_konami_patrones  flujo RLE de 0x4352 hacia 0x2A00: los 120 tiles (20 x 6) del logotipo de Konami
+D 0x48F4 0x490B menu_de_abajo_syn  flujo RLE de 0x4352 hacia 0x3AC0: las dos filas de abajo en SYN
 D 0x4946 0x494E sprite_cursor  dos sprites de 4 bytes (y, x, patron, color) que copia 0x4922
 F 0x4946 4
 D 0x4B00 0x4B04 tiles_marcador  dos pares de tiles que escribe 0xBC37 (0x4AED y 0x4AF7)
@@ -115,39 +115,40 @@ F 0x7F00 16
 # ======================================================================
 # LOS GRAFICOS DE LA PAGINA 2 (se lee con la ROM puesta en 0x8000)
 # ======================================================================
-# Todos encadenados: cada flujo acaba (tools/flujos.py) donde empieza el
+# Con R3 = 0x7F y R4 = 0x07 los COLORES van en 0x0000 y los PATRONES en
+# 0x2000, al reves de lo habitual. Todos encadenados: cada flujo acaba (tools/flujos.py) donde empieza el
 # siguiente, sin un byte suelto.
-D 0x8000 0x82A5 titulo_nombres  flujo RLE de 0x4352: la tabla de nombres que se pinta al arrancar
-D 0x82A5 0x84EB marco_colores  flujo RLE de 0x4327 hacia 0x2200: colores del marco comun
-D 0x84EB 0x8531 marco_patrones_1  flujo RLE de 0x4327 hacia 0x0008
-D 0x8531 0x8552 marco_patrones_2  flujo RLE de 0x4327 hacia 0x00D8
-D 0x8552 0x874D marco_patrones_3  flujo RLE de 0x4327 hacia 0x01D8
+D 0x8000 0x82A5 sprites_patrones  flujo RLE de 0x4352 hacia 0x1800 (0x43A1): los patrones de los sprites de 16x16
+D 0x82A5 0x84EB marco_patrones  flujo RLE de 0x4327 hacia 0x2200: patrones del marco comun
+D 0x84EB 0x8531 marco_colores_1  flujo RLE de 0x4327 hacia 0x0008
+D 0x8531 0x8552 marco_colores_2  flujo RLE de 0x4327 hacia 0x00D8
+D 0x8552 0x874D marco_colores_3  flujo RLE de 0x4327 hacia 0x01D8
 D 0x874D 0x8799 wave_edit_1  flujo RLE de 0x4352 (WAVE EDIT, 0xB02A)
 D 0x8799 0x87A0 wave_edit_2  flujo RLE de 0x4352 (0xB030)
 D 0x87A0 0x87DB wave_edit_3  flujo RLE de 0x4352 (0xB036)
 D 0x87DB 0x8815 cabecera_nombres  flujo RLE de 0x4352 hacia 0x3800: la franja de arriba de las pantallas de edicion
 D 0x8815 0x8A41 wave_edit_nombres  flujo RLE de 0x4352 hacia 0x3860 (0xB052)
-D 0x8A41 0x8A81 sprites_a  0x40 bytes de patrones de sprite que 0x48C4 copia a 0x3AC0
-D 0x8A81 0x8AC1 sprites_b  la otra variante, por (0xD8F0)
-D 0x8AC1 0x8DB6 tone_edit_colores  flujo RLE de 0x4327 hacia 0x2458
-D 0x8DB6 0x8FCD tone_edit_patrones  flujo RLE de 0x4327 hacia 0x0458
+D 0x8A41 0x8A81 menu_de_abajo_a  0x40 bytes de la tabla de nombres que 0x48C4 copia a 0x3AC0: las dos filas de abajo, TONE-E WAVE-E SYN PLAY FILE
+D 0x8A81 0x8AC1 menu_de_abajo_b  la otra variante, por (0xD8F0)
+D 0x8AC1 0x8DB6 tone_edit_patrones  flujo RLE de 0x4327 hacia 0x2458
+D 0x8DB6 0x8FCD tone_edit_colores  flujo RLE de 0x4327 hacia 0x0458
 D 0x8FCD 0x9087 tone_edit_extra  flujo RLE de 0x4352 hacia 0x2900
 D 0x9087 0x925A tone_edit_nombres  flujo RLE de 0x4352 hacia 0x3860
-D 0x925A 0x92F4 teclado_colores_1  flujo RLE de 0x4327 hacia 0x2080 (SYN y PLAY)
-D 0x92F4 0x9559 teclado_colores_2  flujo RLE de 0x4327 hacia 0x2458
-D 0x9559 0x95EA teclado_patrones_1  flujo RLE de 0x4327 hacia 0x0080
-D 0x95EA 0x97FD teclado_patrones_2  flujo RLE de 0x4327 hacia 0x0458
-D 0x97FD 0x98DF rotulos_jp_colores  flujo RLE de 0x4327 hacia 0x2600: solo con teclado japones ((0x002C) & 0x0F distinto de 0)
-D 0x98DF 0x9988 rotulos_jp_patrones  flujo RLE de 0x4327 hacia 0x0600: lo mismo
+D 0x925A 0x92F4 teclado_patrones_1  flujo RLE de 0x4327 hacia 0x2080 (SYN y PLAY)
+D 0x92F4 0x9559 teclado_patrones_2  flujo RLE de 0x4327 hacia 0x2458
+D 0x9559 0x95EA teclado_colores_1  flujo RLE de 0x4327 hacia 0x0080
+D 0x95EA 0x97FD teclado_colores_2  flujo RLE de 0x4327 hacia 0x0458
+D 0x97FD 0x98DF rotulos_jp_patrones  flujo RLE de 0x4327 hacia 0x2600: solo con teclado japones ((0x002C) & 0x0F distinto de 0)
+D 0x98DF 0x9988 rotulos_jp_colores  flujo RLE de 0x4327 hacia 0x0600: lo mismo
 D 0x9988 0x9AC5 teclado_nombres  flujo RLE de 0x4352 hacia 0x3800
-D 0x9AC5 0x9C63 file_colores  flujo RLE de 0x4327 hacia 0x2458
-D 0x9C63 0x9D74 file_patrones  flujo RLE de 0x4327 hacia 0x0458
+D 0x9AC5 0x9C63 file_patrones  flujo RLE de 0x4327 hacia 0x2458
+D 0x9C63 0x9D74 file_colores  flujo RLE de 0x4327 hacia 0x0458
 D 0x9D74 0x9E37 file_nombres  flujo RLE de 0x4352 hacia 0x3860
-D 0x9E37 0x9E87 fuente_colores  0x50 bytes que 0xB341 copia a 0x2080
-D 0x9E87 0x9E8F rotulo_colores_a  8 bytes de color que 0xB363 copia diez veces (pantalla 0)
+D 0x9E37 0x9E87 digitos_patrones  0x50 bytes que 0xB34A copia a 0x2080 en los tres tercios: los patrones de los diez digitos (tiles 0x10-0x19)
+D 0x9E87 0x9E8F rotulo_colores_a  8 bytes de color que 0xB363 copia a los diez digitos (TONE EDIT)
 D 0x9E8F 0x9E97 rotulo_colores_b  8 bytes de color para las demas pantallas
-D 0x9E97 0xA2BF titulo_colores  0x428 bytes que 0x4708 copia a 0x2200: el logotipo 新世SIZER
-D 0xA2BF 0xA2E5 titulo_patrones  flujo RLE de 0x4327 hacia 0x0200
+D 0x9E97 0xA2BF titulo_patrones  0x428 bytes de patrones del logotipo 新世SIZER: 0x4708 los copia de golpe a 0x2200 y 0x418A de byte en byte, que es la animacion de la pincelada
+D 0xA2BF 0xA2E5 titulo_colores  flujo RLE de 0x4327 hacia 0x0200, los colores del logotipo
 D 0xA2E5 0xA3AA titulo_nombres_logo  flujo RLE de 0x4352 hacia 0x3840
 
 # Los 16 timbres de fabrica: 0x55BC copia los 0x200 bytes a 0xD000.
