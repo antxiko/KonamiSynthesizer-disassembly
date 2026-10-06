@@ -53,6 +53,15 @@ proc foto {nom} { screenshot -raw "$::OUT/$nom.png" }
 proc vuelca {nom} {
     guarda $nom.vram [debug read_block VRAM 0 16384]
     guarda $nom.ram [debug read_block memory 0xC000 0x4000]
+    # y la RAM principal entera (64 KB): en la pagina 2 esta el bufer de
+    # 16 KB que llena SYN, que no se ve mientras el cartucho ocupa 0x8000
+    guarda $nom.slots [debug read_block "slotted memory" 0 0x100000]
+    foreach d [debug list] {
+        if {[string match -nocase "*main ram*" $d] || [string match -nocase "*memory mapper*" $d]} {
+            guarda $nom.ram64 [debug read_block $d 0 [debug size $d]]
+            break
+        }
+    }
     set r ""
     for {set i 0} {$i < 8} {incr i} { append r [format %c [debug read "VDP regs" $i]] }
     guarda $nom.regs $r

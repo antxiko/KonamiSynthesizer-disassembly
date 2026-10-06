@@ -478,9 +478,11 @@ def sprites(rom, v, origen, n):
 
 
 def syn(rom, v=None, internacional=True):
-    """0x48D9: SYN. El teclado, el pentagrama de abajo (0x48F4 en 0x3AC0) y
-    los cuatro sprites de 0x4CD4."""
-    v = v or wave_edit(rom)
+    """0x48D9: SYN, al empezar la sintesis. El teclado, el pentagrama de
+    abajo (0x48F4 en 0x3AC0) y los cuatro sprites de 0x4CD4: el pajaro
+    verde que recorre el pentagrama mientras se calcula el sonido, y lo que
+    le espera al final. Por defecto llega desde TONE EDIT (F3)."""
+    v = v or tone_edit(rom)
     v.pon(0x3B00, 0xD0)
     teclado(rom, v, internacional)
     v.aplica(flujos.rle(rom, 0x48F4)[1])
@@ -491,7 +493,7 @@ def syn(rom, v=None, internacional=True):
 def play(rom, v=None, internacional=True):
     """0x491B: PLAY. El teclado, la fuente otra vez (0xB392) y los dos
     sprites de 0x4946."""
-    v = v or syn(rom)
+    v = v or syn(rom, wave_edit(rom))
     v.pon(0x3B00, 0xD0)
     teclado(rom, v, internacional)
     v.aplica(flujos.rle3(rom, 0x446E, 0x2100)[1])
