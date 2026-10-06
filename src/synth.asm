@@ -442,8 +442,8 @@ L_428B:
 	ret			;4294
 
 ; ----------------------------------------------------------------------
-; DATOS registros_del_vdp: 4 pares (dato, registro) que escribe WRTVDP en
-;   0x4284
+; DATOS registros_del_vdp: los 8 registros del VDP, del R0 al R7, que escribe
+;   0x4284: SCREEN 2, colores en 0x0000 y patrones en 0x2000
 ;   0x4295..0x429d  (8 bytes)
 DATA_registros_del_vdp:
 	defb 002h,0e2h	; 4295
@@ -4127,10 +4127,11 @@ L_5D9A:
 	ret			;5da8
 
 ; ----------------------------------------------------------------------
-; DATOS teclado_a_notas_jp: 0x80 bytes que 0x55DC copia a 0xD230: tecla de la
-;   matriz -> nota, teclado japones
+; DATOS teclas_de_fabrica: 0x80 bytes que 0x55DC copia a 0xD230: por tecla de
+;   la matriz (fila * 8 + bit + 1, 0x5D5D), la rutina y el retardo D de su
+;   nota; 0xFFFF sin nota
 ;   0x5da9..0x5e29  (128 bytes)
-DATA_teclado_a_notas_jp:
+DATA_teclas_de_fabrica:
 	defb 001h,007h	; 5da9
 	defb 0ffh,0ffh	; 5dab
 	defb 001h,015h	; 5dad
@@ -4197,9 +4198,12 @@ DATA_teclado_a_notas_jp:
 	defb 0ffh,0ffh	; 5e27
 
 ; ----------------------------------------------------------------------
-; DATOS teclado_a_notas_2: la segunda tabla de 0xBBDA
+; DATOS rutina_y_retardo_por_nota: las 49 posiciones de 0xBCCA, de FA1 a SI4:
+;   rutina (0-12) y retardo D; la muestra dura c(rutina) + 16 * D ciclos.
+;   0xBBDA la copia a la tecla al cambiar la disposicion; 0xFFFF en los huecos
+;   sin negra
 ;   0x5e29..0x5e8b  (98 bytes)
-DATA_teclado_a_notas_2:
+DATA_rutina_y_retardo_por_nota:
 	defb 000h,04ch	; 5e29
 	defb 005h,047h	; 5e2b
 	defb 001h,043h	; 5e2d
@@ -4251,10 +4255,11 @@ DATA_teclado_a_notas_2:
 	defb 00bh,002h	; 5e89
 
 ; ----------------------------------------------------------------------
-; DATOS mezcla_dco_a: 13 rutinas de mezcla, de 1 a 13 teclas a la vez; 0x5D9A
-;   carga la que toca en IX
+; DATOS reproduce_con_bucle: 13 rutinas de PLAY, el mismo bucle con 67 a 82
+;   ciclos fuera del retardo: el ajuste fino de la afinacion. La nota (0x5E29)
+;   elige una y 0x5D9A la carga en IX. Con pagina de bucle (0xDCFD)
 ;   0x5e8b..0x5ea5  (26 bytes)
-DATA_mezcla_dco_a:
+DATA_reproduce_con_bucle:
 	defw 05ec9h,05f56h,05ff4h,060a2h,06150h,061e5h,0628bh,06339h	; 5e8b
 	defw 063d6h,06473h,06510h,065adh,06652h	; 5e9b
 
@@ -5675,9 +5680,10 @@ L_66FE:
 	jp L_5EA9		;6706
 
 ; ----------------------------------------------------------------------
-; DATOS mezcla_dco_b: 13 rutinas de mezcla de la segunda variante
+; DATOS reproduce_sin_bucle: las mismas 13 rutinas para los timbres sin pagina
+;   de bucle: suenan hasta 0xC000
 ;   0x6709..0x6723  (26 bytes)
-DATA_mezcla_dco_b:
+DATA_reproduce_sin_bucle:
 	defw 06743h,067c2h,06850h,068ech,06988h,06a0eh,06aa3h,06b3fh	; 6709
 	defw 06bcch,06c59h,06ce6h,06d73h,06e07h	; 6719
 
@@ -6931,9 +6937,9 @@ L_6EB2:
 	jp L_6E9B		;6eb8
 
 ; ----------------------------------------------------------------------
-; DATOS mezcla_muestra: 13 rutinas de mezcla para la muestra (SAMP)
+; DATOS reproduce_samp: las 13 rutinas para la muestra cargada de cinta (SAMP)
 ;   0x6ebb..0x6ed5  (26 bytes)
-DATA_mezcla_muestra:
+DATA_reproduce_samp:
 	defw 06f1ch,06f40h,06f69h,06f96h,06fc3h,06fe9h,07014h,07041h	; 6ebb
 	defw 07069h,07091h,070b9h,070e1h,0710bh	; 6ecb
 
@@ -8178,10 +8184,10 @@ DATA_teclado_colores_2:
 	defb 0f1h,071h,000h	; 97fa
 
 ; ----------------------------------------------------------------------
-; DATOS rotulos_jp_patrones: flujo RLE de 0x4327 hacia 0x2600: solo con
-;   teclado japones ((0x002C) & 0x0F distinto de 0)
+; DATOS rotulos_internacionales_patrones: flujo RLE de 0x4327 hacia 0x2600:
+;   solo si (0x002C) & 0x0F no es cero, o sea en un MSX que no es japones
 ;   0x97fd..0x98df  (226 bytes)
-DATA_rotulos_jp_patrones:
+DATA_rotulos_internacionales_patrones:
 	defb 08ch,000h,07fh,03fh,0f3h,0edh,0efh,0edh,0f3h,000h,07fh,03fh,0e3h,003h,0edh,0b5h	; 97fd  ...?.......?....
 	defb 0e3h,000h,07fh,03fh,0e1h,0efh,0e1h,0efh,0e1h,000h,07fh,03fh,0e1h,0efh,0e1h,0efh	; 980d  ...?.......?....
 	defb 0efh,000h,07fh,03fh,0f1h,0efh,0e9h,0edh,0f3h,000h,07fh,03fh,0f3h,0edh,0e1h,0edh	; 981d  ...?.......?....
@@ -8199,9 +8205,10 @@ DATA_rotulos_jp_patrones:
 	defb 0e3h,000h	; 98dd
 
 ; ----------------------------------------------------------------------
-; DATOS rotulos_jp_colores: flujo RLE de 0x4327 hacia 0x0600: lo mismo
+; DATOS rotulos_internacionales_colores: flujo RLE de 0x4327 hacia 0x0600: lo
+;   mismo
 ;   0x98df..0x9988  (169 bytes)
-DATA_rotulos_jp_colores:
+DATA_rotulos_internacionales_colores:
 	defb 083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh	; 98df  ................
 	defb 005h,0e6h,083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh	; 98ef  ................
 	defb 0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh,005h,0e6h,083h,0ffh,0feh,0feh,005h,0ech	; 98ff  ................

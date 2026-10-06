@@ -34,7 +34,7 @@ F 0x4805 w
 # ======================================================================
 # GRAFICOS DE LA PRIMERA MITAD
 # ======================================================================
-D 0x4295 0x429D registros_del_vdp  4 pares (dato, registro) que escribe WRTVDP en 0x4284
+D 0x4295 0x429D registros_del_vdp  los 8 registros del VDP, del R0 al R7, que escribe 0x4284: SCREEN 2, colores en 0x0000 y patrones en 0x2000
 F 0x4295 2
 D 0x4414 0x4536 fuente_rle  la fuente: flujo RLE de 0x4327 hacia 0x2080 (tiles 0x10 en adelante); 0x446E es una segunda entrada en el mismo flujo, desde la A (tile 0x21), que usa 0xB392
 D 0x45B9 0x4708 logo_konami_patrones  flujo RLE de 0x4352 hacia 0x2A00: los 120 tiles (20 x 6) del logotipo de Konami
@@ -68,15 +68,15 @@ D 0x54F6 0x5516 tramas_de_impresora  32 bytes de tramado que se mandan a la impr
 # ======================================================================
 D 0x5C12 0x5C1B pasos_del_lfo  9 valores por (0xDC05) que 0x5710 copia a 0xDC38
 D 0x5C1B 0x5C24 pasos_del_lfo_2  9 valores por (0xDC05) que 0x5718 copia a 0xDC39
-D 0x5DA9 0x5E29 teclado_a_notas_jp  0x80 bytes que 0x55DC copia a 0xD230: tecla de la matriz -> nota, teclado japones
+D 0x5DA9 0x5E29 teclas_de_fabrica  0x80 bytes que 0x55DC copia a 0xD230: por tecla de la matriz (fila * 8 + bit + 1, 0x5D5D), la rutina y el retardo D de su nota; 0xFFFF sin nota
 F 0x5DA9 2
-D 0x5E29 0x5E8B teclado_a_notas_2  la segunda tabla de 0xBBDA
+D 0x5E29 0x5E8B rutina_y_retardo_por_nota  las 49 posiciones de 0xBCCA, de FA1 a SI4: rutina (0-12) y retardo D; la muestra dura c(rutina) + 16 * D ciclos. 0xBBDA la copia a la tecla al cambiar la disposicion; 0xFFFF en los huecos sin negra
 F 0x5E29 2
-D 0x5E8B 0x5EA5 mezcla_dco_a  13 rutinas de mezcla, de 1 a 13 teclas a la vez; 0x5D9A carga la que toca en IX
+D 0x5E8B 0x5EA5 reproduce_con_bucle  13 rutinas de PLAY, el mismo bucle con 67 a 82 ciclos fuera del retardo: el ajuste fino de la afinacion. La nota (0x5E29) elige una y 0x5D9A la carga en IX. Con pagina de bucle (0xDCFD)
 F 0x5E8B w
-D 0x6709 0x6723 mezcla_dco_b  13 rutinas de mezcla de la segunda variante
+D 0x6709 0x6723 reproduce_sin_bucle  las mismas 13 rutinas para los timbres sin pagina de bucle: suenan hasta 0xC000
 F 0x6709 w
-D 0x6EBB 0x6ED5 mezcla_muestra  13 rutinas de mezcla para la muestra (SAMP)
+D 0x6EBB 0x6ED5 reproduce_samp  las 13 rutinas para la muestra cargada de cinta (SAMP)
 F 0x6EBB w
 D 0x7135 0x7200 relleno_0x7135  0xFF hasta el principio de las ondas
 
@@ -138,8 +138,8 @@ D 0x925A 0x92F4 teclado_patrones_1  flujo RLE de 0x4327 hacia 0x2080 (SYN y PLAY
 D 0x92F4 0x9559 teclado_patrones_2  flujo RLE de 0x4327 hacia 0x2458
 D 0x9559 0x95EA teclado_colores_1  flujo RLE de 0x4327 hacia 0x0080
 D 0x95EA 0x97FD teclado_colores_2  flujo RLE de 0x4327 hacia 0x0458
-D 0x97FD 0x98DF rotulos_jp_patrones  flujo RLE de 0x4327 hacia 0x2600: solo con teclado japones ((0x002C) & 0x0F distinto de 0)
-D 0x98DF 0x9988 rotulos_jp_colores  flujo RLE de 0x4327 hacia 0x0600: lo mismo
+D 0x97FD 0x98DF rotulos_internacionales_patrones  flujo RLE de 0x4327 hacia 0x2600: solo si (0x002C) & 0x0F no es cero, o sea en un MSX que no es japones
+D 0x98DF 0x9988 rotulos_internacionales_colores  flujo RLE de 0x4327 hacia 0x0600: lo mismo
 D 0x9988 0x9AC5 teclado_nombres  flujo RLE de 0x4352 hacia 0x3800
 D 0x9AC5 0x9C63 file_patrones  flujo RLE de 0x4327 hacia 0x2458
 D 0x9C63 0x9D74 file_colores  flujo RLE de 0x4327 hacia 0x0458
