@@ -612,7 +612,7 @@ prepara_el_programa:		; al salir del titulo: borra la RAM del programa, mira si 
 	ld a,001h		;4396   ; ...no hay disco: 0xD9DE = 1
 	ld (0d9deh),a		;4398
 L_439B:
-	call L_55BC		;439b   ; los 16 timbres de fabrica y las ondas
+	call timbres_y_ondas_de_fabrica		;439b   ; los 16 timbres de fabrica y las ondas
 	call layout_de_fabrica		;439e   ; 0x4B21
 	ld de,08000h		;43a1   ; los patrones de los sprites (0x8000)
 	call rle_a_vram		;43a4
@@ -2514,8 +2514,8 @@ pantalla_imprime:		; la pantalla 7: imprime y vuelve a la pantalla de antes
 	jr c,L_52CC		;52bf
 	ld a,(0d8fbh)		;52c1   ; desde WAVE EDIT...
 	cp 001h		;52c4
-	call z,L_5516		;52c6   ; ...la onda
-	call L_5383		;52c9   ; y lo demas
+	call z,imprime_onda		;52c6   ; ...la onda
+	call cuatro_lineas		;52c9   ; y lo demas
 L_52CC:
 	ld a,(0d8f5h)		;52cc   ; vuelve a la pantalla de antes
 	ld (0d8fah),a		;52cf
@@ -2529,7 +2529,7 @@ impresora_lista:		; espera a que la impresora este lista y empieza
 	ld a,001h		;52e2   ; RAWPRT = 1: sin traducir los codigos
 	ld (0f418h),a		;52e4
 	call espera_impresora		;52e7
-	jp L_5419		;52ea
+	jp vuelca_pantalla		;52ea
 espera_impresora:		; LPTSTT hasta que conteste, con limite
 	ld h,001h		;52ed
 L_52EF:
@@ -2543,15 +2543,15 @@ L_52F3:
 	ret z			;52fa
 L_52FB:
 	djnz L_52F3		;52fb
-	dec c			;52fd
+	dec c			;52fd   ; 256 x 256 x H intentos
 	jr nz,L_52F1		;52fe
 	dec h			;5300
 	jr nz,L_52EF		;5301
-	jr L_5334		;5303
-L_5305:
+	jr no_hay_impresora		;5303
+impresora_falla:		; manda 0x200 ceros y ocho saltos de linea, y vuelve por la pila guardada con acarreo
 	xor a			;5305
 	ld (0d938h),a		;5306
-	ld hl,00200h		;5309
+	ld hl,00200h		;5309   ; 0x200 ceros
 L_530C:
 	push hl			;530c
 	call espera_impresora		;530d
@@ -2563,7 +2563,7 @@ L_530C:
 	ld a,h			;5318
 	or l			;5319
 	jr nz,L_530C		;531a
-	ld b,008h		;531c
+	ld b,008h		;531c   ; 8 veces CR + LF
 L_531E:
 	ld a,00dh		;531e
 	call 000a5h		;5320   ; BIOS LPTOUT - Sends one character to printer
@@ -2573,14 +2573,14 @@ L_5325:
 	call 000a5h		;5327   ; BIOS LPTOUT - Sends one character to printer
 	jr c,L_5325		;532a
 	djnz L_531E		;532c
-L_532E:
+sale_de_imprimir:		; la pila de 0xD931 y acarreo
 	ld sp,(0d931h)		;532e
 	scf			;5332
 	ret			;5333
-L_5334:
+no_hay_impresora:		; el rotulo de 0x534D, una espera y el menu otra vez
 	ld de,0534dh		;5334
 	call escribe_lista		;5337
-	ld h,00fh		;533a
+	ld h,00fh		;533a   ; la espera, 15 x 65536 vueltas
 L_533C:
 	ld c,000h		;533c
 L_533E:
@@ -2592,7 +2592,7 @@ L_5340:
 	dec h			;5345
 	jr nz,L_533C		;5346
 	call cambia_menu		;5348
-	jr L_532E		;534b
+	jr sale_de_imprimir		;534b
 
 ; ----------------------------------------------------------------------
 ; DATOS rotulo_printer_not_ready: lista de 0x4337: "PRINTER NOT READY"
@@ -2606,7 +2606,7 @@ DATA_rotulo_printer_not_ready:
 ; ======================================================================
 
 
-L_5361:
+imprime:		; A a la impresora en cuanto este lista; 0xD938 = 1 si falla
 	push ix		;5361
 	push hl			;5363
 	push de			;5364
@@ -2614,12 +2614,12 @@ L_5361:
 	push af			;5366
 	push af			;5367
 L_5368:
-	call 000a8h		;5368   ; BIOS LPTSTT - Tests printer status
+	call 000a8h		;5368   ; BIOS LPTSTT - Tests printer status | espera...
 	jr z,L_5368		;536b
-	cp 0ffh		;536d
+	cp 0ffh		;536d   ; ...a 0xFF
 	jr nz,L_5368		;536f
 	pop af			;5371
-	call 000a5h		;5372   ; BIOS LPTOUT - Sends one character to printer
+	call 000a5h		;5372   ; BIOS LPTOUT - Sends one character to printer | LPTOUT
 	jr nc,L_537C		;5375
 	ld a,001h		;5377
 	ld (0d938h),a		;5379
@@ -2630,46 +2630,46 @@ L_537C:
 	pop hl			;537f
 	pop ix		;5380
 	ret			;5382
-L_5383:
+cuatro_lineas:		; cuatro veces CR + LF
 	ld b,004h		;5383
 L_5385:
-	call L_538B		;5385
+	call nueva_linea		;5385
 	djnz L_5385		;5388
 	ret			;538a
-L_538B:
+nueva_linea:		; CR + LF
 	ld a,00dh		;538b
-	call L_5361		;538d
+	call imprime		;538d
 	ld a,00ah		;5390
-	jp L_5361		;5392
-L_5395:
-	call L_53A9		;5395
+	jp imprime		;5392
+punto_con_tinta:		; A distinto de 0 si el punto de 0xD933 lleva tinta
+	call color_del_punto		;5395
 	or a			;5398
 	ret nz			;5399
-	call L_539E		;539a
+	call comparar_color		;539a
 	ret			;539d
-L_539E:
+comparar_color:		; 0 si el color es 4
 	ld a,(0f3e6h)		;539e
 	and 00fh		;53a1
 	cp 004h		;53a3
 	ret z			;53a5
 	ld a,001h		;53a6
 	ret			;53a8
-L_53A9:
-	ld hl,(0d933h)		;53a9
-	call L_5405		;53ac
-	call 0004ah		;53af   ; BIOS RDVRM - Reads the content of VRAM
-	ld h,000h		;53b2
+color_del_punto:		; el color del punto (X, Y) de 0xD933 en SCREEN 2: el tile de la tabla de nombres, su patron y su color
+	ld hl,(0d933h)		;53a9   ; la direccion de su nombre
+	call nombre_del_punto		;53ac
+	call 0004ah		;53af   ; BIOS RDVRM - Reads the content of VRAM | el tile...
+	ld h,000h		;53b2   ; ...por 8...
 	ld l,a			;53b4
 	add hl,hl			;53b5
 	add hl,hl			;53b6
 	add hl,hl			;53b7
-	ld de,(0d933h)		;53b8
+	ld de,(0d933h)		;53b8   ; ...mas la linea dentro del tile
 	ld a,e			;53bc
 	and 007h		;53bd
 	ld e,a			;53bf
 	ld d,000h		;53c0
 	add hl,de			;53c2
-	ld de,(0d933h)		;53c3
+	ld de,(0d933h)		;53c3   ; y el tercio de la pantalla
 	ld a,e			;53c7
 	ld de,00000h		;53c8
 	cp 040h		;53cb
@@ -2681,27 +2681,27 @@ L_53A9:
 L_53D7:
 	add hl,de			;53d7
 L_53D8:
-	ld de,(0d933h)		;53d8
+	ld de,(0d933h)		;53d8   ; el bit del punto
 	ld a,d			;53dc
 	push hl			;53dd
-	ld de,02000h		;53de
+	ld de,02000h		;53de   ; en los patrones (0x2000)
 	add hl,de			;53e1
 	and 007h		;53e2
 	inc a			;53e4
 	ld b,a			;53e5
 	call 0004ah		;53e6   ; BIOS RDVRM - Reads the content of VRAM
 L_53E9:
-	add a,a			;53e9
+	add a,a			;53e9   ; al acarreo
 	djnz L_53E9		;53ea
 	pop hl			;53ec
 	push af			;53ed
-	ld de,00000h		;53ee
+	ld de,00000h		;53ee   ; y el color (0x0000)
 	add hl,de			;53f1
 	call 0004ah		;53f2   ; BIOS RDVRM - Reads the content of VRAM
 	ld b,a			;53f5
 	pop af			;53f6
-	jr c,L_53FD		;53f7
-	ld a,b			;53f9
+	jr c,L_53FD		;53f7   ; bit a 1: la tinta (nibble alto)...
+	ld a,b			;53f9   ; ...a 0: el fondo (bajo)
 	and 00fh		;53fa
 	ret			;53fc
 L_53FD:
@@ -2712,7 +2712,7 @@ L_53FD:
 	rrca			;5402
 	rrca			;5403
 	ret			;5404
-L_5405:
+nombre_del_punto:		; HL = 0x3800 + (Y / 8) * 32 + X / 8
 	ld a,l			;5405
 	rra			;5406
 	rra			;5407
@@ -2728,37 +2728,37 @@ L_5405:
 	add a,038h		;5415
 	ld h,a			;5417
 	ret			;5418
-L_5419:
-	call L_54A9		;5419
-	ld b,040h		;541c
+vuelca_pantalla:		; la pantalla en puntos: 0x40 franjas de cuatro filas, 0xC0 columnas cada una
+	call secuencia_inicial		;5419   ; la secuencia de arranque (0x54B6)
+	ld b,040h		;541c   ; 0x40 franjas
 	ld h,000h		;541e
 L_5420:
 	push bc			;5420
-	ld de,054bdh		;5421
+	ld de,054bdh		;5421   ; la secuencia de cada franja: 0x54BD o 0x54C4
 	ld a,(0d930h)		;5424
 	cp 071h		;5427
 	jr z,L_542E		;5429
 	ld de,054c4h		;542b
 L_542E:
-	call L_54AC		;542e
-	ld b,0c0h		;5431
+	call imprime_lista		;542e
+	ld b,0c0h		;5431   ; 0xC0 columnas
 L_5433:
 	push bc			;5433
 	push hl			;5434
 	ld l,b			;5435
 	dec l			;5436
-	ld (0d933h),hl		;5437
-	ld ix,0d935h		;543a
+	ld (0d933h),hl		;5437   ; el punto de arriba de la columna
+	ld ix,0d935h		;543a   ; dos bytes que se arman en 0xD935
 	xor a			;543e
 	ld (ix+000h),a		;543f
 	ld (ix+001h),a		;5442
-	ld bc,00403h		;5445
+	ld bc,00403h		;5445   ; cuatro puntos, dos bits cada uno
 L_5448:
 	push bc			;5448
-	call L_5395		;5449
-	call L_54E9		;544c
+	call punto_con_tinta		;5449   ; el color del punto...
+	call trama		;544c   ; ...a su trama de 0x54F6
 	pop bc			;544f
-	ld a,d			;5450
+	ld a,d			;5450   ; los dos bits de este punto
 	and c			;5451
 	or (ix+000h)		;5452
 	ld (ix+000h),a		;5455
@@ -2766,53 +2766,53 @@ L_5448:
 	and c			;5459
 	or (ix+001h)		;545a
 	ld (ix+001h),a		;545d
-	rlc c		;5460
+	rlc c		;5460   ; los dos siguientes
 	rlc c		;5462
-	ld hl,(0d933h)		;5464
+	ld hl,(0d933h)		;5464   ; el punto de debajo
 	inc h			;5467
 	ld (0d933h),hl		;5468
 	djnz L_5448		;546b
-	ld a,(ix+000h)		;546d
-	call L_5361		;5470
-	call L_5499		;5473
+	ld a,(ix+000h)		;546d   ; los dos bytes a la impresora
+	call imprime		;5470
+	call segundo_byte		;5473
 	ld a,(ix+001h)		;5476
-	call L_5361		;5479
-	call L_5499		;547c
+	call imprime		;5479
+	call segundo_byte		;547c
 	pop hl			;547f
 	pop bc			;5480
 	djnz L_5433		;5481
-	call L_538B		;5483
-	ld a,(0d938h)		;5486
+	call nueva_linea		;5483   ; fin de la franja
+	ld a,(0d938h)		;5486   ; si fallo, a 0x5305
 	or a			;5489
-	jp nz,L_5305		;548a
-	ld a,004h		;548d
+	jp nz,impresora_falla		;548a
+	ld a,004h		;548d   ; la franja siguiente
 	add a,h			;548f
 	ld h,a			;5490
 	pop bc			;5491
 	djnz L_5420		;5492
-	call L_5383		;5494
+	call cuatro_lineas		;5494
 	xor a			;5497
 	ret			;5498
-L_5499:
+segundo_byte:		; en el modo 0x72 cada byte va dos veces
 	ld b,a			;5499
 	ld a,(0d930h)		;549a
 	cp 072h		;549d
 	ld a,b			;549f
-	jp z,L_5361		;54a0
+	jp z,imprime		;54a0
 	ret			;54a3
-L_54A4:
+secuencia_54cb:		; la secuencia de 0x54CB
 	ld de,054cbh		;54a4
-	jr L_54AC		;54a7
-L_54A9:
+	jr imprime_lista		;54a7
+secuencia_inicial:		; la secuencia de 0x54B6
 	ld de,054b6h		;54a9
-L_54AC:
+imprime_lista:		; los bytes de DE hasta 0xFF
 	ld a,(de)			;54ac
 	inc a			;54ad
 	ret z			;54ae
 	dec a			;54af
-	call L_5361		;54b0
+	call imprime		;54b0
 	inc de			;54b3
-	jr L_54AC		;54b4
+	jr imprime_lista		;54b4
 
 ; ----------------------------------------------------------------------
 ; DATOS ordenes_de_impresora: secuencias ESC de la impresora MSX: ESC T16, ESC
@@ -2830,7 +2830,7 @@ DATA_ordenes_de_impresora:
 ; ======================================================================
 
 
-L_54E9:
+trama:		; DE = la trama del color A (0x54F6)
 	push hl			;54e9
 	ld hl,054f6h		;54ea
 	add a,a			;54ed
@@ -2854,62 +2854,62 @@ DATA_tramas_de_impresora:
 ; ======================================================================
 
 
-L_5516:
-	call L_538B		;5516
-	ld de,054d2h		;5519
-	call L_54AC		;551c
+imprime_onda:		; desde WAVE EDIT: cabecera, columnas del 0 al 7 y 8 filas de 8 muestras, una de cada cuatro, con signo y tres cifras
+	call nueva_linea		;5516
+	ld de,054d2h		;5519   ; los rotulos de 0x54D2...
+	call imprime_lista		;551c
 	ld b,002h		;551f
-	call L_55B4		;5521
-	ld de,054dah		;5524
-	call L_54AC		;5527
-	call L_538B		;552a
+	call espacios		;5521
+	ld de,054dah		;5524   ; ...y 0x54DA
+	call imprime_lista		;5527
+	call nueva_linea		;552a
 	ld b,002h		;552d
-	call L_55B4		;552f
-	ld c,030h		;5532
+	call espacios		;552f
+	ld c,030h		;5532   ; las cifras 0 a 7 de las columnas
 L_5534:
 	ld b,005h		;5534
-	call L_55B4		;5536
+	call espacios		;5536
 	ld a,c			;5539
 	cp 038h		;553a
 	jr z,L_5544		;553c
-	call L_5361		;553e
+	call imprime		;553e
 	inc c			;5541
 	jr L_5534		;5542
 L_5544:
-	ld de,054d5h		;5544
-	call L_54AC		;5547
-	call L_538B		;554a
-	ld b,03ah		;554d
+	ld de,054d5h		;5544   ; 0x54D5
+	call imprime_lista		;5547
+	call nueva_linea		;554a
+	ld b,03ah		;554d   ; una raya de 0x3A guiones
 L_554F:
 	ld a,02dh		;554f
-	call L_5361		;5551
+	call imprime		;5551
 	djnz L_554F		;5554
-	call L_538B		;5556
-	xor a			;5559
+	call nueva_linea		;5556
+	xor a			;5559   ; HL = la onda
 	call L_B1A0		;555a
-	ld b,008h		;555d
+	ld b,008h		;555d   ; 8 filas
 L_555F:
 	push bc			;555f
 	ld b,004h		;5560
-	call L_55B4		;5562
-	ld b,008h		;5565
+	call espacios		;5562
+	ld b,008h		;5565   ; 8 muestras
 L_5567:
 	push bc			;5567
-	ld a,(hl)			;5568
+	ld a,(hl)			;5568   ; la muestra
 	ld c,a			;5569
 	ld a,020h		;556a
-	bit 7,c		;556c
+	bit 7,c		;556c   ; negativa: el guion y su valor absoluto
 	jr z,L_5576		;556e
 	ld a,c			;5570
 	neg		;5571
 	ld c,a			;5573
 	ld a,02dh		;5574
 L_5576:
-	call L_5361		;5576
+	call imprime		;5576
 	push hl			;5579
 	ld l,c			;557a
-	call L_A978		;557b
-	ld hl,0dbf0h		;557e
+	call L_A978		;557b   ; a decimal (0xA978)
+	ld hl,0dbf0h		;557e   ; las tres cifras en 0xDBF0
 	ld a,e			;5581
 	and 00fh		;5582
 	ld (hl),a			;5584
@@ -2925,48 +2925,48 @@ L_5576:
 	and 00fh		;558f
 	inc hl			;5591
 	ld (hl),a			;5592
-	ld b,003h		;5593
+	ld b,003h		;5593   ; en ASCII, la alta primero
 L_5595:
 	ld a,(hl)			;5595
 	or 030h		;5596
-	call L_5361		;5598
+	call imprime		;5598
 	dec hl			;559b
 	djnz L_5595		;559c
 	ld b,002h		;559e
-	call L_55B4		;55a0
+	call espacios		;55a0
 	pop hl			;55a3
-	inc hl			;55a4
+	inc hl			;55a4   ; cuatro muestras mas alla
 	inc hl			;55a5
 	inc hl			;55a6
 	inc hl			;55a7
 	pop bc			;55a8
 	djnz L_5567		;55a9
-	call L_538B		;55ab
+	call nueva_linea		;55ab
 	pop bc			;55ae
 	djnz L_555F		;55af
-	jp L_5383		;55b1
-L_55B4:
+	jp cuatro_lineas		;55b1
+espacios:		; B espacios
 	ld a,020h		;55b4
-	call L_5361		;55b6
-	djnz L_55B4		;55b9
+	call imprime		;55b6
+	djnz espacios		;55b9
 	ret			;55bb
-L_55BC:
-	ld hl,0a3aah		;55bc
+timbres_y_ondas_de_fabrica:		; los 16 timbres de 0xA3AA a 0xD000, la tabla de teclas y las 16 ondas del usuario como el seno de 0x7200
+	ld hl,0a3aah		;55bc   ; 16 timbres de 32 bytes
 	ld de,0d000h		;55bf
 	ld bc,00200h		;55c2
 	ldir		;55c5
-	call L_55DC		;55c7
-	ld b,010h		;55ca
+	call teclas_de_fabrica		;55c7   ; la tabla de teclas
+	ld b,010h		;55ca   ; las 16 ondas...
 	ld de,0c000h		;55cc
 L_55CF:
 	push bc			;55cf
-	ld hl,07200h		;55d0
+	ld hl,07200h		;55d0   ; ...todas el seno de 0x7200
 	ld bc,00100h		;55d3
 	ldir		;55d6
 	pop bc			;55d8
 	djnz L_55CF		;55d9
 	ret			;55db
-L_55DC:
+teclas_de_fabrica:		; los 0x80 bytes de 0x5DA9 a 0xD230: rutina y retardo de cada tecla
 	ld hl,05da9h		;55dc
 	ld de,0d230h		;55df
 	ld bc,00080h		;55e2
@@ -4026,49 +4026,49 @@ play:		; PLAY: sin pagina de bucle (0xDCFD = 0) las rutinas de 0x6709; con bucle
 	di			;5d3a
 	ld a,(0dcfdh)		;5d3b
 	or a			;5d3e
-	jp z,L_6723		;5d3f
-	jp L_5EA5		;5d42
-L_5D45:
-	in a,(0aah)		;5d45
+	jp z,play_sin_bucle		;5d3f
+	jp play_con_bucle		;5d42
+busca_tecla:		; recorre las filas 0 a 7 hasta una con alguna tecla pulsada: NZ y A = la fila + 1; Z si no hay ninguna
+	in a,(0aah)		;5d45   ; desde la fila 0
 	and 0f0h		;5d47
 	out (0aah),a		;5d49
 L_5D4B:
-	in a,(0a9h)		;5d4b
+	in a,(0a9h)		;5d4b   ; alguna pulsada en esta fila?
 	inc a			;5d4d
 	ret nz			;5d4e
-	in a,(0aah)		;5d4f
+	in a,(0aah)		;5d4f   ; la fila siguiente
 	inc a			;5d51
 	out (0aah),a		;5d52
 	and 00fh		;5d54
-	cp 008h		;5d56
+	cp 008h		;5d56   ; hasta la 7
 	jp c,L_5D4B		;5d58
 	xor a			;5d5b
 	ret			;5d5c
-L_5D5D:
+codigo_de_tecla:		; 0xDC47 = fila * 8 + bit + 1 de la tecla; C = la mascara de su bit
 	push af			;5d5d
-	ld a,080h		;5d5e
+	ld a,080h		;5d5e   ; el DAC al reposo
 	ld (04000h),a		;5d60
 	pop af			;5d63
-	dec a			;5d64
+	dec a			;5d64   ; la fila menos uno...
 	push af			;5d65
-	cpl			;5d66
+	cpl			;5d66   ; ...negada: el bit de la tecla
 	ld c,a			;5d67
 	pop af			;5d68
-	ld e,0ffh		;5d69
+	ld e,0ffh		;5d69   ; E = el numero del bit
 L_5D6B:
 	inc e			;5d6b
 	rrc a		;5d6c
 	jp c,L_5D6B		;5d6e
-	in a,(0aah)		;5d71
+	in a,(0aah)		;5d71   ; la fila
 	and 007h		;5d73
 	sla a		;5d75
 	sla a		;5d77
 	sla a		;5d79
 	add a,e			;5d7b
 	inc a			;5d7c
-	ld (0dc47h),a		;5d7d
+	ld (0dc47h),a		;5d7d   ; el codigo
 	ret			;5d80
-L_5D81:
+rutina_de_la_tecla:		; A = su rutina y D = su retardo (0xD22E + 2 * codigo); Z si la tecla no tiene nota (0xFF)
 	sla a		;5d81
 	ld e,a			;5d83
 	ld d,000h		;5d84
@@ -4079,7 +4079,7 @@ L_5D81:
 	ld d,(hl)			;5d8c
 	cp 0ffh		;5d8d
 	ret			;5d8f
-L_5D90:
+pinta_tecla_pulsada:		; 0x4A14 guardando los registros
 	push af			;5d90
 	push bc			;5d91
 	push de			;5d92
@@ -4088,7 +4088,7 @@ L_5D90:
 	pop bc			;5d97
 	pop af			;5d98
 	ret			;5d99
-L_5D9A:
+rutina_en_ix:		; IX = la palabra A de la tabla HL
 	push de			;5d9a
 	sla a		;5d9b
 	ld e,a			;5d9d
@@ -4244,1416 +4244,1416 @@ DATA_reproduce_con_bucle:
 ; ======================================================================
 
 
-L_5EA5:
-	call L_5D45		;5ea5
+play_con_bucle:		; PLAY con pagina de bucle: espera tecla y toca con la tabla 0x5E8B
+	call busca_tecla		;5ea5   ; ninguna tecla: vuelve
 	ret z			;5ea8
-L_5EA9:
-	call L_5D5D		;5ea9
-	call L_5D81		;5eac
+nota_con_bucle:		; la nota de la tecla pulsada
+	call codigo_de_tecla		;5ea9   ; 0xDC47 y la mascara
+	call rutina_de_la_tecla		;5eac   ; su rutina y su retardo
 	ret z			;5eaf
-	call L_5D90		;5eb0
-	ld hl,05e8bh		;5eb3
-	call L_5D9A		;5eb6
+	call pinta_tecla_pulsada		;5eb0   ; la tecla hundida en pantalla
+	ld hl,05e8bh		;5eb3   ; IX = la rutina
+	call rutina_en_ix		;5eb6
 	push bc			;5eb9
 	push de			;5eba
-	call ram_en_la_pagina_2		;5ebb
+	call ram_en_la_pagina_2		;5ebb   ; la RAM del sample
 	pop de			;5ebe
 	pop bc			;5ebf
-	ld hl,08000h		;5ec0
-	ld a,(0dcfdh)		;5ec3
+	ld hl,08000h		;5ec0   ; desde 0x8000...
+	ld a,(0dcfdh)		;5ec3   ; ...hasta la pagina de bucle (E)
 	ld e,a			;5ec6
-	jp (ix)		;5ec7
-L_5EC9:
-	ld a,(hl)			;5ec9
-	ld (04000h),a		;5eca
+	jp (ix)		;5ec7   ; a la rutina
+con_bucle_01:		; rutina 1 de 0x5E8B: hasta la pagina de bucle; en ella mientras se tiene la tecla; al soltar, hasta 0xC000 mirando si hay otra
+	ld a,(hl)			;5ec9   ; la muestra...
+	ld (04000h),a		;5eca   ; ...al DAC
 	inc hl			;5ecd
-	ld a,d			;5ece
+	ld a,d			;5ece   ; el retardo D
 L_5ECF:
 	dec a			;5ecf
 	jp nz,L_5ECF		;5ed0
-	nop			;5ed3
-	in a,(0a9h)		;5ed4
-	and c			;5ed6
-	jp nz,L_5EFD		;5ed7
-	ld a,(hl)			;5eda
-	ld (04000h),a		;5edb
+	nop			;5ed3   ; relleno: iguala los ciclos
+	in a,(0a9h)		;5ed4   ; la fila de la tecla:
+	and c			;5ed6   ; su bit a 1, suelta
+	jp nz,con_bucle_01_suelta		;5ed7
+	ld a,(hl)			;5eda   ; la muestra...
+	ld (04000h),a		;5edb   ; ...al DAC
 	inc hl			;5ede
-	ld a,d			;5edf
+	ld a,d			;5edf   ; el retardo D
 L_5EE0:
 	dec a			;5ee0
 	jp nz,L_5EE0		;5ee1
-	cp 000h		;5ee4
-	nop			;5ee6
-	ld a,e			;5ee7
+	cp 000h		;5ee4   ; relleno: iguala los ciclos
+	nop			;5ee6   ; relleno: iguala los ciclos
+	ld a,e			;5ee7   ; en la pagina de bucle?
 	cp h			;5ee8
-	jp nz,L_5EC9		;5ee9
-L_5EEC:
-	ld a,(hl)			;5eec
-	ld (04000h),a		;5eed
+	jp nz,con_bucle_01		;5ee9
+con_bucle_01_repite:		; la pagina de bucle una y otra vez mientras la tecla sigue pulsada
+	ld a,(hl)			;5eec   ; la muestra...
+	ld (04000h),a		;5eed   ; ...al DAC
 	inc hl			;5ef0
-	ld a,d			;5ef1
+	ld a,d			;5ef1   ; el retardo D
 L_5EF2:
 	dec a			;5ef2
 	jp nz,L_5EF2		;5ef3
-	ld h,e			;5ef6
-	in a,(0a9h)		;5ef7
-	and c			;5ef9
-	jp z,L_5EEC		;5efa
-L_5EFD:
-	ld a,(hl)			;5efd
-	ld (04000h),a		;5efe
+	ld h,e			;5ef6   ; se queda en la pagina de bucle
+	in a,(0a9h)		;5ef7   ; la fila de la tecla:
+	and c			;5ef9   ; su bit a 1, suelta
+	jp z,con_bucle_01_repite		;5efa
+con_bucle_01_suelta:		; tecla suelta: acaba la pagina en curso
+	ld a,(hl)			;5efd   ; la muestra...
+	ld (04000h),a		;5efe   ; ...al DAC
 	inc hl			;5f01
-	ld a,d			;5f02
+	ld a,d			;5f02   ; el retardo D
 L_5F03:
 	dec a			;5f03
 	jp nz,L_5F03		;5f04
-	cp 000h		;5f07
-	nop			;5f09
-	ld a,l			;5f0a
+	cp 000h		;5f07   ; relleno: iguala los ciclos
+	nop			;5f09   ; relleno: iguala los ciclos
+	ld a,l			;5f0a   ; hasta acabar la pagina
 	or a			;5f0b
-	jp nz,L_5EFD		;5f0c
-L_5F0F:
-	ld a,(hl)			;5f0f
-	ld (04000h),a		;5f10
+	jp nz,con_bucle_01_suelta		;5f0c
+con_bucle_01_cola:		; el resto del sample hasta 0xC000, mirando una fila del teclado cada cuatro muestras
+	ld a,(hl)			;5f0f   ; la muestra...
+	ld (04000h),a		;5f10   ; ...al DAC
 	inc hl			;5f13
-	ld a,d			;5f14
+	ld a,d			;5f14   ; el retardo D
 L_5F15:
 	dec a			;5f15
 	jp nz,L_5F15		;5f16
-	inc ix		;5f19
-	in a,(0aah)		;5f1b
+	inc ix		;5f19   ; relleno: iguala los ciclos
+	in a,(0aah)		;5f1b   ; la fila siguiente...
 	inc a			;5f1d
 	ld e,a			;5f1e
-	ld a,(hl)			;5f1f
-	ld (04000h),a		;5f20
+	ld a,(hl)			;5f1f   ; la muestra...
+	ld (04000h),a		;5f20   ; ...al DAC
 	inc hl			;5f23
-	ld a,d			;5f24
+	ld a,d			;5f24   ; el retardo D
 L_5F25:
 	dec a			;5f25
 	jp nz,L_5F25		;5f26
-	cp 000h		;5f29
+	cp 000h		;5f29   ; relleno: iguala los ciclos
 	ld a,e			;5f2b
-	and 0f7h		;5f2c
+	and 0f7h		;5f2c   ; ...de la 0 a la 7
 	out (0aah),a		;5f2e
-	ld a,(hl)			;5f30
-	ld (04000h),a		;5f31
+	ld a,(hl)			;5f30   ; la muestra...
+	ld (04000h),a		;5f31   ; ...al DAC
 	inc hl			;5f34
-	ld a,d			;5f35
+	ld a,d			;5f35   ; el retardo D
 L_5F36:
 	dec a			;5f36
 	jp nz,L_5F36		;5f37
-	nop			;5f3a
-	in a,(0a9h)		;5f3b
+	nop			;5f3a   ; relleno: iguala los ciclos
+	in a,(0a9h)		;5f3b   ; alguna tecla en esta fila?
 	inc a			;5f3d
-	jp nz,L_66FE		;5f3e
-	ld a,(hl)			;5f41
-	ld (04000h),a		;5f42
+	jp nz,otra_nota_con_bucle		;5f3e
+	ld a,(hl)			;5f41   ; la muestra...
+	ld (04000h),a		;5f42   ; ...al DAC
 	inc hl			;5f45
-	ld a,d			;5f46
+	ld a,d			;5f46   ; el retardo D
 L_5F47:
 	dec a			;5f47
 	jp nz,L_5F47		;5f48
-	neg		;5f4b
-	ld a,0c0h		;5f4d
+	neg		;5f4b   ; relleno: iguala los ciclos
+	ld a,0c0h		;5f4d   ; hasta el final del sample
 	cp h			;5f4f
-	jp nz,L_5F0F		;5f50
-	jp L_66F7		;5f53
-L_5F56:
-	dec d			;5f56
+	jp nz,con_bucle_01_cola		;5f50
+	jp fin_de_nota		;5f53
+con_bucle_02:		; rutina 2 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	dec d			;5f56   ; D - 1 para esta rutina
 L_5F57:
-	ld a,(hl)			;5f57
-	ld (04000h),a		;5f58
+	ld a,(hl)			;5f57   ; la muestra...
+	ld (04000h),a		;5f58   ; ...al DAC
 	inc hl			;5f5b
-	ld a,d			;5f5c
+	ld a,d			;5f5c   ; el retardo D
 L_5F5D:
 	dec a			;5f5d
 	jp nz,L_5F5D		;5f5e
-	add ix,ix		;5f61
-	nop			;5f63
-	in a,(0a9h)		;5f64
-	and c			;5f66
+	add ix,ix		;5f61   ; relleno: iguala los ciclos
+	nop			;5f63   ; relleno: iguala los ciclos
+	in a,(0a9h)		;5f64   ; la fila de la tecla:
+	and c			;5f66   ; su bit a 1, suelta
 	jp nz,L_5F91		;5f67
-	ld a,(hl)			;5f6a
-	ld (04000h),a		;5f6b
+	ld a,(hl)			;5f6a   ; la muestra...
+	ld (04000h),a		;5f6b   ; ...al DAC
 	inc hl			;5f6e
-	ld a,d			;5f6f
+	ld a,d			;5f6f   ; el retardo D
 L_5F70:
 	dec a			;5f70
 	jp nz,L_5F70		;5f71
-	add ix,ix		;5f74
-	cp 000h		;5f76
-	nop			;5f78
-	ld a,e			;5f79
+	add ix,ix		;5f74   ; relleno: iguala los ciclos
+	cp 000h		;5f76   ; relleno: iguala los ciclos
+	nop			;5f78   ; relleno: iguala los ciclos
+	ld a,e			;5f79   ; en la pagina de bucle?
 	cp h			;5f7a
 	jp nz,L_5F57		;5f7b
 L_5F7E:
-	ld a,(hl)			;5f7e
-	ld (04000h),a		;5f7f
+	ld a,(hl)			;5f7e   ; la muestra...
+	ld (04000h),a		;5f7f   ; ...al DAC
 	inc hl			;5f82
-	ld a,d			;5f83
+	ld a,d			;5f83   ; el retardo D
 L_5F84:
 	dec a			;5f84
 	jp nz,L_5F84		;5f85
-	add ix,ix		;5f88
-	ld h,e			;5f8a
-	in a,(0a9h)		;5f8b
-	and c			;5f8d
+	add ix,ix		;5f88   ; relleno: iguala los ciclos
+	ld h,e			;5f8a   ; se queda en la pagina de bucle
+	in a,(0a9h)		;5f8b   ; la fila de la tecla:
+	and c			;5f8d   ; su bit a 1, suelta
 	jp z,L_5F7E		;5f8e
 L_5F91:
-	ld a,(hl)			;5f91
-	ld (04000h),a		;5f92
+	ld a,(hl)			;5f91   ; la muestra...
+	ld (04000h),a		;5f92   ; ...al DAC
 	inc hl			;5f95
-	ld a,d			;5f96
+	ld a,d			;5f96   ; el retardo D
 L_5F97:
 	dec a			;5f97
 	jp nz,L_5F97		;5f98
-	add ix,ix		;5f9b
-	cp 000h		;5f9d
-	nop			;5f9f
-	ld a,l			;5fa0
+	add ix,ix		;5f9b   ; relleno: iguala los ciclos
+	cp 000h		;5f9d   ; relleno: iguala los ciclos
+	nop			;5f9f   ; relleno: iguala los ciclos
+	ld a,l			;5fa0   ; hasta acabar la pagina
 	or a			;5fa1
 	jp nz,L_5F91		;5fa2
 L_5FA5:
-	ld a,(hl)			;5fa5
-	ld (04000h),a		;5fa6
+	ld a,(hl)			;5fa5   ; la muestra...
+	ld (04000h),a		;5fa6   ; ...al DAC
 	inc hl			;5fa9
-	ld a,d			;5faa
+	ld a,d			;5faa   ; el retardo D
 L_5FAB:
 	dec a			;5fab
 	jp nz,L_5FAB		;5fac
-	add ix,ix		;5faf
-	inc ix		;5fb1
-	in a,(0aah)		;5fb3
+	add ix,ix		;5faf   ; relleno: iguala los ciclos
+	inc ix		;5fb1   ; relleno: iguala los ciclos
+	in a,(0aah)		;5fb3   ; la fila siguiente...
 	inc a			;5fb5
 	ld e,a			;5fb6
-	ld a,(hl)			;5fb7
-	ld (04000h),a		;5fb8
+	ld a,(hl)			;5fb7   ; la muestra...
+	ld (04000h),a		;5fb8   ; ...al DAC
 	inc hl			;5fbb
-	ld a,d			;5fbc
+	ld a,d			;5fbc   ; el retardo D
 L_5FBD:
 	dec a			;5fbd
 	jp nz,L_5FBD		;5fbe
-	add ix,ix		;5fc1
-	cp 000h		;5fc3
+	add ix,ix		;5fc1   ; relleno: iguala los ciclos
+	cp 000h		;5fc3   ; relleno: iguala los ciclos
 	ld a,e			;5fc5
-	and 0f7h		;5fc6
+	and 0f7h		;5fc6   ; ...de la 0 a la 7
 	out (0aah),a		;5fc8
-	ld a,(hl)			;5fca
-	ld (04000h),a		;5fcb
+	ld a,(hl)			;5fca   ; la muestra...
+	ld (04000h),a		;5fcb   ; ...al DAC
 	inc hl			;5fce
-	ld a,d			;5fcf
+	ld a,d			;5fcf   ; el retardo D
 L_5FD0:
 	dec a			;5fd0
 	jp nz,L_5FD0		;5fd1
-	add ix,ix		;5fd4
-	nop			;5fd6
-	in a,(0a9h)		;5fd7
+	add ix,ix		;5fd4   ; relleno: iguala los ciclos
+	nop			;5fd6   ; relleno: iguala los ciclos
+	in a,(0a9h)		;5fd7   ; alguna tecla en esta fila?
 	inc a			;5fd9
-	jp nz,L_66FE		;5fda
-	ld a,(hl)			;5fdd
-	ld (04000h),a		;5fde
+	jp nz,otra_nota_con_bucle		;5fda
+	ld a,(hl)			;5fdd   ; la muestra...
+	ld (04000h),a		;5fde   ; ...al DAC
 	inc hl			;5fe1
-	ld a,d			;5fe2
+	ld a,d			;5fe2   ; el retardo D
 L_5FE3:
 	dec a			;5fe3
 	jp nz,L_5FE3		;5fe4
-	add ix,ix		;5fe7
-	neg		;5fe9
-	ld a,0c0h		;5feb
+	add ix,ix		;5fe7   ; relleno: iguala los ciclos
+	neg		;5fe9   ; relleno: iguala los ciclos
+	ld a,0c0h		;5feb   ; hasta el final del sample
 	cp h			;5fed
 	jp nz,L_5FA5		;5fee
-	jp L_66F7		;5ff1
-L_5FF4:
-	dec d			;5ff4
+	jp fin_de_nota		;5ff1
+con_bucle_03:		; rutina 3 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	dec d			;5ff4   ; D - 1 para esta rutina
 L_5FF5:
-	ld a,(hl)			;5ff5
-	ld (04000h),a		;5ff6
+	ld a,(hl)			;5ff5   ; la muestra...
+	ld (04000h),a		;5ff6   ; ...al DAC
 	inc hl			;5ff9
-	ld a,d			;5ffa
+	ld a,d			;5ffa   ; el retardo D
 L_5FFB:
 	dec a			;5ffb
 	jp nz,L_5FFB		;5ffc
-	neg		;5fff
-	neg		;6001
-	nop			;6003
-	in a,(0a9h)		;6004
-	and c			;6006
+	neg		;5fff   ; relleno: iguala los ciclos
+	neg		;6001   ; relleno: iguala los ciclos
+	nop			;6003   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6004   ; la fila de la tecla:
+	and c			;6006   ; su bit a 1, suelta
 	jp nz,L_6035		;6007
-	ld a,(hl)			;600a
-	ld (04000h),a		;600b
+	ld a,(hl)			;600a   ; la muestra...
+	ld (04000h),a		;600b   ; ...al DAC
 	inc hl			;600e
-	ld a,d			;600f
+	ld a,d			;600f   ; el retardo D
 L_6010:
 	dec a			;6010
 	jp nz,L_6010		;6011
-	neg		;6014
-	neg		;6016
-	cp 000h		;6018
-	nop			;601a
-	ld a,e			;601b
+	neg		;6014   ; relleno: iguala los ciclos
+	neg		;6016   ; relleno: iguala los ciclos
+	cp 000h		;6018   ; relleno: iguala los ciclos
+	nop			;601a   ; relleno: iguala los ciclos
+	ld a,e			;601b   ; en la pagina de bucle?
 	cp h			;601c
 	jp nz,L_5FF5		;601d
 L_6020:
-	ld a,(hl)			;6020
-	ld (04000h),a		;6021
+	ld a,(hl)			;6020   ; la muestra...
+	ld (04000h),a		;6021   ; ...al DAC
 	inc hl			;6024
-	ld a,d			;6025
+	ld a,d			;6025   ; el retardo D
 L_6026:
 	dec a			;6026
 	jp nz,L_6026		;6027
-	neg		;602a
-	neg		;602c
-	ld h,e			;602e
-	in a,(0a9h)		;602f
-	and c			;6031
+	neg		;602a   ; relleno: iguala los ciclos
+	neg		;602c   ; relleno: iguala los ciclos
+	ld h,e			;602e   ; se queda en la pagina de bucle
+	in a,(0a9h)		;602f   ; la fila de la tecla:
+	and c			;6031   ; su bit a 1, suelta
 	jp z,L_6020		;6032
 L_6035:
-	ld a,(hl)			;6035
-	ld (04000h),a		;6036
+	ld a,(hl)			;6035   ; la muestra...
+	ld (04000h),a		;6036   ; ...al DAC
 	inc hl			;6039
-	ld a,d			;603a
+	ld a,d			;603a   ; el retardo D
 L_603B:
 	dec a			;603b
 	jp nz,L_603B		;603c
-	neg		;603f
-	neg		;6041
-	cp 000h		;6043
-	nop			;6045
-	ld a,l			;6046
+	neg		;603f   ; relleno: iguala los ciclos
+	neg		;6041   ; relleno: iguala los ciclos
+	cp 000h		;6043   ; relleno: iguala los ciclos
+	nop			;6045   ; relleno: iguala los ciclos
+	ld a,l			;6046   ; hasta acabar la pagina
 	or a			;6047
 	jp nz,L_6035		;6048
 L_604B:
-	ld a,(hl)			;604b
-	ld (04000h),a		;604c
+	ld a,(hl)			;604b   ; la muestra...
+	ld (04000h),a		;604c   ; ...al DAC
 	inc hl			;604f
-	ld a,d			;6050
+	ld a,d			;6050   ; el retardo D
 L_6051:
 	dec a			;6051
 	jp nz,L_6051		;6052
-	neg		;6055
-	neg		;6057
-	inc ix		;6059
-	in a,(0aah)		;605b
+	neg		;6055   ; relleno: iguala los ciclos
+	neg		;6057   ; relleno: iguala los ciclos
+	inc ix		;6059   ; relleno: iguala los ciclos
+	in a,(0aah)		;605b   ; la fila siguiente...
 	inc a			;605d
 	ld e,a			;605e
-	ld a,(hl)			;605f
-	ld (04000h),a		;6060
+	ld a,(hl)			;605f   ; la muestra...
+	ld (04000h),a		;6060   ; ...al DAC
 	inc hl			;6063
-	ld a,d			;6064
+	ld a,d			;6064   ; el retardo D
 L_6065:
 	dec a			;6065
 	jp nz,L_6065		;6066
-	neg		;6069
-	neg		;606b
-	cp 000h		;606d
+	neg		;6069   ; relleno: iguala los ciclos
+	neg		;606b   ; relleno: iguala los ciclos
+	cp 000h		;606d   ; relleno: iguala los ciclos
 	ld a,e			;606f
-	and 0f7h		;6070
+	and 0f7h		;6070   ; ...de la 0 a la 7
 	out (0aah),a		;6072
-	ld a,(hl)			;6074
-	ld (04000h),a		;6075
+	ld a,(hl)			;6074   ; la muestra...
+	ld (04000h),a		;6075   ; ...al DAC
 	inc hl			;6078
-	ld a,d			;6079
+	ld a,d			;6079   ; el retardo D
 L_607A:
 	dec a			;607a
 	jp nz,L_607A		;607b
-	neg		;607e
-	neg		;6080
-	nop			;6082
-	in a,(0a9h)		;6083
+	neg		;607e   ; relleno: iguala los ciclos
+	neg		;6080   ; relleno: iguala los ciclos
+	nop			;6082   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6083   ; alguna tecla en esta fila?
 	inc a			;6085
-	jp nz,L_66FE		;6086
-	ld a,(hl)			;6089
-	ld (04000h),a		;608a
+	jp nz,otra_nota_con_bucle		;6086
+	ld a,(hl)			;6089   ; la muestra...
+	ld (04000h),a		;608a   ; ...al DAC
 	inc hl			;608d
-	ld a,d			;608e
+	ld a,d			;608e   ; el retardo D
 L_608F:
 	dec a			;608f
 	jp nz,L_608F		;6090
-	neg		;6093
-	neg		;6095
-	neg		;6097
-	ld a,0c0h		;6099
+	neg		;6093   ; relleno: iguala los ciclos
+	neg		;6095   ; relleno: iguala los ciclos
+	neg		;6097   ; relleno: iguala los ciclos
+	ld a,0c0h		;6099   ; hasta el final del sample
 	cp h			;609b
 	jp nz,L_604B		;609c
-	jp L_66F7		;609f
-L_60A2:
-	dec d			;60a2
+	jp fin_de_nota		;609f
+con_bucle_04:		; rutina 4 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	dec d			;60a2   ; D - 1 para esta rutina
 L_60A3:
-	ld a,(hl)			;60a3
-	ld (04000h),a		;60a4
+	ld a,(hl)			;60a3   ; la muestra...
+	ld (04000h),a		;60a4   ; ...al DAC
 	inc hl			;60a7
-	ld a,d			;60a8
+	ld a,d			;60a8   ; el retardo D
 L_60A9:
 	dec a			;60a9
 	jp nz,L_60A9		;60aa
-	inc ix		;60ad
-	cp 000h		;60af
-	nop			;60b1
-	in a,(0a9h)		;60b2
-	and c			;60b4
+	inc ix		;60ad   ; relleno: iguala los ciclos
+	cp 000h		;60af   ; relleno: iguala los ciclos
+	nop			;60b1   ; relleno: iguala los ciclos
+	in a,(0a9h)		;60b2   ; la fila de la tecla:
+	and c			;60b4   ; su bit a 1, suelta
 	jp nz,L_60E3		;60b5
-	ld a,(hl)			;60b8
-	ld (04000h),a		;60b9
+	ld a,(hl)			;60b8   ; la muestra...
+	ld (04000h),a		;60b9   ; ...al DAC
 	inc hl			;60bc
-	ld a,d			;60bd
+	ld a,d			;60bd   ; el retardo D
 L_60BE:
 	dec a			;60be
 	jp nz,L_60BE		;60bf
-	inc ix		;60c2
-	cp 000h		;60c4
-	cp 000h		;60c6
-	nop			;60c8
-	ld a,e			;60c9
+	inc ix		;60c2   ; relleno: iguala los ciclos
+	cp 000h		;60c4   ; relleno: iguala los ciclos
+	cp 000h		;60c6   ; relleno: iguala los ciclos
+	nop			;60c8   ; relleno: iguala los ciclos
+	ld a,e			;60c9   ; en la pagina de bucle?
 	cp h			;60ca
 	jp nz,L_60A3		;60cb
 L_60CE:
-	ld a,(hl)			;60ce
-	ld (04000h),a		;60cf
+	ld a,(hl)			;60ce   ; la muestra...
+	ld (04000h),a		;60cf   ; ...al DAC
 	inc hl			;60d2
-	ld a,d			;60d3
+	ld a,d			;60d3   ; el retardo D
 L_60D4:
 	dec a			;60d4
 	jp nz,L_60D4		;60d5
-	inc ix		;60d8
-	cp 000h		;60da
-	ld h,e			;60dc
-	in a,(0a9h)		;60dd
-	and c			;60df
+	inc ix		;60d8   ; relleno: iguala los ciclos
+	cp 000h		;60da   ; relleno: iguala los ciclos
+	ld h,e			;60dc   ; se queda en la pagina de bucle
+	in a,(0a9h)		;60dd   ; la fila de la tecla:
+	and c			;60df   ; su bit a 1, suelta
 	jp z,L_60CE		;60e0
 L_60E3:
-	ld a,(hl)			;60e3
-	ld (04000h),a		;60e4
+	ld a,(hl)			;60e3   ; la muestra...
+	ld (04000h),a		;60e4   ; ...al DAC
 	inc hl			;60e7
-	ld a,d			;60e8
+	ld a,d			;60e8   ; el retardo D
 L_60E9:
 	dec a			;60e9
 	jp nz,L_60E9		;60ea
-	inc ix		;60ed
-	cp 000h		;60ef
-	cp 000h		;60f1
-	nop			;60f3
-	ld a,l			;60f4
+	inc ix		;60ed   ; relleno: iguala los ciclos
+	cp 000h		;60ef   ; relleno: iguala los ciclos
+	cp 000h		;60f1   ; relleno: iguala los ciclos
+	nop			;60f3   ; relleno: iguala los ciclos
+	ld a,l			;60f4   ; hasta acabar la pagina
 	or a			;60f5
 	jp nz,L_60E3		;60f6
 L_60F9:
-	ld a,(hl)			;60f9
-	ld (04000h),a		;60fa
+	ld a,(hl)			;60f9   ; la muestra...
+	ld (04000h),a		;60fa   ; ...al DAC
 	inc hl			;60fd
-	ld a,d			;60fe
+	ld a,d			;60fe   ; el retardo D
 L_60FF:
 	dec a			;60ff
 	jp nz,L_60FF		;6100
-	inc ix		;6103
-	cp 000h		;6105
-	inc ix		;6107
-	in a,(0aah)		;6109
+	inc ix		;6103   ; relleno: iguala los ciclos
+	cp 000h		;6105   ; relleno: iguala los ciclos
+	inc ix		;6107   ; relleno: iguala los ciclos
+	in a,(0aah)		;6109   ; la fila siguiente...
 	inc a			;610b
 	ld e,a			;610c
-	ld a,(hl)			;610d
-	ld (04000h),a		;610e
+	ld a,(hl)			;610d   ; la muestra...
+	ld (04000h),a		;610e   ; ...al DAC
 	inc hl			;6111
-	ld a,d			;6112
+	ld a,d			;6112   ; el retardo D
 L_6113:
 	dec a			;6113
 	jp nz,L_6113		;6114
-	inc ix		;6117
-	cp 000h		;6119
-	cp 000h		;611b
+	inc ix		;6117   ; relleno: iguala los ciclos
+	cp 000h		;6119   ; relleno: iguala los ciclos
+	cp 000h		;611b   ; relleno: iguala los ciclos
 	ld a,e			;611d
-	and 0f7h		;611e
+	and 0f7h		;611e   ; ...de la 0 a la 7
 	out (0aah),a		;6120
-	ld a,(hl)			;6122
-	ld (04000h),a		;6123
+	ld a,(hl)			;6122   ; la muestra...
+	ld (04000h),a		;6123   ; ...al DAC
 	inc hl			;6126
-	ld a,d			;6127
+	ld a,d			;6127   ; el retardo D
 L_6128:
 	dec a			;6128
 	jp nz,L_6128		;6129
-	inc ix		;612c
-	cp 000h		;612e
-	nop			;6130
-	in a,(0a9h)		;6131
+	inc ix		;612c   ; relleno: iguala los ciclos
+	cp 000h		;612e   ; relleno: iguala los ciclos
+	nop			;6130   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6131   ; alguna tecla en esta fila?
 	inc a			;6133
-	jp nz,L_66FE		;6134
-	ld a,(hl)			;6137
-	ld (04000h),a		;6138
+	jp nz,otra_nota_con_bucle		;6134
+	ld a,(hl)			;6137   ; la muestra...
+	ld (04000h),a		;6138   ; ...al DAC
 	inc hl			;613b
-	ld a,d			;613c
+	ld a,d			;613c   ; el retardo D
 L_613D:
 	dec a			;613d
 	jp nz,L_613D		;613e
-	inc ix		;6141
-	cp 000h		;6143
-	neg		;6145
-	ld a,0c0h		;6147
+	inc ix		;6141   ; relleno: iguala los ciclos
+	cp 000h		;6143   ; relleno: iguala los ciclos
+	neg		;6145   ; relleno: iguala los ciclos
+	ld a,0c0h		;6147   ; hasta el final del sample
 	cp h			;6149
 	jp nz,L_60F9		;614a
-	jp L_66F7		;614d
-L_6150:
-	ld a,(hl)			;6150
-	ld (04000h),a		;6151
+	jp fin_de_nota		;614d
+con_bucle_05:		; rutina 5 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	ld a,(hl)			;6150   ; la muestra...
+	ld (04000h),a		;6151   ; ...al DAC
 	inc hl			;6154
-	ld a,d			;6155
+	ld a,d			;6155   ; el retardo D
 L_6156:
 	dec a			;6156
 	jp nz,L_6156		;6157
-	nop			;615a
-	nop			;615b
-	in a,(0a9h)		;615c
-	and c			;615e
+	nop			;615a   ; relleno: iguala los ciclos
+	nop			;615b   ; relleno: iguala los ciclos
+	in a,(0a9h)		;615c   ; la fila de la tecla:
+	and c			;615e   ; su bit a 1, suelta
 	jp nz,L_6187		;615f
-	ld a,(hl)			;6162
-	ld (04000h),a		;6163
+	ld a,(hl)			;6162   ; la muestra...
+	ld (04000h),a		;6163   ; ...al DAC
 	inc hl			;6166
-	ld a,d			;6167
+	ld a,d			;6167   ; el retardo D
 L_6168:
 	dec a			;6168
 	jp nz,L_6168		;6169
-	nop			;616c
-	cp 000h		;616d
-	nop			;616f
-	ld a,e			;6170
+	nop			;616c   ; relleno: iguala los ciclos
+	cp 000h		;616d   ; relleno: iguala los ciclos
+	nop			;616f   ; relleno: iguala los ciclos
+	ld a,e			;6170   ; en la pagina de bucle?
 	cp h			;6171
-	jp nz,L_6150		;6172
+	jp nz,con_bucle_05		;6172
 L_6175:
-	ld a,(hl)			;6175
-	ld (04000h),a		;6176
+	ld a,(hl)			;6175   ; la muestra...
+	ld (04000h),a		;6176   ; ...al DAC
 	inc hl			;6179
-	ld a,d			;617a
+	ld a,d			;617a   ; el retardo D
 L_617B:
 	dec a			;617b
 	jp nz,L_617B		;617c
-	nop			;617f
-	ld h,e			;6180
-	in a,(0a9h)		;6181
-	and c			;6183
+	nop			;617f   ; relleno: iguala los ciclos
+	ld h,e			;6180   ; se queda en la pagina de bucle
+	in a,(0a9h)		;6181   ; la fila de la tecla:
+	and c			;6183   ; su bit a 1, suelta
 	jp z,L_6175		;6184
 L_6187:
-	ld a,(hl)			;6187
-	ld (04000h),a		;6188
+	ld a,(hl)			;6187   ; la muestra...
+	ld (04000h),a		;6188   ; ...al DAC
 	inc hl			;618b
-	ld a,d			;618c
+	ld a,d			;618c   ; el retardo D
 L_618D:
 	dec a			;618d
 	jp nz,L_618D		;618e
-	nop			;6191
-	cp 000h		;6192
-	nop			;6194
-	ld a,l			;6195
+	nop			;6191   ; relleno: iguala los ciclos
+	cp 000h		;6192   ; relleno: iguala los ciclos
+	nop			;6194   ; relleno: iguala los ciclos
+	ld a,l			;6195   ; hasta acabar la pagina
 	or a			;6196
 	jp nz,L_6187		;6197
 L_619A:
-	ld a,(hl)			;619a
-	ld (04000h),a		;619b
+	ld a,(hl)			;619a   ; la muestra...
+	ld (04000h),a		;619b   ; ...al DAC
 	inc hl			;619e
-	ld a,d			;619f
+	ld a,d			;619f   ; el retardo D
 L_61A0:
 	dec a			;61a0
 	jp nz,L_61A0		;61a1
-	nop			;61a4
-	inc ix		;61a5
-	in a,(0aah)		;61a7
+	nop			;61a4   ; relleno: iguala los ciclos
+	inc ix		;61a5   ; relleno: iguala los ciclos
+	in a,(0aah)		;61a7   ; la fila siguiente...
 	inc a			;61a9
 	ld e,a			;61aa
-	ld a,(hl)			;61ab
-	ld (04000h),a		;61ac
+	ld a,(hl)			;61ab   ; la muestra...
+	ld (04000h),a		;61ac   ; ...al DAC
 	inc hl			;61af
-	ld a,d			;61b0
+	ld a,d			;61b0   ; el retardo D
 L_61B1:
 	dec a			;61b1
 	jp nz,L_61B1		;61b2
-	nop			;61b5
-	cp 000h		;61b6
+	nop			;61b5   ; relleno: iguala los ciclos
+	cp 000h		;61b6   ; relleno: iguala los ciclos
 	ld a,e			;61b8
-	and 0f7h		;61b9
+	and 0f7h		;61b9   ; ...de la 0 a la 7
 	out (0aah),a		;61bb
-	ld a,(hl)			;61bd
-	ld (04000h),a		;61be
+	ld a,(hl)			;61bd   ; la muestra...
+	ld (04000h),a		;61be   ; ...al DAC
 	inc hl			;61c1
-	ld a,d			;61c2
+	ld a,d			;61c2   ; el retardo D
 L_61C3:
 	dec a			;61c3
 	jp nz,L_61C3		;61c4
-	nop			;61c7
-	nop			;61c8
-	in a,(0a9h)		;61c9
+	nop			;61c7   ; relleno: iguala los ciclos
+	nop			;61c8   ; relleno: iguala los ciclos
+	in a,(0a9h)		;61c9   ; alguna tecla en esta fila?
 	inc a			;61cb
-	jp nz,L_66FE		;61cc
-	ld a,(hl)			;61cf
-	ld (04000h),a		;61d0
+	jp nz,otra_nota_con_bucle		;61cc
+	ld a,(hl)			;61cf   ; la muestra...
+	ld (04000h),a		;61d0   ; ...al DAC
 	inc hl			;61d3
-	ld a,d			;61d4
+	ld a,d			;61d4   ; el retardo D
 L_61D5:
 	dec a			;61d5
 	jp nz,L_61D5		;61d6
-	nop			;61d9
-	neg		;61da
-	ld a,0c0h		;61dc
+	nop			;61d9   ; relleno: iguala los ciclos
+	neg		;61da   ; relleno: iguala los ciclos
+	ld a,0c0h		;61dc   ; hasta el final del sample
 	cp h			;61de
 	jp nz,L_619A		;61df
-	jp L_66F7		;61e2
-L_61E5:
-	dec d			;61e5
+	jp fin_de_nota		;61e2
+con_bucle_06:		; rutina 6 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	dec d			;61e5   ; D - 1 para esta rutina
 L_61E6:
-	ld a,(hl)			;61e6
-	ld (04000h),a		;61e7
+	ld a,(hl)			;61e6   ; la muestra...
+	ld (04000h),a		;61e7   ; ...al DAC
 	inc hl			;61ea
-	ld a,d			;61eb
+	ld a,d			;61eb   ; el retardo D
 L_61EC:
 	dec a			;61ec
 	jp nz,L_61EC		;61ed
 	add a,(ix+000h)		;61f0
-	nop			;61f3
-	in a,(0a9h)		;61f4
-	and c			;61f6
+	nop			;61f3   ; relleno: iguala los ciclos
+	in a,(0a9h)		;61f4   ; la fila de la tecla:
+	and c			;61f6   ; su bit a 1, suelta
 	jp nz,L_6223		;61f7
-	ld a,(hl)			;61fa
-	ld (04000h),a		;61fb
+	ld a,(hl)			;61fa   ; la muestra...
+	ld (04000h),a		;61fb   ; ...al DAC
 	inc hl			;61fe
-	ld a,d			;61ff
+	ld a,d			;61ff   ; el retardo D
 L_6200:
 	dec a			;6200
 	jp nz,L_6200		;6201
 	add a,(ix+000h)		;6204
-	cp 000h		;6207
-	nop			;6209
-	ld a,e			;620a
+	cp 000h		;6207   ; relleno: iguala los ciclos
+	nop			;6209   ; relleno: iguala los ciclos
+	ld a,e			;620a   ; en la pagina de bucle?
 	cp h			;620b
 	jp nz,L_61E6		;620c
 L_620F:
-	ld a,(hl)			;620f
-	ld (04000h),a		;6210
+	ld a,(hl)			;620f   ; la muestra...
+	ld (04000h),a		;6210   ; ...al DAC
 	inc hl			;6213
-	ld a,d			;6214
+	ld a,d			;6214   ; el retardo D
 L_6215:
 	dec a			;6215
 	jp nz,L_6215		;6216
 	add a,(ix+000h)		;6219
-	ld h,e			;621c
-	in a,(0a9h)		;621d
-	and c			;621f
+	ld h,e			;621c   ; se queda en la pagina de bucle
+	in a,(0a9h)		;621d   ; la fila de la tecla:
+	and c			;621f   ; su bit a 1, suelta
 	jp z,L_620F		;6220
 L_6223:
-	ld a,(hl)			;6223
-	ld (04000h),a		;6224
+	ld a,(hl)			;6223   ; la muestra...
+	ld (04000h),a		;6224   ; ...al DAC
 	inc hl			;6227
-	ld a,d			;6228
+	ld a,d			;6228   ; el retardo D
 L_6229:
 	dec a			;6229
 	jp nz,L_6229		;622a
 	add a,(ix+000h)		;622d
-	cp 000h		;6230
-	nop			;6232
-	ld a,l			;6233
+	cp 000h		;6230   ; relleno: iguala los ciclos
+	nop			;6232   ; relleno: iguala los ciclos
+	ld a,l			;6233   ; hasta acabar la pagina
 	or a			;6234
 	jp nz,L_6223		;6235
 L_6238:
-	ld a,(hl)			;6238
-	ld (04000h),a		;6239
+	ld a,(hl)			;6238   ; la muestra...
+	ld (04000h),a		;6239   ; ...al DAC
 	inc hl			;623c
-	ld a,d			;623d
+	ld a,d			;623d   ; el retardo D
 L_623E:
 	dec a			;623e
 	jp nz,L_623E		;623f
 	add a,(ix+000h)		;6242
-	inc ix		;6245
-	in a,(0aah)		;6247
+	inc ix		;6245   ; relleno: iguala los ciclos
+	in a,(0aah)		;6247   ; la fila siguiente...
 	inc a			;6249
 	ld e,a			;624a
-	ld a,(hl)			;624b
-	ld (04000h),a		;624c
+	ld a,(hl)			;624b   ; la muestra...
+	ld (04000h),a		;624c   ; ...al DAC
 	inc hl			;624f
-	ld a,d			;6250
+	ld a,d			;6250   ; el retardo D
 L_6251:
 	dec a			;6251
 	jp nz,L_6251		;6252
 	add a,(ix+000h)		;6255
-	cp 000h		;6258
+	cp 000h		;6258   ; relleno: iguala los ciclos
 	ld a,e			;625a
-	and 0f7h		;625b
+	and 0f7h		;625b   ; ...de la 0 a la 7
 	out (0aah),a		;625d
-	ld a,(hl)			;625f
-	ld (04000h),a		;6260
+	ld a,(hl)			;625f   ; la muestra...
+	ld (04000h),a		;6260   ; ...al DAC
 	inc hl			;6263
-	ld a,d			;6264
+	ld a,d			;6264   ; el retardo D
 L_6265:
 	dec a			;6265
 	jp nz,L_6265		;6266
 	add a,(ix+000h)		;6269
-	nop			;626c
-	in a,(0a9h)		;626d
+	nop			;626c   ; relleno: iguala los ciclos
+	in a,(0a9h)		;626d   ; alguna tecla en esta fila?
 	inc a			;626f
-	jp nz,L_66FE		;6270
-	ld a,(hl)			;6273
-	ld (04000h),a		;6274
+	jp nz,otra_nota_con_bucle		;6270
+	ld a,(hl)			;6273   ; la muestra...
+	ld (04000h),a		;6274   ; ...al DAC
 	inc hl			;6277
-	ld a,d			;6278
+	ld a,d			;6278   ; el retardo D
 L_6279:
 	dec a			;6279
 	jp nz,L_6279		;627a
 	add a,(ix+000h)		;627d
-	neg		;6280
-	ld a,0c0h		;6282
+	neg		;6280   ; relleno: iguala los ciclos
+	ld a,0c0h		;6282   ; hasta el final del sample
 	cp h			;6284
 	jp nz,L_6238		;6285
-	jp L_66F7		;6288
-L_628B:
-	dec d			;628b
+	jp fin_de_nota		;6288
+con_bucle_07:		; rutina 7 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	dec d			;628b   ; D - 1 para esta rutina
 L_628C:
-	ld a,(hl)			;628c
-	ld (04000h),a		;628d
+	ld a,(hl)			;628c   ; la muestra...
+	ld (04000h),a		;628d   ; ...al DAC
 	inc hl			;6290
-	ld a,d			;6291
+	ld a,d			;6291   ; el retardo D
 L_6292:
 	dec a			;6292
 	jp nz,L_6292		;6293
-	inc ix		;6296
-	inc ix		;6298
-	nop			;629a
-	in a,(0a9h)		;629b
-	and c			;629d
+	inc ix		;6296   ; relleno: iguala los ciclos
+	inc ix		;6298   ; relleno: iguala los ciclos
+	nop			;629a   ; relleno: iguala los ciclos
+	in a,(0a9h)		;629b   ; la fila de la tecla:
+	and c			;629d   ; su bit a 1, suelta
 	jp nz,L_62CC		;629e
-	ld a,(hl)			;62a1
-	ld (04000h),a		;62a2
+	ld a,(hl)			;62a1   ; la muestra...
+	ld (04000h),a		;62a2   ; ...al DAC
 	inc hl			;62a5
-	ld a,d			;62a6
+	ld a,d			;62a6   ; el retardo D
 L_62A7:
 	dec a			;62a7
 	jp nz,L_62A7		;62a8
-	inc ix		;62ab
-	inc ix		;62ad
-	cp 000h		;62af
-	nop			;62b1
-	ld a,e			;62b2
+	inc ix		;62ab   ; relleno: iguala los ciclos
+	inc ix		;62ad   ; relleno: iguala los ciclos
+	cp 000h		;62af   ; relleno: iguala los ciclos
+	nop			;62b1   ; relleno: iguala los ciclos
+	ld a,e			;62b2   ; en la pagina de bucle?
 	cp h			;62b3
 	jp nz,L_628C		;62b4
 L_62B7:
-	ld a,(hl)			;62b7
-	ld (04000h),a		;62b8
+	ld a,(hl)			;62b7   ; la muestra...
+	ld (04000h),a		;62b8   ; ...al DAC
 	inc hl			;62bb
-	ld a,d			;62bc
+	ld a,d			;62bc   ; el retardo D
 L_62BD:
 	dec a			;62bd
 	jp nz,L_62BD		;62be
-	inc ix		;62c1
-	inc ix		;62c3
-	ld h,e			;62c5
-	in a,(0a9h)		;62c6
-	and c			;62c8
+	inc ix		;62c1   ; relleno: iguala los ciclos
+	inc ix		;62c3   ; relleno: iguala los ciclos
+	ld h,e			;62c5   ; se queda en la pagina de bucle
+	in a,(0a9h)		;62c6   ; la fila de la tecla:
+	and c			;62c8   ; su bit a 1, suelta
 	jp z,L_62B7		;62c9
 L_62CC:
-	ld a,(hl)			;62cc
-	ld (04000h),a		;62cd
+	ld a,(hl)			;62cc   ; la muestra...
+	ld (04000h),a		;62cd   ; ...al DAC
 	inc hl			;62d0
-	ld a,d			;62d1
+	ld a,d			;62d1   ; el retardo D
 L_62D2:
 	dec a			;62d2
 	jp nz,L_62D2		;62d3
-	inc ix		;62d6
-	inc ix		;62d8
-	cp 000h		;62da
-	nop			;62dc
-	ld a,l			;62dd
+	inc ix		;62d6   ; relleno: iguala los ciclos
+	inc ix		;62d8   ; relleno: iguala los ciclos
+	cp 000h		;62da   ; relleno: iguala los ciclos
+	nop			;62dc   ; relleno: iguala los ciclos
+	ld a,l			;62dd   ; hasta acabar la pagina
 	or a			;62de
 	jp nz,L_62CC		;62df
 L_62E2:
-	ld a,(hl)			;62e2
-	ld (04000h),a		;62e3
+	ld a,(hl)			;62e2   ; la muestra...
+	ld (04000h),a		;62e3   ; ...al DAC
 	inc hl			;62e6
-	ld a,d			;62e7
+	ld a,d			;62e7   ; el retardo D
 L_62E8:
 	dec a			;62e8
 	jp nz,L_62E8		;62e9
-	inc ix		;62ec
-	inc ix		;62ee
-	inc ix		;62f0
-	in a,(0aah)		;62f2
+	inc ix		;62ec   ; relleno: iguala los ciclos
+	inc ix		;62ee   ; relleno: iguala los ciclos
+	inc ix		;62f0   ; relleno: iguala los ciclos
+	in a,(0aah)		;62f2   ; la fila siguiente...
 	inc a			;62f4
 	ld e,a			;62f5
-	ld a,(hl)			;62f6
-	ld (04000h),a		;62f7
+	ld a,(hl)			;62f6   ; la muestra...
+	ld (04000h),a		;62f7   ; ...al DAC
 	inc hl			;62fa
-	ld a,d			;62fb
+	ld a,d			;62fb   ; el retardo D
 L_62FC:
 	dec a			;62fc
 	jp nz,L_62FC		;62fd
-	inc ix		;6300
-	inc ix		;6302
-	cp 000h		;6304
+	inc ix		;6300   ; relleno: iguala los ciclos
+	inc ix		;6302   ; relleno: iguala los ciclos
+	cp 000h		;6304   ; relleno: iguala los ciclos
 	ld a,e			;6306
-	and 0f7h		;6307
+	and 0f7h		;6307   ; ...de la 0 a la 7
 	out (0aah),a		;6309
-	ld a,(hl)			;630b
-	ld (04000h),a		;630c
+	ld a,(hl)			;630b   ; la muestra...
+	ld (04000h),a		;630c   ; ...al DAC
 	inc hl			;630f
-	ld a,d			;6310
+	ld a,d			;6310   ; el retardo D
 L_6311:
 	dec a			;6311
 	jp nz,L_6311		;6312
-	inc ix		;6315
-	inc ix		;6317
-	nop			;6319
-	in a,(0a9h)		;631a
+	inc ix		;6315   ; relleno: iguala los ciclos
+	inc ix		;6317   ; relleno: iguala los ciclos
+	nop			;6319   ; relleno: iguala los ciclos
+	in a,(0a9h)		;631a   ; alguna tecla en esta fila?
 	inc a			;631c
-	jp nz,L_66FE		;631d
-	ld a,(hl)			;6320
-	ld (04000h),a		;6321
+	jp nz,otra_nota_con_bucle		;631d
+	ld a,(hl)			;6320   ; la muestra...
+	ld (04000h),a		;6321   ; ...al DAC
 	inc hl			;6324
-	ld a,d			;6325
+	ld a,d			;6325   ; el retardo D
 L_6326:
 	dec a			;6326
 	jp nz,L_6326		;6327
-	inc ix		;632a
-	inc ix		;632c
-	neg		;632e
-	ld a,0c0h		;6330
+	inc ix		;632a   ; relleno: iguala los ciclos
+	inc ix		;632c   ; relleno: iguala los ciclos
+	neg		;632e   ; relleno: iguala los ciclos
+	ld a,0c0h		;6330   ; hasta el final del sample
 	cp h			;6332
 	jp nz,L_62E2		;6333
-	jp L_66F7		;6336
-L_6339:
-	ld a,(hl)			;6339
-	ld (04000h),a		;633a
+	jp fin_de_nota		;6336
+con_bucle_08:		; rutina 8 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	ld a,(hl)			;6339   ; la muestra...
+	ld (04000h),a		;633a   ; ...al DAC
 	inc hl			;633d
-	ld a,d			;633e
+	ld a,d			;633e   ; el retardo D
 L_633F:
 	dec a			;633f
 	jp nz,L_633F		;6340
-	cp 000h		;6343
-	nop			;6345
-	in a,(0a9h)		;6346
-	and c			;6348
+	cp 000h		;6343   ; relleno: iguala los ciclos
+	nop			;6345   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6346   ; la fila de la tecla:
+	and c			;6348   ; su bit a 1, suelta
 	jp nz,L_6373		;6349
-	ld a,(hl)			;634c
-	ld (04000h),a		;634d
+	ld a,(hl)			;634c   ; la muestra...
+	ld (04000h),a		;634d   ; ...al DAC
 	inc hl			;6350
-	ld a,d			;6351
+	ld a,d			;6351   ; el retardo D
 L_6352:
 	dec a			;6352
 	jp nz,L_6352		;6353
-	cp 000h		;6356
-	cp 000h		;6358
-	nop			;635a
-	ld a,e			;635b
+	cp 000h		;6356   ; relleno: iguala los ciclos
+	cp 000h		;6358   ; relleno: iguala los ciclos
+	nop			;635a   ; relleno: iguala los ciclos
+	ld a,e			;635b   ; en la pagina de bucle?
 	cp h			;635c
-	jp nz,L_6339		;635d
+	jp nz,con_bucle_08		;635d
 L_6360:
-	ld a,(hl)			;6360
-	ld (04000h),a		;6361
+	ld a,(hl)			;6360   ; la muestra...
+	ld (04000h),a		;6361   ; ...al DAC
 	inc hl			;6364
-	ld a,d			;6365
+	ld a,d			;6365   ; el retardo D
 L_6366:
 	dec a			;6366
 	jp nz,L_6366		;6367
-	cp 000h		;636a
-	ld h,e			;636c
-	in a,(0a9h)		;636d
-	and c			;636f
+	cp 000h		;636a   ; relleno: iguala los ciclos
+	ld h,e			;636c   ; se queda en la pagina de bucle
+	in a,(0a9h)		;636d   ; la fila de la tecla:
+	and c			;636f   ; su bit a 1, suelta
 	jp z,L_6360		;6370
 L_6373:
-	ld a,(hl)			;6373
-	ld (04000h),a		;6374
+	ld a,(hl)			;6373   ; la muestra...
+	ld (04000h),a		;6374   ; ...al DAC
 	inc hl			;6377
-	ld a,d			;6378
+	ld a,d			;6378   ; el retardo D
 L_6379:
 	dec a			;6379
 	jp nz,L_6379		;637a
-	cp 000h		;637d
-	cp 000h		;637f
-	nop			;6381
-	ld a,l			;6382
+	cp 000h		;637d   ; relleno: iguala los ciclos
+	cp 000h		;637f   ; relleno: iguala los ciclos
+	nop			;6381   ; relleno: iguala los ciclos
+	ld a,l			;6382   ; hasta acabar la pagina
 	or a			;6383
 	jp nz,L_6373		;6384
 L_6387:
-	ld a,(hl)			;6387
-	ld (04000h),a		;6388
+	ld a,(hl)			;6387   ; la muestra...
+	ld (04000h),a		;6388   ; ...al DAC
 	inc hl			;638b
-	ld a,d			;638c
+	ld a,d			;638c   ; el retardo D
 L_638D:
 	dec a			;638d
 	jp nz,L_638D		;638e
-	cp 000h		;6391
-	inc ix		;6393
-	in a,(0aah)		;6395
+	cp 000h		;6391   ; relleno: iguala los ciclos
+	inc ix		;6393   ; relleno: iguala los ciclos
+	in a,(0aah)		;6395   ; la fila siguiente...
 	inc a			;6397
 	ld e,a			;6398
-	ld a,(hl)			;6399
-	ld (04000h),a		;639a
+	ld a,(hl)			;6399   ; la muestra...
+	ld (04000h),a		;639a   ; ...al DAC
 	inc hl			;639d
-	ld a,d			;639e
+	ld a,d			;639e   ; el retardo D
 L_639F:
 	dec a			;639f
 	jp nz,L_639F		;63a0
-	cp 000h		;63a3
-	cp 000h		;63a5
+	cp 000h		;63a3   ; relleno: iguala los ciclos
+	cp 000h		;63a5   ; relleno: iguala los ciclos
 	ld a,e			;63a7
-	and 0f7h		;63a8
+	and 0f7h		;63a8   ; ...de la 0 a la 7
 	out (0aah),a		;63aa
-	ld a,(hl)			;63ac
-	ld (04000h),a		;63ad
+	ld a,(hl)			;63ac   ; la muestra...
+	ld (04000h),a		;63ad   ; ...al DAC
 	inc hl			;63b0
-	ld a,d			;63b1
+	ld a,d			;63b1   ; el retardo D
 L_63B2:
 	dec a			;63b2
 	jp nz,L_63B2		;63b3
-	cp 000h		;63b6
-	nop			;63b8
-	in a,(0a9h)		;63b9
+	cp 000h		;63b6   ; relleno: iguala los ciclos
+	nop			;63b8   ; relleno: iguala los ciclos
+	in a,(0a9h)		;63b9   ; alguna tecla en esta fila?
 	inc a			;63bb
-	jp nz,L_66FE		;63bc
-	ld a,(hl)			;63bf
-	ld (04000h),a		;63c0
+	jp nz,otra_nota_con_bucle		;63bc
+	ld a,(hl)			;63bf   ; la muestra...
+	ld (04000h),a		;63c0   ; ...al DAC
 	inc hl			;63c3
-	ld a,d			;63c4
+	ld a,d			;63c4   ; el retardo D
 L_63C5:
 	dec a			;63c5
 	jp nz,L_63C5		;63c6
-	cp 000h		;63c9
-	neg		;63cb
-	ld a,0c0h		;63cd
+	cp 000h		;63c9   ; relleno: iguala los ciclos
+	neg		;63cb   ; relleno: iguala los ciclos
+	ld a,0c0h		;63cd   ; hasta el final del sample
 	cp h			;63cf
 	jp nz,L_6387		;63d0
-	jp L_66F7		;63d3
-L_63D6:
-	ld a,(hl)			;63d6
-	ld (04000h),a		;63d7
+	jp fin_de_nota		;63d3
+con_bucle_09:		; rutina 9 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	ld a,(hl)			;63d6   ; la muestra...
+	ld (04000h),a		;63d7   ; ...al DAC
 	inc hl			;63da
-	ld a,d			;63db
+	ld a,d			;63db   ; el retardo D
 L_63DC:
 	dec a			;63dc
 	jp nz,L_63DC		;63dd
-	neg		;63e0
-	nop			;63e2
-	in a,(0a9h)		;63e3
-	and c			;63e5
+	neg		;63e0   ; relleno: iguala los ciclos
+	nop			;63e2   ; relleno: iguala los ciclos
+	in a,(0a9h)		;63e3   ; la fila de la tecla:
+	and c			;63e5   ; su bit a 1, suelta
 	jp nz,L_6410		;63e6
-	ld a,(hl)			;63e9
-	ld (04000h),a		;63ea
+	ld a,(hl)			;63e9   ; la muestra...
+	ld (04000h),a		;63ea   ; ...al DAC
 	inc hl			;63ed
-	ld a,d			;63ee
+	ld a,d			;63ee   ; el retardo D
 L_63EF:
 	dec a			;63ef
 	jp nz,L_63EF		;63f0
-	neg		;63f3
-	cp 000h		;63f5
-	nop			;63f7
-	ld a,e			;63f8
+	neg		;63f3   ; relleno: iguala los ciclos
+	cp 000h		;63f5   ; relleno: iguala los ciclos
+	nop			;63f7   ; relleno: iguala los ciclos
+	ld a,e			;63f8   ; en la pagina de bucle?
 	cp h			;63f9
-	jp nz,L_63D6		;63fa
+	jp nz,con_bucle_09		;63fa
 L_63FD:
-	ld a,(hl)			;63fd
-	ld (04000h),a		;63fe
+	ld a,(hl)			;63fd   ; la muestra...
+	ld (04000h),a		;63fe   ; ...al DAC
 	inc hl			;6401
-	ld a,d			;6402
+	ld a,d			;6402   ; el retardo D
 L_6403:
 	dec a			;6403
 	jp nz,L_6403		;6404
-	neg		;6407
-	ld h,e			;6409
-	in a,(0a9h)		;640a
-	and c			;640c
+	neg		;6407   ; relleno: iguala los ciclos
+	ld h,e			;6409   ; se queda en la pagina de bucle
+	in a,(0a9h)		;640a   ; la fila de la tecla:
+	and c			;640c   ; su bit a 1, suelta
 	jp z,L_63FD		;640d
 L_6410:
-	ld a,(hl)			;6410
-	ld (04000h),a		;6411
+	ld a,(hl)			;6410   ; la muestra...
+	ld (04000h),a		;6411   ; ...al DAC
 	inc hl			;6414
-	ld a,d			;6415
+	ld a,d			;6415   ; el retardo D
 L_6416:
 	dec a			;6416
 	jp nz,L_6416		;6417
-	neg		;641a
-	cp 000h		;641c
-	nop			;641e
-	ld a,l			;641f
+	neg		;641a   ; relleno: iguala los ciclos
+	cp 000h		;641c   ; relleno: iguala los ciclos
+	nop			;641e   ; relleno: iguala los ciclos
+	ld a,l			;641f   ; hasta acabar la pagina
 	or a			;6420
 	jp nz,L_6410		;6421
 L_6424:
-	ld a,(hl)			;6424
-	ld (04000h),a		;6425
+	ld a,(hl)			;6424   ; la muestra...
+	ld (04000h),a		;6425   ; ...al DAC
 	inc hl			;6428
-	ld a,d			;6429
+	ld a,d			;6429   ; el retardo D
 L_642A:
 	dec a			;642a
 	jp nz,L_642A		;642b
-	neg		;642e
-	inc ix		;6430
-	in a,(0aah)		;6432
+	neg		;642e   ; relleno: iguala los ciclos
+	inc ix		;6430   ; relleno: iguala los ciclos
+	in a,(0aah)		;6432   ; la fila siguiente...
 	inc a			;6434
 	ld e,a			;6435
-	ld a,(hl)			;6436
-	ld (04000h),a		;6437
+	ld a,(hl)			;6436   ; la muestra...
+	ld (04000h),a		;6437   ; ...al DAC
 	inc hl			;643a
-	ld a,d			;643b
+	ld a,d			;643b   ; el retardo D
 L_643C:
 	dec a			;643c
 	jp nz,L_643C		;643d
-	neg		;6440
-	cp 000h		;6442
+	neg		;6440   ; relleno: iguala los ciclos
+	cp 000h		;6442   ; relleno: iguala los ciclos
 	ld a,e			;6444
-	and 0f7h		;6445
+	and 0f7h		;6445   ; ...de la 0 a la 7
 	out (0aah),a		;6447
-	ld a,(hl)			;6449
-	ld (04000h),a		;644a
+	ld a,(hl)			;6449   ; la muestra...
+	ld (04000h),a		;644a   ; ...al DAC
 	inc hl			;644d
-	ld a,d			;644e
+	ld a,d			;644e   ; el retardo D
 L_644F:
 	dec a			;644f
 	jp nz,L_644F		;6450
-	neg		;6453
-	nop			;6455
-	in a,(0a9h)		;6456
+	neg		;6453   ; relleno: iguala los ciclos
+	nop			;6455   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6456   ; alguna tecla en esta fila?
 	inc a			;6458
-	jp nz,L_66FE		;6459
-	ld a,(hl)			;645c
-	ld (04000h),a		;645d
+	jp nz,otra_nota_con_bucle		;6459
+	ld a,(hl)			;645c   ; la muestra...
+	ld (04000h),a		;645d   ; ...al DAC
 	inc hl			;6460
-	ld a,d			;6461
+	ld a,d			;6461   ; el retardo D
 L_6462:
 	dec a			;6462
 	jp nz,L_6462		;6463
-	neg		;6466
-	neg		;6468
-	ld a,0c0h		;646a
+	neg		;6466   ; relleno: iguala los ciclos
+	neg		;6468   ; relleno: iguala los ciclos
+	ld a,0c0h		;646a   ; hasta el final del sample
 	cp h			;646c
 	jp nz,L_6424		;646d
-	jp L_66F7		;6470
-L_6473:
-	ld a,(hl)			;6473
-	ld (04000h),a		;6474
+	jp fin_de_nota		;6470
+con_bucle_10:		; rutina 10 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	ld a,(hl)			;6473   ; la muestra...
+	ld (04000h),a		;6474   ; ...al DAC
 	inc hl			;6477
-	ld a,d			;6478
+	ld a,d			;6478   ; el retardo D
 L_6479:
 	dec a			;6479
 	jp nz,L_6479		;647a
 	ld a,i		;647d
-	nop			;647f
-	in a,(0a9h)		;6480
-	and c			;6482
+	nop			;647f   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6480   ; la fila de la tecla:
+	and c			;6482   ; su bit a 1, suelta
 	jp nz,L_64AD		;6483
-	ld a,(hl)			;6486
-	ld (04000h),a		;6487
+	ld a,(hl)			;6486   ; la muestra...
+	ld (04000h),a		;6487   ; ...al DAC
 	inc hl			;648a
-	ld a,d			;648b
+	ld a,d			;648b   ; el retardo D
 L_648C:
 	dec a			;648c
 	jp nz,L_648C		;648d
 	ld a,i		;6490
-	cp 000h		;6492
-	nop			;6494
-	ld a,e			;6495
+	cp 000h		;6492   ; relleno: iguala los ciclos
+	nop			;6494   ; relleno: iguala los ciclos
+	ld a,e			;6495   ; en la pagina de bucle?
 	cp h			;6496
-	jp nz,L_6473		;6497
+	jp nz,con_bucle_10		;6497
 L_649A:
-	ld a,(hl)			;649a
-	ld (04000h),a		;649b
+	ld a,(hl)			;649a   ; la muestra...
+	ld (04000h),a		;649b   ; ...al DAC
 	inc hl			;649e
-	ld a,d			;649f
+	ld a,d			;649f   ; el retardo D
 L_64A0:
 	dec a			;64a0
 	jp nz,L_64A0		;64a1
 	ld a,i		;64a4
-	ld h,e			;64a6
-	in a,(0a9h)		;64a7
-	and c			;64a9
+	ld h,e			;64a6   ; se queda en la pagina de bucle
+	in a,(0a9h)		;64a7   ; la fila de la tecla:
+	and c			;64a9   ; su bit a 1, suelta
 	jp z,L_649A		;64aa
 L_64AD:
-	ld a,(hl)			;64ad
-	ld (04000h),a		;64ae
+	ld a,(hl)			;64ad   ; la muestra...
+	ld (04000h),a		;64ae   ; ...al DAC
 	inc hl			;64b1
-	ld a,d			;64b2
+	ld a,d			;64b2   ; el retardo D
 L_64B3:
 	dec a			;64b3
 	jp nz,L_64B3		;64b4
 	ld a,i		;64b7
-	cp 000h		;64b9
-	nop			;64bb
-	ld a,l			;64bc
+	cp 000h		;64b9   ; relleno: iguala los ciclos
+	nop			;64bb   ; relleno: iguala los ciclos
+	ld a,l			;64bc   ; hasta acabar la pagina
 	or a			;64bd
 	jp nz,L_64AD		;64be
 L_64C1:
-	ld a,(hl)			;64c1
-	ld (04000h),a		;64c2
+	ld a,(hl)			;64c1   ; la muestra...
+	ld (04000h),a		;64c2   ; ...al DAC
 	inc hl			;64c5
-	ld a,d			;64c6
+	ld a,d			;64c6   ; el retardo D
 L_64C7:
 	dec a			;64c7
 	jp nz,L_64C7		;64c8
 	ld a,i		;64cb
-	inc ix		;64cd
-	in a,(0aah)		;64cf
+	inc ix		;64cd   ; relleno: iguala los ciclos
+	in a,(0aah)		;64cf   ; la fila siguiente...
 	inc a			;64d1
 	ld e,a			;64d2
-	ld a,(hl)			;64d3
-	ld (04000h),a		;64d4
+	ld a,(hl)			;64d3   ; la muestra...
+	ld (04000h),a		;64d4   ; ...al DAC
 	inc hl			;64d7
-	ld a,d			;64d8
+	ld a,d			;64d8   ; el retardo D
 L_64D9:
 	dec a			;64d9
 	jp nz,L_64D9		;64da
 	ld a,i		;64dd
-	cp 000h		;64df
+	cp 000h		;64df   ; relleno: iguala los ciclos
 	ld a,e			;64e1
-	and 0f7h		;64e2
+	and 0f7h		;64e2   ; ...de la 0 a la 7
 	out (0aah),a		;64e4
-	ld a,(hl)			;64e6
-	ld (04000h),a		;64e7
+	ld a,(hl)			;64e6   ; la muestra...
+	ld (04000h),a		;64e7   ; ...al DAC
 	inc hl			;64ea
-	ld a,d			;64eb
+	ld a,d			;64eb   ; el retardo D
 L_64EC:
 	dec a			;64ec
 	jp nz,L_64EC		;64ed
 	ld a,i		;64f0
-	nop			;64f2
-	in a,(0a9h)		;64f3
+	nop			;64f2   ; relleno: iguala los ciclos
+	in a,(0a9h)		;64f3   ; alguna tecla en esta fila?
 	inc a			;64f5
-	jp nz,L_66FE		;64f6
-	ld a,(hl)			;64f9
-	ld (04000h),a		;64fa
+	jp nz,otra_nota_con_bucle		;64f6
+	ld a,(hl)			;64f9   ; la muestra...
+	ld (04000h),a		;64fa   ; ...al DAC
 	inc hl			;64fd
-	ld a,d			;64fe
+	ld a,d			;64fe   ; el retardo D
 L_64FF:
 	dec a			;64ff
 	jp nz,L_64FF		;6500
 	ld a,i		;6503
-	neg		;6505
-	ld a,0c0h		;6507
+	neg		;6505   ; relleno: iguala los ciclos
+	ld a,0c0h		;6507   ; hasta el final del sample
 	cp h			;6509
 	jp nz,L_64C1		;650a
-	jp L_66F7		;650d
-L_6510:
-	ld a,(hl)			;6510
-	ld (04000h),a		;6511
+	jp fin_de_nota		;650d
+con_bucle_11:		; rutina 11 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	ld a,(hl)			;6510   ; la muestra...
+	ld (04000h),a		;6511   ; ...al DAC
 	inc hl			;6514
-	ld a,d			;6515
+	ld a,d			;6515   ; el retardo D
 L_6516:
 	dec a			;6516
 	jp nz,L_6516		;6517
-	inc ix		;651a
-	nop			;651c
-	in a,(0a9h)		;651d
-	and c			;651f
+	inc ix		;651a   ; relleno: iguala los ciclos
+	nop			;651c   ; relleno: iguala los ciclos
+	in a,(0a9h)		;651d   ; la fila de la tecla:
+	and c			;651f   ; su bit a 1, suelta
 	jp nz,L_654A		;6520
-	ld a,(hl)			;6523
-	ld (04000h),a		;6524
+	ld a,(hl)			;6523   ; la muestra...
+	ld (04000h),a		;6524   ; ...al DAC
 	inc hl			;6527
-	ld a,d			;6528
+	ld a,d			;6528   ; el retardo D
 L_6529:
 	dec a			;6529
 	jp nz,L_6529		;652a
-	inc ix		;652d
-	cp 000h		;652f
-	nop			;6531
-	ld a,e			;6532
+	inc ix		;652d   ; relleno: iguala los ciclos
+	cp 000h		;652f   ; relleno: iguala los ciclos
+	nop			;6531   ; relleno: iguala los ciclos
+	ld a,e			;6532   ; en la pagina de bucle?
 	cp h			;6533
-	jp nz,L_6510		;6534
+	jp nz,con_bucle_11		;6534
 L_6537:
-	ld a,(hl)			;6537
-	ld (04000h),a		;6538
+	ld a,(hl)			;6537   ; la muestra...
+	ld (04000h),a		;6538   ; ...al DAC
 	inc hl			;653b
-	ld a,d			;653c
+	ld a,d			;653c   ; el retardo D
 L_653D:
 	dec a			;653d
 	jp nz,L_653D		;653e
-	inc ix		;6541
-	ld h,e			;6543
-	in a,(0a9h)		;6544
-	and c			;6546
+	inc ix		;6541   ; relleno: iguala los ciclos
+	ld h,e			;6543   ; se queda en la pagina de bucle
+	in a,(0a9h)		;6544   ; la fila de la tecla:
+	and c			;6546   ; su bit a 1, suelta
 	jp z,L_6537		;6547
 L_654A:
-	ld a,(hl)			;654a
-	ld (04000h),a		;654b
+	ld a,(hl)			;654a   ; la muestra...
+	ld (04000h),a		;654b   ; ...al DAC
 	inc hl			;654e
-	ld a,d			;654f
+	ld a,d			;654f   ; el retardo D
 L_6550:
 	dec a			;6550
 	jp nz,L_6550		;6551
-	inc ix		;6554
-	cp 000h		;6556
-	nop			;6558
-	ld a,l			;6559
+	inc ix		;6554   ; relleno: iguala los ciclos
+	cp 000h		;6556   ; relleno: iguala los ciclos
+	nop			;6558   ; relleno: iguala los ciclos
+	ld a,l			;6559   ; hasta acabar la pagina
 	or a			;655a
 	jp nz,L_654A		;655b
 L_655E:
-	ld a,(hl)			;655e
-	ld (04000h),a		;655f
+	ld a,(hl)			;655e   ; la muestra...
+	ld (04000h),a		;655f   ; ...al DAC
 	inc hl			;6562
-	ld a,d			;6563
+	ld a,d			;6563   ; el retardo D
 L_6564:
 	dec a			;6564
 	jp nz,L_6564		;6565
-	inc ix		;6568
-	inc ix		;656a
-	in a,(0aah)		;656c
+	inc ix		;6568   ; relleno: iguala los ciclos
+	inc ix		;656a   ; relleno: iguala los ciclos
+	in a,(0aah)		;656c   ; la fila siguiente...
 	inc a			;656e
 	ld e,a			;656f
-	ld a,(hl)			;6570
-	ld (04000h),a		;6571
+	ld a,(hl)			;6570   ; la muestra...
+	ld (04000h),a		;6571   ; ...al DAC
 	inc hl			;6574
-	ld a,d			;6575
+	ld a,d			;6575   ; el retardo D
 L_6576:
 	dec a			;6576
 	jp nz,L_6576		;6577
-	inc ix		;657a
-	cp 000h		;657c
+	inc ix		;657a   ; relleno: iguala los ciclos
+	cp 000h		;657c   ; relleno: iguala los ciclos
 	ld a,e			;657e
-	and 0f7h		;657f
+	and 0f7h		;657f   ; ...de la 0 a la 7
 	out (0aah),a		;6581
-	ld a,(hl)			;6583
-	ld (04000h),a		;6584
+	ld a,(hl)			;6583   ; la muestra...
+	ld (04000h),a		;6584   ; ...al DAC
 	inc hl			;6587
-	ld a,d			;6588
+	ld a,d			;6588   ; el retardo D
 L_6589:
 	dec a			;6589
 	jp nz,L_6589		;658a
-	inc ix		;658d
-	nop			;658f
-	in a,(0a9h)		;6590
+	inc ix		;658d   ; relleno: iguala los ciclos
+	nop			;658f   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6590   ; alguna tecla en esta fila?
 	inc a			;6592
-	jp nz,L_66FE		;6593
-	ld a,(hl)			;6596
-	ld (04000h),a		;6597
+	jp nz,otra_nota_con_bucle		;6593
+	ld a,(hl)			;6596   ; la muestra...
+	ld (04000h),a		;6597   ; ...al DAC
 	inc hl			;659a
-	ld a,d			;659b
+	ld a,d			;659b   ; el retardo D
 L_659C:
 	dec a			;659c
 	jp nz,L_659C		;659d
-	inc ix		;65a0
-	neg		;65a2
-	ld a,0c0h		;65a4
+	inc ix		;65a0   ; relleno: iguala los ciclos
+	neg		;65a2   ; relleno: iguala los ciclos
+	ld a,0c0h		;65a4   ; hasta el final del sample
 	cp h			;65a6
 	jp nz,L_655E		;65a7
-	jp L_66F7		;65aa
-L_65AD:
-	ld a,(hl)			;65ad
-	ld (04000h),a		;65ae
+	jp fin_de_nota		;65aa
+con_bucle_12:		; rutina 12 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	ld a,(hl)			;65ad   ; la muestra...
+	ld (04000h),a		;65ae   ; ...al DAC
 	inc hl			;65b1
-	ld a,d			;65b2
+	ld a,d			;65b2   ; el retardo D
 L_65B3:
 	dec a			;65b3
 	jp nz,L_65B3		;65b4
-	cp 000h		;65b7
-	nop			;65b9
-	nop			;65ba
-	in a,(0a9h)		;65bb
-	and c			;65bd
+	cp 000h		;65b7   ; relleno: iguala los ciclos
+	nop			;65b9   ; relleno: iguala los ciclos
+	nop			;65ba   ; relleno: iguala los ciclos
+	in a,(0a9h)		;65bb   ; la fila de la tecla:
+	and c			;65bd   ; su bit a 1, suelta
 	jp nz,L_65EA		;65be
-	ld a,(hl)			;65c1
-	ld (04000h),a		;65c2
+	ld a,(hl)			;65c1   ; la muestra...
+	ld (04000h),a		;65c2   ; ...al DAC
 	inc hl			;65c5
-	ld a,d			;65c6
+	ld a,d			;65c6   ; el retardo D
 L_65C7:
 	dec a			;65c7
 	jp nz,L_65C7		;65c8
-	cp 000h		;65cb
-	nop			;65cd
-	cp 000h		;65ce
-	nop			;65d0
-	ld a,e			;65d1
+	cp 000h		;65cb   ; relleno: iguala los ciclos
+	nop			;65cd   ; relleno: iguala los ciclos
+	cp 000h		;65ce   ; relleno: iguala los ciclos
+	nop			;65d0   ; relleno: iguala los ciclos
+	ld a,e			;65d1   ; en la pagina de bucle?
 	cp h			;65d2
-	jp nz,L_65AD		;65d3
+	jp nz,con_bucle_12		;65d3
 L_65D6:
-	ld a,(hl)			;65d6
-	ld (04000h),a		;65d7
+	ld a,(hl)			;65d6   ; la muestra...
+	ld (04000h),a		;65d7   ; ...al DAC
 	inc hl			;65da
-	ld a,d			;65db
+	ld a,d			;65db   ; el retardo D
 L_65DC:
 	dec a			;65dc
 	jp nz,L_65DC		;65dd
-	cp 000h		;65e0
-	nop			;65e2
-	ld h,e			;65e3
-	in a,(0a9h)		;65e4
-	and c			;65e6
+	cp 000h		;65e0   ; relleno: iguala los ciclos
+	nop			;65e2   ; relleno: iguala los ciclos
+	ld h,e			;65e3   ; se queda en la pagina de bucle
+	in a,(0a9h)		;65e4   ; la fila de la tecla:
+	and c			;65e6   ; su bit a 1, suelta
 	jp z,L_65D6		;65e7
 L_65EA:
-	ld a,(hl)			;65ea
-	ld (04000h),a		;65eb
+	ld a,(hl)			;65ea   ; la muestra...
+	ld (04000h),a		;65eb   ; ...al DAC
 	inc hl			;65ee
-	ld a,d			;65ef
+	ld a,d			;65ef   ; el retardo D
 L_65F0:
 	dec a			;65f0
 	jp nz,L_65F0		;65f1
-	cp 000h		;65f4
-	nop			;65f6
-	cp 000h		;65f7
-	nop			;65f9
-	ld a,l			;65fa
+	cp 000h		;65f4   ; relleno: iguala los ciclos
+	nop			;65f6   ; relleno: iguala los ciclos
+	cp 000h		;65f7   ; relleno: iguala los ciclos
+	nop			;65f9   ; relleno: iguala los ciclos
+	ld a,l			;65fa   ; hasta acabar la pagina
 	or a			;65fb
 	jp nz,L_65EA		;65fc
 L_65FF:
-	ld a,(hl)			;65ff
-	ld (04000h),a		;6600
+	ld a,(hl)			;65ff   ; la muestra...
+	ld (04000h),a		;6600   ; ...al DAC
 	inc hl			;6603
-	ld a,d			;6604
+	ld a,d			;6604   ; el retardo D
 L_6605:
 	dec a			;6605
 	jp nz,L_6605		;6606
-	cp 000h		;6609
-	nop			;660b
-	inc ix		;660c
-	in a,(0aah)		;660e
+	cp 000h		;6609   ; relleno: iguala los ciclos
+	nop			;660b   ; relleno: iguala los ciclos
+	inc ix		;660c   ; relleno: iguala los ciclos
+	in a,(0aah)		;660e   ; la fila siguiente...
 	inc a			;6610
 	ld e,a			;6611
-	ld a,(hl)			;6612
-	ld (04000h),a		;6613
+	ld a,(hl)			;6612   ; la muestra...
+	ld (04000h),a		;6613   ; ...al DAC
 	inc hl			;6616
-	ld a,d			;6617
+	ld a,d			;6617   ; el retardo D
 L_6618:
 	dec a			;6618
 	jp nz,L_6618		;6619
-	cp 000h		;661c
-	nop			;661e
-	cp 000h		;661f
+	cp 000h		;661c   ; relleno: iguala los ciclos
+	nop			;661e   ; relleno: iguala los ciclos
+	cp 000h		;661f   ; relleno: iguala los ciclos
 	ld a,e			;6621
-	and 0f7h		;6622
+	and 0f7h		;6622   ; ...de la 0 a la 7
 	out (0aah),a		;6624
-	ld a,(hl)			;6626
-	ld (04000h),a		;6627
+	ld a,(hl)			;6626   ; la muestra...
+	ld (04000h),a		;6627   ; ...al DAC
 	inc hl			;662a
-	ld a,d			;662b
+	ld a,d			;662b   ; el retardo D
 L_662C:
 	dec a			;662c
 	jp nz,L_662C		;662d
-	cp 000h		;6630
-	nop			;6632
-	nop			;6633
-	in a,(0a9h)		;6634
+	cp 000h		;6630   ; relleno: iguala los ciclos
+	nop			;6632   ; relleno: iguala los ciclos
+	nop			;6633   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6634   ; alguna tecla en esta fila?
 	inc a			;6636
-	jp nz,L_66FE		;6637
-	ld a,(hl)			;663a
-	ld (04000h),a		;663b
+	jp nz,otra_nota_con_bucle		;6637
+	ld a,(hl)			;663a   ; la muestra...
+	ld (04000h),a		;663b   ; ...al DAC
 	inc hl			;663e
-	ld a,d			;663f
+	ld a,d			;663f   ; el retardo D
 L_6640:
 	dec a			;6640
 	jp nz,L_6640		;6641
-	cp 000h		;6644
-	nop			;6646
-	neg		;6647
-	ld a,0c0h		;6649
+	cp 000h		;6644   ; relleno: iguala los ciclos
+	nop			;6646   ; relleno: iguala los ciclos
+	neg		;6647   ; relleno: iguala los ciclos
+	ld a,0c0h		;6649   ; hasta el final del sample
 	cp h			;664b
 	jp nz,L_65FF		;664c
-	jp L_66F7		;664f
-L_6652:
-	ld a,(hl)			;6652
-	ld (04000h),a		;6653
+	jp fin_de_nota		;664f
+con_bucle_13:		; rutina 13 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
+	ld a,(hl)			;6652   ; la muestra...
+	ld (04000h),a		;6653   ; ...al DAC
 	inc hl			;6656
-	ld a,d			;6657
+	ld a,d			;6657   ; el retardo D
 L_6658:
 	dec a			;6658
 	jp nz,L_6658		;6659
-	neg		;665c
-	nop			;665e
-	nop			;665f
-	in a,(0a9h)		;6660
-	and c			;6662
+	neg		;665c   ; relleno: iguala los ciclos
+	nop			;665e   ; relleno: iguala los ciclos
+	nop			;665f   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6660   ; la fila de la tecla:
+	and c			;6662   ; su bit a 1, suelta
 	jp nz,L_668F		;6663
-	ld a,(hl)			;6666
-	ld (04000h),a		;6667
+	ld a,(hl)			;6666   ; la muestra...
+	ld (04000h),a		;6667   ; ...al DAC
 	inc hl			;666a
-	ld a,d			;666b
+	ld a,d			;666b   ; el retardo D
 L_666C:
 	dec a			;666c
 	jp nz,L_666C		;666d
-	neg		;6670
-	nop			;6672
-	cp 000h		;6673
-	nop			;6675
-	ld a,e			;6676
+	neg		;6670   ; relleno: iguala los ciclos
+	nop			;6672   ; relleno: iguala los ciclos
+	cp 000h		;6673   ; relleno: iguala los ciclos
+	nop			;6675   ; relleno: iguala los ciclos
+	ld a,e			;6676   ; en la pagina de bucle?
 	cp h			;6677
-	jp nz,L_6652		;6678
+	jp nz,con_bucle_13		;6678
 L_667B:
-	ld a,(hl)			;667b
-	ld (04000h),a		;667c
+	ld a,(hl)			;667b   ; la muestra...
+	ld (04000h),a		;667c   ; ...al DAC
 	inc hl			;667f
-	ld a,d			;6680
+	ld a,d			;6680   ; el retardo D
 L_6681:
 	dec a			;6681
 	jp nz,L_6681		;6682
-	neg		;6685
-	nop			;6687
-	ld h,e			;6688
-	in a,(0a9h)		;6689
-	and c			;668b
+	neg		;6685   ; relleno: iguala los ciclos
+	nop			;6687   ; relleno: iguala los ciclos
+	ld h,e			;6688   ; se queda en la pagina de bucle
+	in a,(0a9h)		;6689   ; la fila de la tecla:
+	and c			;668b   ; su bit a 1, suelta
 	jp z,L_667B		;668c
 L_668F:
-	ld a,(hl)			;668f
-	ld (04000h),a		;6690
+	ld a,(hl)			;668f   ; la muestra...
+	ld (04000h),a		;6690   ; ...al DAC
 	inc hl			;6693
-	ld a,d			;6694
+	ld a,d			;6694   ; el retardo D
 L_6695:
 	dec a			;6695
 	jp nz,L_6695		;6696
-	neg		;6699
-	nop			;669b
-	cp 000h		;669c
-	nop			;669e
-	ld a,l			;669f
+	neg		;6699   ; relleno: iguala los ciclos
+	nop			;669b   ; relleno: iguala los ciclos
+	cp 000h		;669c   ; relleno: iguala los ciclos
+	nop			;669e   ; relleno: iguala los ciclos
+	ld a,l			;669f   ; hasta acabar la pagina
 	or a			;66a0
 	jp nz,L_668F		;66a1
 L_66A4:
-	ld a,(hl)			;66a4
-	ld (04000h),a		;66a5
+	ld a,(hl)			;66a4   ; la muestra...
+	ld (04000h),a		;66a5   ; ...al DAC
 	inc hl			;66a8
-	ld a,d			;66a9
+	ld a,d			;66a9   ; el retardo D
 L_66AA:
 	dec a			;66aa
 	jp nz,L_66AA		;66ab
-	neg		;66ae
-	nop			;66b0
-	inc ix		;66b1
-	in a,(0aah)		;66b3
+	neg		;66ae   ; relleno: iguala los ciclos
+	nop			;66b0   ; relleno: iguala los ciclos
+	inc ix		;66b1   ; relleno: iguala los ciclos
+	in a,(0aah)		;66b3   ; la fila siguiente...
 	inc a			;66b5
 	ld e,a			;66b6
-	ld a,(hl)			;66b7
-	ld (04000h),a		;66b8
+	ld a,(hl)			;66b7   ; la muestra...
+	ld (04000h),a		;66b8   ; ...al DAC
 	inc hl			;66bb
-	ld a,d			;66bc
+	ld a,d			;66bc   ; el retardo D
 L_66BD:
 	dec a			;66bd
 	jp nz,L_66BD		;66be
-	neg		;66c1
-	nop			;66c3
-	cp 000h		;66c4
+	neg		;66c1   ; relleno: iguala los ciclos
+	nop			;66c3   ; relleno: iguala los ciclos
+	cp 000h		;66c4   ; relleno: iguala los ciclos
 	ld a,e			;66c6
-	and 0f7h		;66c7
+	and 0f7h		;66c7   ; ...de la 0 a la 7
 	out (0aah),a		;66c9
-	ld a,(hl)			;66cb
-	ld (04000h),a		;66cc
+	ld a,(hl)			;66cb   ; la muestra...
+	ld (04000h),a		;66cc   ; ...al DAC
 	inc hl			;66cf
-	ld a,d			;66d0
+	ld a,d			;66d0   ; el retardo D
 L_66D1:
 	dec a			;66d1
 	jp nz,L_66D1		;66d2
-	neg		;66d5
-	nop			;66d7
-	nop			;66d8
-	in a,(0a9h)		;66d9
+	neg		;66d5   ; relleno: iguala los ciclos
+	nop			;66d7   ; relleno: iguala los ciclos
+	nop			;66d8   ; relleno: iguala los ciclos
+	in a,(0a9h)		;66d9   ; alguna tecla en esta fila?
 	inc a			;66db
-	jp nz,L_66FE		;66dc
-	ld a,(hl)			;66df
-	ld (04000h),a		;66e0
+	jp nz,otra_nota_con_bucle		;66dc
+	ld a,(hl)			;66df   ; la muestra...
+	ld (04000h),a		;66e0   ; ...al DAC
 	inc hl			;66e3
-	ld a,d			;66e4
+	ld a,d			;66e4   ; el retardo D
 L_66E5:
 	dec a			;66e5
 	jp nz,L_66E5		;66e6
-	neg		;66e9
-	nop			;66eb
-	neg		;66ec
-	ld a,0c0h		;66ee
+	neg		;66e9   ; relleno: iguala los ciclos
+	nop			;66eb   ; relleno: iguala los ciclos
+	neg		;66ec   ; relleno: iguala los ciclos
+	ld a,0c0h		;66ee   ; hasta el final del sample
 	cp h			;66f0
 	jp nz,L_66A4		;66f1
-	jp L_66F7		;66f4
-L_66F7:
+	jp fin_de_nota		;66f4
+fin_de_nota:		; la tecla vuelve a su dibujo y el cartucho a la pagina 2
 	call tecla_soltada		;66f7
 	call cartucho_en_la_pagina_2		;66fa
 	ret			;66fd
-L_66FE:
+otra_nota_con_bucle:		; otra tecla pulsada durante la cola: la nota nueva
 	push af			;66fe
 	call tecla_soltada		;66ff
 	call cartucho_en_la_pagina_2		;6702
 	pop af			;6705
-	jp L_5EA9		;6706
+	jp nota_con_bucle		;6706
 
 ; ----------------------------------------------------------------------
 ; DATOS reproduce_sin_bucle: las mismas 13 rutinas para los timbres sin pagina
@@ -5668,1249 +5668,1249 @@ DATA_reproduce_sin_bucle:
 ; ======================================================================
 
 
-L_6723:
-	call L_5D45		;6723
+play_sin_bucle:		; PLAY sin pagina de bucle: espera tecla y toca con la tabla 0x6709
+	call busca_tecla		;6723
 	ret z			;6726
-L_6727:
-	call L_5D5D		;6727
-	call L_5D81		;672a
+nota_sin_bucle:		; la nota de la tecla pulsada
+	call codigo_de_tecla		;6727
+	call rutina_de_la_tecla		;672a
 	ret z			;672d
-	call L_5D90		;672e
+	call pinta_tecla_pulsada		;672e
 	ld hl,06709h		;6731
-	call L_5D9A		;6734
+	call rutina_en_ix		;6734
 	push bc			;6737
 	push de			;6738
 	call ram_en_la_pagina_2		;6739
 	pop de			;673c
 	pop bc			;673d
-	ld hl,08000h		;673e
+	ld hl,08000h		;673e   ; desde 0x8000
 	jp (ix)		;6741
-L_6743:
-	ld a,(hl)			;6743
-	ld (04000h),a		;6744
+sin_bucle_01:		; rutina 1 de 0x6709: de corrido hasta 0xC000; al soltar, mirando si hay otra tecla
+	ld a,(hl)			;6743   ; la muestra...
+	ld (04000h),a		;6744   ; ...al DAC
 	inc hl			;6747
-	ld a,d			;6748
+	ld a,d			;6748   ; el retardo D
 L_6749:
 	dec a			;6749
 	jp nz,L_6749		;674a
-	nop			;674d
-	in a,(0a9h)		;674e
-	and c			;6750
-	jp nz,L_6769		;6751
-	ld a,(hl)			;6754
-	ld (04000h),a		;6755
+	nop			;674d   ; relleno: iguala los ciclos
+	in a,(0a9h)		;674e   ; la fila de la tecla:
+	and c			;6750   ; su bit a 1, suelta
+	jp nz,sin_bucle_01_suelta		;6751
+	ld a,(hl)			;6754   ; la muestra...
+	ld (04000h),a		;6755   ; ...al DAC
 	inc hl			;6758
-	ld a,d			;6759
+	ld a,d			;6759   ; el retardo D
 L_675A:
 	dec a			;675a
 	jp nz,L_675A		;675b
-	neg		;675e
-	ld a,0c0h		;6760
+	neg		;675e   ; relleno: iguala los ciclos
+	ld a,0c0h		;6760   ; hasta el final del sample
 	cp h			;6762
-	jp nz,L_6743		;6763
-	jp L_6EAD		;6766
-L_6769:
-	ld a,(hl)			;6769
-	ld (04000h),a		;676a
+	jp nz,sin_bucle_01		;6763
+	jp final_del_sample		;6766
+sin_bucle_01_suelta:		; tecla suelta: acaba la pagina en curso
+	ld a,(hl)			;6769   ; la muestra...
+	ld (04000h),a		;676a   ; ...al DAC
 	inc hl			;676d
-	ld a,d			;676e
+	ld a,d			;676e   ; el retardo D
 L_676F:
 	dec a			;676f
 	jp nz,L_676F		;6770
-	cp 000h		;6773
-	nop			;6775
-	ld a,l			;6776
+	cp 000h		;6773   ; relleno: iguala los ciclos
+	nop			;6775   ; relleno: iguala los ciclos
+	ld a,l			;6776   ; hasta acabar la pagina
 	or a			;6777
-	jp nz,L_6769		;6778
-L_677B:
-	ld a,(hl)			;677b
-	ld (04000h),a		;677c
+	jp nz,sin_bucle_01_suelta		;6778
+sin_bucle_01_cola:		; el resto hasta 0xC000, mirando el teclado
+	ld a,(hl)			;677b   ; la muestra...
+	ld (04000h),a		;677c   ; ...al DAC
 	inc hl			;677f
-	ld a,d			;6780
+	ld a,d			;6780   ; el retardo D
 L_6781:
 	dec a			;6781
 	jp nz,L_6781		;6782
-	inc ix		;6785
-	in a,(0aah)		;6787
+	inc ix		;6785   ; relleno: iguala los ciclos
+	in a,(0aah)		;6787   ; la fila siguiente...
 	inc a			;6789
 	ld e,a			;678a
-	ld a,(hl)			;678b
-	ld (04000h),a		;678c
+	ld a,(hl)			;678b   ; la muestra...
+	ld (04000h),a		;678c   ; ...al DAC
 	inc hl			;678f
-	ld a,d			;6790
+	ld a,d			;6790   ; el retardo D
 L_6791:
 	dec a			;6791
 	jp nz,L_6791		;6792
-	cp 000h		;6795
+	cp 000h		;6795   ; relleno: iguala los ciclos
 	ld a,e			;6797
-	and 0f7h		;6798
+	and 0f7h		;6798   ; ...de la 0 a la 7
 	out (0aah),a		;679a
-	ld a,(hl)			;679c
-	ld (04000h),a		;679d
+	ld a,(hl)			;679c   ; la muestra...
+	ld (04000h),a		;679d   ; ...al DAC
 	inc hl			;67a0
-	ld a,d			;67a1
+	ld a,d			;67a1   ; el retardo D
 L_67A2:
 	dec a			;67a2
 	jp nz,L_67A2		;67a3
-	nop			;67a6
-	in a,(0a9h)		;67a7
+	nop			;67a6   ; relleno: iguala los ciclos
+	in a,(0a9h)		;67a7   ; alguna tecla en esta fila?
 	inc a			;67a9
-	jp nz,L_6EA2		;67aa
-	ld a,(hl)			;67ad
-	ld (04000h),a		;67ae
+	jp nz,otra_nota_sin_bucle		;67aa
+	ld a,(hl)			;67ad   ; la muestra...
+	ld (04000h),a		;67ae   ; ...al DAC
 	inc hl			;67b1
-	ld a,d			;67b2
+	ld a,d			;67b2   ; el retardo D
 L_67B3:
 	dec a			;67b3
 	jp nz,L_67B3		;67b4
-	neg		;67b7
-	ld a,0c0h		;67b9
+	neg		;67b7   ; relleno: iguala los ciclos
+	ld a,0c0h		;67b9   ; hasta el final del sample
 	cp h			;67bb
-	jp nz,L_677B		;67bc
-	jp L_6E9B		;67bf
-L_67C2:
-	dec d			;67c2
+	jp nz,sin_bucle_01_cola		;67bc
+	jp fin_de_nota_sin_bucle		;67bf
+sin_bucle_02:		; rutina 2 de 0x6709: como 0x6743, con otro relleno de ciclos
+	dec d			;67c2   ; D - 1 para esta rutina
 L_67C3:
-	ld a,(hl)			;67c3
-	ld (04000h),a		;67c4
+	ld a,(hl)			;67c3   ; la muestra...
+	ld (04000h),a		;67c4   ; ...al DAC
 	inc hl			;67c7
-	ld a,d			;67c8
+	ld a,d			;67c8   ; el retardo D
 L_67C9:
 	dec a			;67c9
 	jp nz,L_67C9		;67ca
-	add ix,ix		;67cd
-	nop			;67cf
-	in a,(0a9h)		;67d0
-	and c			;67d2
+	add ix,ix		;67cd   ; relleno: iguala los ciclos
+	nop			;67cf   ; relleno: iguala los ciclos
+	in a,(0a9h)		;67d0   ; la fila de la tecla:
+	and c			;67d2   ; su bit a 1, suelta
 	jp nz,L_67ED		;67d3
-	ld a,(hl)			;67d6
-	ld (04000h),a		;67d7
+	ld a,(hl)			;67d6   ; la muestra...
+	ld (04000h),a		;67d7   ; ...al DAC
 	inc hl			;67da
-	ld a,d			;67db
+	ld a,d			;67db   ; el retardo D
 L_67DC:
 	dec a			;67dc
 	jp nz,L_67DC		;67dd
-	add ix,ix		;67e0
-	neg		;67e2
-	ld a,0c0h		;67e4
+	add ix,ix		;67e0   ; relleno: iguala los ciclos
+	neg		;67e2   ; relleno: iguala los ciclos
+	ld a,0c0h		;67e4   ; hasta el final del sample
 	cp h			;67e6
 	jp nz,L_67C3		;67e7
-	jp L_6EAD		;67ea
+	jp final_del_sample		;67ea
 L_67ED:
-	ld a,(hl)			;67ed
-	ld (04000h),a		;67ee
+	ld a,(hl)			;67ed   ; la muestra...
+	ld (04000h),a		;67ee   ; ...al DAC
 	inc hl			;67f1
-	ld a,d			;67f2
+	ld a,d			;67f2   ; el retardo D
 L_67F3:
 	dec a			;67f3
 	jp nz,L_67F3		;67f4
-	add ix,ix		;67f7
-	cp 000h		;67f9
-	nop			;67fb
-	ld a,l			;67fc
+	add ix,ix		;67f7   ; relleno: iguala los ciclos
+	cp 000h		;67f9   ; relleno: iguala los ciclos
+	nop			;67fb   ; relleno: iguala los ciclos
+	ld a,l			;67fc   ; hasta acabar la pagina
 	or a			;67fd
 	jp nz,L_67ED		;67fe
 L_6801:
-	ld a,(hl)			;6801
-	ld (04000h),a		;6802
+	ld a,(hl)			;6801   ; la muestra...
+	ld (04000h),a		;6802   ; ...al DAC
 	inc hl			;6805
-	ld a,d			;6806
+	ld a,d			;6806   ; el retardo D
 L_6807:
 	dec a			;6807
 	jp nz,L_6807		;6808
-	add ix,ix		;680b
-	inc ix		;680d
-	in a,(0aah)		;680f
+	add ix,ix		;680b   ; relleno: iguala los ciclos
+	inc ix		;680d   ; relleno: iguala los ciclos
+	in a,(0aah)		;680f   ; la fila siguiente...
 	inc a			;6811
 	ld e,a			;6812
-	ld a,(hl)			;6813
-	ld (04000h),a		;6814
+	ld a,(hl)			;6813   ; la muestra...
+	ld (04000h),a		;6814   ; ...al DAC
 	inc hl			;6817
-	ld a,d			;6818
+	ld a,d			;6818   ; el retardo D
 L_6819:
 	dec a			;6819
 	jp nz,L_6819		;681a
-	add ix,ix		;681d
-	cp 000h		;681f
+	add ix,ix		;681d   ; relleno: iguala los ciclos
+	cp 000h		;681f   ; relleno: iguala los ciclos
 	ld a,e			;6821
-	and 0f7h		;6822
+	and 0f7h		;6822   ; ...de la 0 a la 7
 	out (0aah),a		;6824
-	ld a,(hl)			;6826
-	ld (04000h),a		;6827
+	ld a,(hl)			;6826   ; la muestra...
+	ld (04000h),a		;6827   ; ...al DAC
 	inc hl			;682a
-	ld a,d			;682b
+	ld a,d			;682b   ; el retardo D
 L_682C:
 	dec a			;682c
 	jp nz,L_682C		;682d
-	add ix,ix		;6830
-	nop			;6832
-	in a,(0a9h)		;6833
+	add ix,ix		;6830   ; relleno: iguala los ciclos
+	nop			;6832   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6833   ; alguna tecla en esta fila?
 	inc a			;6835
-	jp nz,L_6EA2		;6836
-	ld a,(hl)			;6839
-	ld (04000h),a		;683a
+	jp nz,otra_nota_sin_bucle		;6836
+	ld a,(hl)			;6839   ; la muestra...
+	ld (04000h),a		;683a   ; ...al DAC
 	inc hl			;683d
-	ld a,d			;683e
+	ld a,d			;683e   ; el retardo D
 L_683F:
 	dec a			;683f
 	jp nz,L_683F		;6840
-	add ix,ix		;6843
-	neg		;6845
-	ld a,0c0h		;6847
+	add ix,ix		;6843   ; relleno: iguala los ciclos
+	neg		;6845   ; relleno: iguala los ciclos
+	ld a,0c0h		;6847   ; hasta el final del sample
 	cp h			;6849
 	jp nz,L_6801		;684a
-	jp L_6E9B		;684d
-L_6850:
-	dec d			;6850
+	jp fin_de_nota_sin_bucle		;684d
+sin_bucle_03:		; rutina 3 de 0x6709: como 0x6743, con otro relleno de ciclos
+	dec d			;6850   ; D - 1 para esta rutina
 L_6851:
-	ld a,(hl)			;6851
-	ld (04000h),a		;6852
+	ld a,(hl)			;6851   ; la muestra...
+	ld (04000h),a		;6852   ; ...al DAC
 	inc hl			;6855
-	ld a,d			;6856
+	ld a,d			;6856   ; el retardo D
 L_6857:
 	dec a			;6857
 	jp nz,L_6857		;6858
-	neg		;685b
-	neg		;685d
-	nop			;685f
-	in a,(0a9h)		;6860
-	and c			;6862
+	neg		;685b   ; relleno: iguala los ciclos
+	neg		;685d   ; relleno: iguala los ciclos
+	nop			;685f   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6860   ; la fila de la tecla:
+	and c			;6862   ; su bit a 1, suelta
 	jp nz,L_687F		;6863
-	ld a,(hl)			;6866
-	ld (04000h),a		;6867
+	ld a,(hl)			;6866   ; la muestra...
+	ld (04000h),a		;6867   ; ...al DAC
 	inc hl			;686a
-	ld a,d			;686b
+	ld a,d			;686b   ; el retardo D
 L_686C:
 	dec a			;686c
 	jp nz,L_686C		;686d
-	neg		;6870
-	neg		;6872
-	neg		;6874
-	ld a,0c0h		;6876
+	neg		;6870   ; relleno: iguala los ciclos
+	neg		;6872   ; relleno: iguala los ciclos
+	neg		;6874   ; relleno: iguala los ciclos
+	ld a,0c0h		;6876   ; hasta el final del sample
 	cp h			;6878
 	jp nz,L_6851		;6879
-	jp L_6EAD		;687c
+	jp final_del_sample		;687c
 L_687F:
-	ld a,(hl)			;687f
-	ld (04000h),a		;6880
+	ld a,(hl)			;687f   ; la muestra...
+	ld (04000h),a		;6880   ; ...al DAC
 	inc hl			;6883
-	ld a,d			;6884
+	ld a,d			;6884   ; el retardo D
 L_6885:
 	dec a			;6885
 	jp nz,L_6885		;6886
-	neg		;6889
-	neg		;688b
-	cp 000h		;688d
-	nop			;688f
-	ld a,l			;6890
+	neg		;6889   ; relleno: iguala los ciclos
+	neg		;688b   ; relleno: iguala los ciclos
+	cp 000h		;688d   ; relleno: iguala los ciclos
+	nop			;688f   ; relleno: iguala los ciclos
+	ld a,l			;6890   ; hasta acabar la pagina
 	or a			;6891
 	jp nz,L_687F		;6892
 L_6895:
-	ld a,(hl)			;6895
-	ld (04000h),a		;6896
+	ld a,(hl)			;6895   ; la muestra...
+	ld (04000h),a		;6896   ; ...al DAC
 	inc hl			;6899
-	ld a,d			;689a
+	ld a,d			;689a   ; el retardo D
 L_689B:
 	dec a			;689b
 	jp nz,L_689B		;689c
-	neg		;689f
-	neg		;68a1
-	inc ix		;68a3
-	in a,(0aah)		;68a5
+	neg		;689f   ; relleno: iguala los ciclos
+	neg		;68a1   ; relleno: iguala los ciclos
+	inc ix		;68a3   ; relleno: iguala los ciclos
+	in a,(0aah)		;68a5   ; la fila siguiente...
 	inc a			;68a7
 	ld e,a			;68a8
-	ld a,(hl)			;68a9
-	ld (04000h),a		;68aa
+	ld a,(hl)			;68a9   ; la muestra...
+	ld (04000h),a		;68aa   ; ...al DAC
 	inc hl			;68ad
-	ld a,d			;68ae
+	ld a,d			;68ae   ; el retardo D
 L_68AF:
 	dec a			;68af
 	jp nz,L_68AF		;68b0
-	neg		;68b3
-	neg		;68b5
-	cp 000h		;68b7
+	neg		;68b3   ; relleno: iguala los ciclos
+	neg		;68b5   ; relleno: iguala los ciclos
+	cp 000h		;68b7   ; relleno: iguala los ciclos
 	ld a,e			;68b9
-	and 0f7h		;68ba
+	and 0f7h		;68ba   ; ...de la 0 a la 7
 	out (0aah),a		;68bc
-	ld a,(hl)			;68be
-	ld (04000h),a		;68bf
+	ld a,(hl)			;68be   ; la muestra...
+	ld (04000h),a		;68bf   ; ...al DAC
 	inc hl			;68c2
-	ld a,d			;68c3
+	ld a,d			;68c3   ; el retardo D
 L_68C4:
 	dec a			;68c4
 	jp nz,L_68C4		;68c5
-	neg		;68c8
-	neg		;68ca
-	nop			;68cc
-	in a,(0a9h)		;68cd
+	neg		;68c8   ; relleno: iguala los ciclos
+	neg		;68ca   ; relleno: iguala los ciclos
+	nop			;68cc   ; relleno: iguala los ciclos
+	in a,(0a9h)		;68cd   ; alguna tecla en esta fila?
 	inc a			;68cf
-	jp nz,L_6EA2		;68d0
-	ld a,(hl)			;68d3
-	ld (04000h),a		;68d4
+	jp nz,otra_nota_sin_bucle		;68d0
+	ld a,(hl)			;68d3   ; la muestra...
+	ld (04000h),a		;68d4   ; ...al DAC
 	inc hl			;68d7
-	ld a,d			;68d8
+	ld a,d			;68d8   ; el retardo D
 L_68D9:
 	dec a			;68d9
 	jp nz,L_68D9		;68da
-	neg		;68dd
-	neg		;68df
-	neg		;68e1
-	ld a,0c0h		;68e3
+	neg		;68dd   ; relleno: iguala los ciclos
+	neg		;68df   ; relleno: iguala los ciclos
+	neg		;68e1   ; relleno: iguala los ciclos
+	ld a,0c0h		;68e3   ; hasta el final del sample
 	cp h			;68e5
 	jp nz,L_6895		;68e6
-	jp L_6E9B		;68e9
-L_68EC:
-	dec d			;68ec
+	jp fin_de_nota_sin_bucle		;68e9
+sin_bucle_04:		; rutina 4 de 0x6709: como 0x6743, con otro relleno de ciclos
+	dec d			;68ec   ; D - 1 para esta rutina
 L_68ED:
-	ld a,(hl)			;68ed
-	ld (04000h),a		;68ee
+	ld a,(hl)			;68ed   ; la muestra...
+	ld (04000h),a		;68ee   ; ...al DAC
 	inc hl			;68f1
-	ld a,d			;68f2
+	ld a,d			;68f2   ; el retardo D
 L_68F3:
 	dec a			;68f3
 	jp nz,L_68F3		;68f4
-	inc ix		;68f7
-	cp 000h		;68f9
-	nop			;68fb
-	in a,(0a9h)		;68fc
-	and c			;68fe
+	inc ix		;68f7   ; relleno: iguala los ciclos
+	cp 000h		;68f9   ; relleno: iguala los ciclos
+	nop			;68fb   ; relleno: iguala los ciclos
+	in a,(0a9h)		;68fc   ; la fila de la tecla:
+	and c			;68fe   ; su bit a 1, suelta
 	jp nz,L_691B		;68ff
-	ld a,(hl)			;6902
-	ld (04000h),a		;6903
+	ld a,(hl)			;6902   ; la muestra...
+	ld (04000h),a		;6903   ; ...al DAC
 	inc hl			;6906
-	ld a,d			;6907
+	ld a,d			;6907   ; el retardo D
 L_6908:
 	dec a			;6908
 	jp nz,L_6908		;6909
-	inc ix		;690c
-	cp 000h		;690e
-	neg		;6910
-	ld a,0c0h		;6912
+	inc ix		;690c   ; relleno: iguala los ciclos
+	cp 000h		;690e   ; relleno: iguala los ciclos
+	neg		;6910   ; relleno: iguala los ciclos
+	ld a,0c0h		;6912   ; hasta el final del sample
 	cp h			;6914
 	jp nz,L_68ED		;6915
-	jp L_6EAD		;6918
+	jp final_del_sample		;6918
 L_691B:
-	ld a,(hl)			;691b
-	ld (04000h),a		;691c
+	ld a,(hl)			;691b   ; la muestra...
+	ld (04000h),a		;691c   ; ...al DAC
 	inc hl			;691f
-	ld a,d			;6920
+	ld a,d			;6920   ; el retardo D
 L_6921:
 	dec a			;6921
 	jp nz,L_6921		;6922
-	inc ix		;6925
-	cp 000h		;6927
-	cp 000h		;6929
-	nop			;692b
-	ld a,l			;692c
+	inc ix		;6925   ; relleno: iguala los ciclos
+	cp 000h		;6927   ; relleno: iguala los ciclos
+	cp 000h		;6929   ; relleno: iguala los ciclos
+	nop			;692b   ; relleno: iguala los ciclos
+	ld a,l			;692c   ; hasta acabar la pagina
 	or a			;692d
 	jp nz,L_691B		;692e
 L_6931:
-	ld a,(hl)			;6931
-	ld (04000h),a		;6932
+	ld a,(hl)			;6931   ; la muestra...
+	ld (04000h),a		;6932   ; ...al DAC
 	inc hl			;6935
-	ld a,d			;6936
+	ld a,d			;6936   ; el retardo D
 L_6937:
 	dec a			;6937
 	jp nz,L_6937		;6938
-	inc ix		;693b
-	cp 000h		;693d
-	inc ix		;693f
-	in a,(0aah)		;6941
+	inc ix		;693b   ; relleno: iguala los ciclos
+	cp 000h		;693d   ; relleno: iguala los ciclos
+	inc ix		;693f   ; relleno: iguala los ciclos
+	in a,(0aah)		;6941   ; la fila siguiente...
 	inc a			;6943
 	ld e,a			;6944
-	ld a,(hl)			;6945
-	ld (04000h),a		;6946
+	ld a,(hl)			;6945   ; la muestra...
+	ld (04000h),a		;6946   ; ...al DAC
 	inc hl			;6949
-	ld a,d			;694a
+	ld a,d			;694a   ; el retardo D
 L_694B:
 	dec a			;694b
 	jp nz,L_694B		;694c
-	inc ix		;694f
-	cp 000h		;6951
-	cp 000h		;6953
+	inc ix		;694f   ; relleno: iguala los ciclos
+	cp 000h		;6951   ; relleno: iguala los ciclos
+	cp 000h		;6953   ; relleno: iguala los ciclos
 	ld a,e			;6955
-	and 0f7h		;6956
+	and 0f7h		;6956   ; ...de la 0 a la 7
 	out (0aah),a		;6958
-	ld a,(hl)			;695a
-	ld (04000h),a		;695b
+	ld a,(hl)			;695a   ; la muestra...
+	ld (04000h),a		;695b   ; ...al DAC
 	inc hl			;695e
-	ld a,d			;695f
+	ld a,d			;695f   ; el retardo D
 L_6960:
 	dec a			;6960
 	jp nz,L_6960		;6961
-	inc ix		;6964
-	cp 000h		;6966
-	nop			;6968
-	in a,(0a9h)		;6969
+	inc ix		;6964   ; relleno: iguala los ciclos
+	cp 000h		;6966   ; relleno: iguala los ciclos
+	nop			;6968   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6969   ; alguna tecla en esta fila?
 	inc a			;696b
-	jp nz,L_6EA2		;696c
-	ld a,(hl)			;696f
-	ld (04000h),a		;6970
+	jp nz,otra_nota_sin_bucle		;696c
+	ld a,(hl)			;696f   ; la muestra...
+	ld (04000h),a		;6970   ; ...al DAC
 	inc hl			;6973
-	ld a,d			;6974
+	ld a,d			;6974   ; el retardo D
 L_6975:
 	dec a			;6975
 	jp nz,L_6975		;6976
-	inc ix		;6979
-	cp 000h		;697b
-	neg		;697d
-	ld a,0c0h		;697f
+	inc ix		;6979   ; relleno: iguala los ciclos
+	cp 000h		;697b   ; relleno: iguala los ciclos
+	neg		;697d   ; relleno: iguala los ciclos
+	ld a,0c0h		;697f   ; hasta el final del sample
 	cp h			;6981
 	jp nz,L_6931		;6982
-	jp L_6E9B		;6985
-L_6988:
-	ld a,(hl)			;6988
-	ld (04000h),a		;6989
+	jp fin_de_nota_sin_bucle		;6985
+sin_bucle_05:		; rutina 5 de 0x6709: como 0x6743, con otro relleno de ciclos
+	ld a,(hl)			;6988   ; la muestra...
+	ld (04000h),a		;6989   ; ...al DAC
 	inc hl			;698c
-	ld a,d			;698d
+	ld a,d			;698d   ; el retardo D
 L_698E:
 	dec a			;698e
 	jp nz,L_698E		;698f
-	nop			;6992
-	nop			;6993
-	in a,(0a9h)		;6994
-	and c			;6996
+	nop			;6992   ; relleno: iguala los ciclos
+	nop			;6993   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6994   ; la fila de la tecla:
+	and c			;6996   ; su bit a 1, suelta
 	jp nz,L_69B0		;6997
-	ld a,(hl)			;699a
-	ld (04000h),a		;699b
+	ld a,(hl)			;699a   ; la muestra...
+	ld (04000h),a		;699b   ; ...al DAC
 	inc hl			;699e
-	ld a,d			;699f
+	ld a,d			;699f   ; el retardo D
 L_69A0:
 	dec a			;69a0
 	jp nz,L_69A0		;69a1
-	nop			;69a4
-	neg		;69a5
-	ld a,0c0h		;69a7
+	nop			;69a4   ; relleno: iguala los ciclos
+	neg		;69a5   ; relleno: iguala los ciclos
+	ld a,0c0h		;69a7   ; hasta el final del sample
 	cp h			;69a9
-	jp nz,L_6988		;69aa
-	jp L_6EAD		;69ad
+	jp nz,sin_bucle_05		;69aa
+	jp final_del_sample		;69ad
 L_69B0:
-	ld a,(hl)			;69b0
-	ld (04000h),a		;69b1
+	ld a,(hl)			;69b0   ; la muestra...
+	ld (04000h),a		;69b1   ; ...al DAC
 	inc hl			;69b4
-	ld a,d			;69b5
+	ld a,d			;69b5   ; el retardo D
 L_69B6:
 	dec a			;69b6
 	jp nz,L_69B6		;69b7
-	nop			;69ba
-	cp 000h		;69bb
-	nop			;69bd
-	ld a,l			;69be
+	nop			;69ba   ; relleno: iguala los ciclos
+	cp 000h		;69bb   ; relleno: iguala los ciclos
+	nop			;69bd   ; relleno: iguala los ciclos
+	ld a,l			;69be   ; hasta acabar la pagina
 	or a			;69bf
 	jp nz,L_69B0		;69c0
 L_69C3:
-	ld a,(hl)			;69c3
-	ld (04000h),a		;69c4
+	ld a,(hl)			;69c3   ; la muestra...
+	ld (04000h),a		;69c4   ; ...al DAC
 	inc hl			;69c7
-	ld a,d			;69c8
+	ld a,d			;69c8   ; el retardo D
 L_69C9:
 	dec a			;69c9
 	jp nz,L_69C9		;69ca
-	nop			;69cd
-	inc ix		;69ce
-	in a,(0aah)		;69d0
+	nop			;69cd   ; relleno: iguala los ciclos
+	inc ix		;69ce   ; relleno: iguala los ciclos
+	in a,(0aah)		;69d0   ; la fila siguiente...
 	inc a			;69d2
 	ld e,a			;69d3
-	ld a,(hl)			;69d4
-	ld (04000h),a		;69d5
+	ld a,(hl)			;69d4   ; la muestra...
+	ld (04000h),a		;69d5   ; ...al DAC
 	inc hl			;69d8
-	ld a,d			;69d9
+	ld a,d			;69d9   ; el retardo D
 L_69DA:
 	dec a			;69da
 	jp nz,L_69DA		;69db
-	nop			;69de
-	cp 000h		;69df
+	nop			;69de   ; relleno: iguala los ciclos
+	cp 000h		;69df   ; relleno: iguala los ciclos
 	ld a,e			;69e1
-	and 0f7h		;69e2
+	and 0f7h		;69e2   ; ...de la 0 a la 7
 	out (0aah),a		;69e4
-	ld a,(hl)			;69e6
-	ld (04000h),a		;69e7
+	ld a,(hl)			;69e6   ; la muestra...
+	ld (04000h),a		;69e7   ; ...al DAC
 	inc hl			;69ea
-	ld a,d			;69eb
+	ld a,d			;69eb   ; el retardo D
 L_69EC:
 	dec a			;69ec
 	jp nz,L_69EC		;69ed
-	nop			;69f0
-	nop			;69f1
-	in a,(0a9h)		;69f2
+	nop			;69f0   ; relleno: iguala los ciclos
+	nop			;69f1   ; relleno: iguala los ciclos
+	in a,(0a9h)		;69f2   ; alguna tecla en esta fila?
 	inc a			;69f4
-	jp nz,L_6EA2		;69f5
-	ld a,(hl)			;69f8
-	ld (04000h),a		;69f9
+	jp nz,otra_nota_sin_bucle		;69f5
+	ld a,(hl)			;69f8   ; la muestra...
+	ld (04000h),a		;69f9   ; ...al DAC
 	inc hl			;69fc
-	ld a,d			;69fd
+	ld a,d			;69fd   ; el retardo D
 L_69FE:
 	dec a			;69fe
 	jp nz,L_69FE		;69ff
-	nop			;6a02
-	neg		;6a03
-	ld a,0c0h		;6a05
+	nop			;6a02   ; relleno: iguala los ciclos
+	neg		;6a03   ; relleno: iguala los ciclos
+	ld a,0c0h		;6a05   ; hasta el final del sample
 	cp h			;6a07
 	jp nz,L_69C3		;6a08
-	jp L_6E9B		;6a0b
-L_6A0E:
-	dec d			;6a0e
+	jp fin_de_nota_sin_bucle		;6a0b
+sin_bucle_06:		; rutina 6 de 0x6709: como 0x6743, con otro relleno de ciclos
+	dec d			;6a0e   ; D - 1 para esta rutina
 L_6A0F:
-	ld a,(hl)			;6a0f
-	ld (04000h),a		;6a10
+	ld a,(hl)			;6a0f   ; la muestra...
+	ld (04000h),a		;6a10   ; ...al DAC
 	inc hl			;6a13
-	ld a,d			;6a14
+	ld a,d			;6a14   ; el retardo D
 L_6A15:
 	dec a			;6a15
 	jp nz,L_6A15		;6a16
 	add a,(ix+000h)		;6a19
-	nop			;6a1c
-	in a,(0a9h)		;6a1d
-	and c			;6a1f
+	nop			;6a1c   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6a1d   ; la fila de la tecla:
+	and c			;6a1f   ; su bit a 1, suelta
 	jp nz,L_6A3B		;6a20
-	ld a,(hl)			;6a23
-	ld (04000h),a		;6a24
+	ld a,(hl)			;6a23   ; la muestra...
+	ld (04000h),a		;6a24   ; ...al DAC
 	inc hl			;6a27
-	ld a,d			;6a28
+	ld a,d			;6a28   ; el retardo D
 L_6A29:
 	dec a			;6a29
 	jp nz,L_6A29		;6a2a
 	add a,(ix+000h)		;6a2d
-	neg		;6a30
-	ld a,0c0h		;6a32
+	neg		;6a30   ; relleno: iguala los ciclos
+	ld a,0c0h		;6a32   ; hasta el final del sample
 	cp h			;6a34
 	jp nz,L_6A0F		;6a35
-	jp L_6EAD		;6a38
+	jp final_del_sample		;6a38
 L_6A3B:
-	ld a,(hl)			;6a3b
-	ld (04000h),a		;6a3c
+	ld a,(hl)			;6a3b   ; la muestra...
+	ld (04000h),a		;6a3c   ; ...al DAC
 	inc hl			;6a3f
-	ld a,d			;6a40
+	ld a,d			;6a40   ; el retardo D
 L_6A41:
 	dec a			;6a41
 	jp nz,L_6A41		;6a42
 	add a,(ix+000h)		;6a45
-	cp 000h		;6a48
-	nop			;6a4a
-	ld a,l			;6a4b
+	cp 000h		;6a48   ; relleno: iguala los ciclos
+	nop			;6a4a   ; relleno: iguala los ciclos
+	ld a,l			;6a4b   ; hasta acabar la pagina
 	or a			;6a4c
 	jp nz,L_6A3B		;6a4d
 L_6A50:
-	ld a,(hl)			;6a50
-	ld (04000h),a		;6a51
+	ld a,(hl)			;6a50   ; la muestra...
+	ld (04000h),a		;6a51   ; ...al DAC
 	inc hl			;6a54
-	ld a,d			;6a55
+	ld a,d			;6a55   ; el retardo D
 L_6A56:
 	dec a			;6a56
 	jp nz,L_6A56		;6a57
 	add a,(ix+000h)		;6a5a
-	inc ix		;6a5d
-	in a,(0aah)		;6a5f
+	inc ix		;6a5d   ; relleno: iguala los ciclos
+	in a,(0aah)		;6a5f   ; la fila siguiente...
 	inc a			;6a61
 	ld e,a			;6a62
-	ld a,(hl)			;6a63
-	ld (04000h),a		;6a64
+	ld a,(hl)			;6a63   ; la muestra...
+	ld (04000h),a		;6a64   ; ...al DAC
 	inc hl			;6a67
-	ld a,d			;6a68
+	ld a,d			;6a68   ; el retardo D
 L_6A69:
 	dec a			;6a69
 	jp nz,L_6A69		;6a6a
 	add a,(ix+000h)		;6a6d
-	cp 000h		;6a70
+	cp 000h		;6a70   ; relleno: iguala los ciclos
 	ld a,e			;6a72
-	and 0f7h		;6a73
+	and 0f7h		;6a73   ; ...de la 0 a la 7
 	out (0aah),a		;6a75
-	ld a,(hl)			;6a77
-	ld (04000h),a		;6a78
+	ld a,(hl)			;6a77   ; la muestra...
+	ld (04000h),a		;6a78   ; ...al DAC
 	inc hl			;6a7b
-	ld a,d			;6a7c
+	ld a,d			;6a7c   ; el retardo D
 L_6A7D:
 	dec a			;6a7d
 	jp nz,L_6A7D		;6a7e
 	add a,(ix+000h)		;6a81
-	nop			;6a84
-	in a,(0a9h)		;6a85
+	nop			;6a84   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6a85   ; alguna tecla en esta fila?
 	inc a			;6a87
-	jp nz,L_6EA2		;6a88
-	ld a,(hl)			;6a8b
-	ld (04000h),a		;6a8c
+	jp nz,otra_nota_sin_bucle		;6a88
+	ld a,(hl)			;6a8b   ; la muestra...
+	ld (04000h),a		;6a8c   ; ...al DAC
 	inc hl			;6a8f
-	ld a,d			;6a90
+	ld a,d			;6a90   ; el retardo D
 L_6A91:
 	dec a			;6a91
 	jp nz,L_6A91		;6a92
 	add a,(ix+000h)		;6a95
-	neg		;6a98
-	ld a,0c0h		;6a9a
+	neg		;6a98   ; relleno: iguala los ciclos
+	ld a,0c0h		;6a9a   ; hasta el final del sample
 	cp h			;6a9c
 	jp nz,L_6A50		;6a9d
-	jp L_6E9B		;6aa0
-L_6AA3:
-	dec d			;6aa3
+	jp fin_de_nota_sin_bucle		;6aa0
+sin_bucle_07:		; rutina 7 de 0x6709: como 0x6743, con otro relleno de ciclos
+	dec d			;6aa3   ; D - 1 para esta rutina
 L_6AA4:
-	ld a,(hl)			;6aa4
-	ld (04000h),a		;6aa5
+	ld a,(hl)			;6aa4   ; la muestra...
+	ld (04000h),a		;6aa5   ; ...al DAC
 	inc hl			;6aa8
-	ld a,d			;6aa9
+	ld a,d			;6aa9   ; el retardo D
 L_6AAA:
 	dec a			;6aaa
 	jp nz,L_6AAA		;6aab
-	inc ix		;6aae
-	inc ix		;6ab0
-	nop			;6ab2
-	in a,(0a9h)		;6ab3
-	and c			;6ab5
+	inc ix		;6aae   ; relleno: iguala los ciclos
+	inc ix		;6ab0   ; relleno: iguala los ciclos
+	nop			;6ab2   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6ab3   ; la fila de la tecla:
+	and c			;6ab5   ; su bit a 1, suelta
 	jp nz,L_6AD2		;6ab6
-	ld a,(hl)			;6ab9
-	ld (04000h),a		;6aba
+	ld a,(hl)			;6ab9   ; la muestra...
+	ld (04000h),a		;6aba   ; ...al DAC
 	inc hl			;6abd
-	ld a,d			;6abe
+	ld a,d			;6abe   ; el retardo D
 L_6ABF:
 	dec a			;6abf
 	jp nz,L_6ABF		;6ac0
-	inc ix		;6ac3
-	inc ix		;6ac5
-	neg		;6ac7
-	ld a,0c0h		;6ac9
+	inc ix		;6ac3   ; relleno: iguala los ciclos
+	inc ix		;6ac5   ; relleno: iguala los ciclos
+	neg		;6ac7   ; relleno: iguala los ciclos
+	ld a,0c0h		;6ac9   ; hasta el final del sample
 	cp h			;6acb
 	jp nz,L_6AA4		;6acc
-	jp L_6EAD		;6acf
+	jp final_del_sample		;6acf
 L_6AD2:
-	ld a,(hl)			;6ad2
-	ld (04000h),a		;6ad3
+	ld a,(hl)			;6ad2   ; la muestra...
+	ld (04000h),a		;6ad3   ; ...al DAC
 	inc hl			;6ad6
-	ld a,d			;6ad7
+	ld a,d			;6ad7   ; el retardo D
 L_6AD8:
 	dec a			;6ad8
 	jp nz,L_6AD8		;6ad9
-	inc ix		;6adc
-	inc ix		;6ade
-	cp 000h		;6ae0
-	nop			;6ae2
-	ld a,l			;6ae3
+	inc ix		;6adc   ; relleno: iguala los ciclos
+	inc ix		;6ade   ; relleno: iguala los ciclos
+	cp 000h		;6ae0   ; relleno: iguala los ciclos
+	nop			;6ae2   ; relleno: iguala los ciclos
+	ld a,l			;6ae3   ; hasta acabar la pagina
 	or a			;6ae4
 	jp nz,L_6AD2		;6ae5
 L_6AE8:
-	ld a,(hl)			;6ae8
-	ld (04000h),a		;6ae9
+	ld a,(hl)			;6ae8   ; la muestra...
+	ld (04000h),a		;6ae9   ; ...al DAC
 	inc hl			;6aec
-	ld a,d			;6aed
+	ld a,d			;6aed   ; el retardo D
 L_6AEE:
 	dec a			;6aee
 	jp nz,L_6AEE		;6aef
-	inc ix		;6af2
-	inc ix		;6af4
-	inc ix		;6af6
-	in a,(0aah)		;6af8
+	inc ix		;6af2   ; relleno: iguala los ciclos
+	inc ix		;6af4   ; relleno: iguala los ciclos
+	inc ix		;6af6   ; relleno: iguala los ciclos
+	in a,(0aah)		;6af8   ; la fila siguiente...
 	inc a			;6afa
 	ld e,a			;6afb
-	ld a,(hl)			;6afc
-	ld (04000h),a		;6afd
+	ld a,(hl)			;6afc   ; la muestra...
+	ld (04000h),a		;6afd   ; ...al DAC
 	inc hl			;6b00
-	ld a,d			;6b01
+	ld a,d			;6b01   ; el retardo D
 L_6B02:
 	dec a			;6b02
 	jp nz,L_6B02		;6b03
-	inc ix		;6b06
-	inc ix		;6b08
-	cp 000h		;6b0a
+	inc ix		;6b06   ; relleno: iguala los ciclos
+	inc ix		;6b08   ; relleno: iguala los ciclos
+	cp 000h		;6b0a   ; relleno: iguala los ciclos
 	ld a,e			;6b0c
-	and 0f7h		;6b0d
+	and 0f7h		;6b0d   ; ...de la 0 a la 7
 	out (0aah),a		;6b0f
-	ld a,(hl)			;6b11
-	ld (04000h),a		;6b12
+	ld a,(hl)			;6b11   ; la muestra...
+	ld (04000h),a		;6b12   ; ...al DAC
 	inc hl			;6b15
-	ld a,d			;6b16
+	ld a,d			;6b16   ; el retardo D
 L_6B17:
 	dec a			;6b17
 	jp nz,L_6B17		;6b18
-	inc ix		;6b1b
-	inc ix		;6b1d
-	nop			;6b1f
-	in a,(0a9h)		;6b20
+	inc ix		;6b1b   ; relleno: iguala los ciclos
+	inc ix		;6b1d   ; relleno: iguala los ciclos
+	nop			;6b1f   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6b20   ; alguna tecla en esta fila?
 	inc a			;6b22
-	jp nz,L_6EA2		;6b23
-	ld a,(hl)			;6b26
-	ld (04000h),a		;6b27
+	jp nz,otra_nota_sin_bucle		;6b23
+	ld a,(hl)			;6b26   ; la muestra...
+	ld (04000h),a		;6b27   ; ...al DAC
 	inc hl			;6b2a
-	ld a,d			;6b2b
+	ld a,d			;6b2b   ; el retardo D
 L_6B2C:
 	dec a			;6b2c
 	jp nz,L_6B2C		;6b2d
-	inc ix		;6b30
-	inc ix		;6b32
-	neg		;6b34
-	ld a,0c0h		;6b36
+	inc ix		;6b30   ; relleno: iguala los ciclos
+	inc ix		;6b32   ; relleno: iguala los ciclos
+	neg		;6b34   ; relleno: iguala los ciclos
+	ld a,0c0h		;6b36   ; hasta el final del sample
 	cp h			;6b38
 	jp nz,L_6AE8		;6b39
-	jp L_6E9B		;6b3c
-L_6B3F:
-	ld a,(hl)			;6b3f
-	ld (04000h),a		;6b40
+	jp fin_de_nota_sin_bucle		;6b3c
+sin_bucle_08:		; rutina 8 de 0x6709: como 0x6743, con otro relleno de ciclos
+	ld a,(hl)			;6b3f   ; la muestra...
+	ld (04000h),a		;6b40   ; ...al DAC
 	inc hl			;6b43
-	ld a,d			;6b44
+	ld a,d			;6b44   ; el retardo D
 L_6B45:
 	dec a			;6b45
 	jp nz,L_6B45		;6b46
-	cp 000h		;6b49
-	nop			;6b4b
-	in a,(0a9h)		;6b4c
-	and c			;6b4e
+	cp 000h		;6b49   ; relleno: iguala los ciclos
+	nop			;6b4b   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6b4c   ; la fila de la tecla:
+	and c			;6b4e   ; su bit a 1, suelta
 	jp nz,L_6B69		;6b4f
-	ld a,(hl)			;6b52
-	ld (04000h),a		;6b53
+	ld a,(hl)			;6b52   ; la muestra...
+	ld (04000h),a		;6b53   ; ...al DAC
 	inc hl			;6b56
-	ld a,d			;6b57
+	ld a,d			;6b57   ; el retardo D
 L_6B58:
 	dec a			;6b58
 	jp nz,L_6B58		;6b59
-	cp 000h		;6b5c
-	neg		;6b5e
-	ld a,0c0h		;6b60
+	cp 000h		;6b5c   ; relleno: iguala los ciclos
+	neg		;6b5e   ; relleno: iguala los ciclos
+	ld a,0c0h		;6b60   ; hasta el final del sample
 	cp h			;6b62
-	jp nz,L_6B3F		;6b63
-	jp L_6EAD		;6b66
+	jp nz,sin_bucle_08		;6b63
+	jp final_del_sample		;6b66
 L_6B69:
-	ld a,(hl)			;6b69
-	ld (04000h),a		;6b6a
+	ld a,(hl)			;6b69   ; la muestra...
+	ld (04000h),a		;6b6a   ; ...al DAC
 	inc hl			;6b6d
-	ld a,d			;6b6e
+	ld a,d			;6b6e   ; el retardo D
 L_6B6F:
 	dec a			;6b6f
 	jp nz,L_6B6F		;6b70
-	cp 000h		;6b73
-	cp 000h		;6b75
-	nop			;6b77
-	ld a,l			;6b78
+	cp 000h		;6b73   ; relleno: iguala los ciclos
+	cp 000h		;6b75   ; relleno: iguala los ciclos
+	nop			;6b77   ; relleno: iguala los ciclos
+	ld a,l			;6b78   ; hasta acabar la pagina
 	or a			;6b79
 	jp nz,L_6B69		;6b7a
 L_6B7D:
-	ld a,(hl)			;6b7d
-	ld (04000h),a		;6b7e
+	ld a,(hl)			;6b7d   ; la muestra...
+	ld (04000h),a		;6b7e   ; ...al DAC
 	inc hl			;6b81
-	ld a,d			;6b82
+	ld a,d			;6b82   ; el retardo D
 L_6B83:
 	dec a			;6b83
 	jp nz,L_6B83		;6b84
-	cp 000h		;6b87
-	inc ix		;6b89
-	in a,(0aah)		;6b8b
+	cp 000h		;6b87   ; relleno: iguala los ciclos
+	inc ix		;6b89   ; relleno: iguala los ciclos
+	in a,(0aah)		;6b8b   ; la fila siguiente...
 	inc a			;6b8d
 	ld e,a			;6b8e
-	ld a,(hl)			;6b8f
-	ld (04000h),a		;6b90
+	ld a,(hl)			;6b8f   ; la muestra...
+	ld (04000h),a		;6b90   ; ...al DAC
 	inc hl			;6b93
-	ld a,d			;6b94
+	ld a,d			;6b94   ; el retardo D
 L_6B95:
 	dec a			;6b95
 	jp nz,L_6B95		;6b96
-	cp 000h		;6b99
-	cp 000h		;6b9b
+	cp 000h		;6b99   ; relleno: iguala los ciclos
+	cp 000h		;6b9b   ; relleno: iguala los ciclos
 	ld a,e			;6b9d
-	and 0f7h		;6b9e
+	and 0f7h		;6b9e   ; ...de la 0 a la 7
 	out (0aah),a		;6ba0
-	ld a,(hl)			;6ba2
-	ld (04000h),a		;6ba3
+	ld a,(hl)			;6ba2   ; la muestra...
+	ld (04000h),a		;6ba3   ; ...al DAC
 	inc hl			;6ba6
-	ld a,d			;6ba7
+	ld a,d			;6ba7   ; el retardo D
 L_6BA8:
 	dec a			;6ba8
 	jp nz,L_6BA8		;6ba9
-	cp 000h		;6bac
-	nop			;6bae
-	in a,(0a9h)		;6baf
+	cp 000h		;6bac   ; relleno: iguala los ciclos
+	nop			;6bae   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6baf   ; alguna tecla en esta fila?
 	inc a			;6bb1
-	jp nz,L_6EA2		;6bb2
-	ld a,(hl)			;6bb5
-	ld (04000h),a		;6bb6
+	jp nz,otra_nota_sin_bucle		;6bb2
+	ld a,(hl)			;6bb5   ; la muestra...
+	ld (04000h),a		;6bb6   ; ...al DAC
 	inc hl			;6bb9
-	ld a,d			;6bba
+	ld a,d			;6bba   ; el retardo D
 L_6BBB:
 	dec a			;6bbb
 	jp nz,L_6BBB		;6bbc
-	cp 000h		;6bbf
-	neg		;6bc1
-	ld a,0c0h		;6bc3
+	cp 000h		;6bbf   ; relleno: iguala los ciclos
+	neg		;6bc1   ; relleno: iguala los ciclos
+	ld a,0c0h		;6bc3   ; hasta el final del sample
 	cp h			;6bc5
 	jp nz,L_6B7D		;6bc6
-	jp L_6E9B		;6bc9
-L_6BCC:
-	ld a,(hl)			;6bcc
-	ld (04000h),a		;6bcd
+	jp fin_de_nota_sin_bucle		;6bc9
+sin_bucle_09:		; rutina 9 de 0x6709: como 0x6743, con otro relleno de ciclos
+	ld a,(hl)			;6bcc   ; la muestra...
+	ld (04000h),a		;6bcd   ; ...al DAC
 	inc hl			;6bd0
-	ld a,d			;6bd1
+	ld a,d			;6bd1   ; el retardo D
 L_6BD2:
 	dec a			;6bd2
 	jp nz,L_6BD2		;6bd3
-	neg		;6bd6
-	nop			;6bd8
-	in a,(0a9h)		;6bd9
-	and c			;6bdb
+	neg		;6bd6   ; relleno: iguala los ciclos
+	nop			;6bd8   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6bd9   ; la fila de la tecla:
+	and c			;6bdb   ; su bit a 1, suelta
 	jp nz,L_6BF6		;6bdc
-	ld a,(hl)			;6bdf
-	ld (04000h),a		;6be0
+	ld a,(hl)			;6bdf   ; la muestra...
+	ld (04000h),a		;6be0   ; ...al DAC
 	inc hl			;6be3
-	ld a,d			;6be4
+	ld a,d			;6be4   ; el retardo D
 L_6BE5:
 	dec a			;6be5
 	jp nz,L_6BE5		;6be6
-	neg		;6be9
-	neg		;6beb
-	ld a,0c0h		;6bed
+	neg		;6be9   ; relleno: iguala los ciclos
+	neg		;6beb   ; relleno: iguala los ciclos
+	ld a,0c0h		;6bed   ; hasta el final del sample
 	cp h			;6bef
-	jp nz,L_6BCC		;6bf0
-	jp L_6EAD		;6bf3
+	jp nz,sin_bucle_09		;6bf0
+	jp final_del_sample		;6bf3
 L_6BF6:
-	ld a,(hl)			;6bf6
-	ld (04000h),a		;6bf7
+	ld a,(hl)			;6bf6   ; la muestra...
+	ld (04000h),a		;6bf7   ; ...al DAC
 	inc hl			;6bfa
-	ld a,d			;6bfb
+	ld a,d			;6bfb   ; el retardo D
 L_6BFC:
 	dec a			;6bfc
 	jp nz,L_6BFC		;6bfd
-	neg		;6c00
-	cp 000h		;6c02
-	nop			;6c04
-	ld a,l			;6c05
+	neg		;6c00   ; relleno: iguala los ciclos
+	cp 000h		;6c02   ; relleno: iguala los ciclos
+	nop			;6c04   ; relleno: iguala los ciclos
+	ld a,l			;6c05   ; hasta acabar la pagina
 	or a			;6c06
 	jp nz,L_6BF6		;6c07
 L_6C0A:
-	ld a,(hl)			;6c0a
-	ld (04000h),a		;6c0b
+	ld a,(hl)			;6c0a   ; la muestra...
+	ld (04000h),a		;6c0b   ; ...al DAC
 	inc hl			;6c0e
-	ld a,d			;6c0f
+	ld a,d			;6c0f   ; el retardo D
 L_6C10:
 	dec a			;6c10
 	jp nz,L_6C10		;6c11
-	neg		;6c14
-	inc ix		;6c16
-	in a,(0aah)		;6c18
+	neg		;6c14   ; relleno: iguala los ciclos
+	inc ix		;6c16   ; relleno: iguala los ciclos
+	in a,(0aah)		;6c18   ; la fila siguiente...
 	inc a			;6c1a
 	ld e,a			;6c1b
-	ld a,(hl)			;6c1c
-	ld (04000h),a		;6c1d
+	ld a,(hl)			;6c1c   ; la muestra...
+	ld (04000h),a		;6c1d   ; ...al DAC
 	inc hl			;6c20
-	ld a,d			;6c21
+	ld a,d			;6c21   ; el retardo D
 L_6C22:
 	dec a			;6c22
 	jp nz,L_6C22		;6c23
-	neg		;6c26
-	cp 000h		;6c28
+	neg		;6c26   ; relleno: iguala los ciclos
+	cp 000h		;6c28   ; relleno: iguala los ciclos
 	ld a,e			;6c2a
-	and 0f7h		;6c2b
+	and 0f7h		;6c2b   ; ...de la 0 a la 7
 	out (0aah),a		;6c2d
-	ld a,(hl)			;6c2f
-	ld (04000h),a		;6c30
+	ld a,(hl)			;6c2f   ; la muestra...
+	ld (04000h),a		;6c30   ; ...al DAC
 	inc hl			;6c33
-	ld a,d			;6c34
+	ld a,d			;6c34   ; el retardo D
 L_6C35:
 	dec a			;6c35
 	jp nz,L_6C35		;6c36
-	neg		;6c39
-	nop			;6c3b
-	in a,(0a9h)		;6c3c
+	neg		;6c39   ; relleno: iguala los ciclos
+	nop			;6c3b   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6c3c   ; alguna tecla en esta fila?
 	inc a			;6c3e
-	jp nz,L_6EA2		;6c3f
-	ld a,(hl)			;6c42
-	ld (04000h),a		;6c43
+	jp nz,otra_nota_sin_bucle		;6c3f
+	ld a,(hl)			;6c42   ; la muestra...
+	ld (04000h),a		;6c43   ; ...al DAC
 	inc hl			;6c46
-	ld a,d			;6c47
+	ld a,d			;6c47   ; el retardo D
 L_6C48:
 	dec a			;6c48
 	jp nz,L_6C48		;6c49
-	neg		;6c4c
-	neg		;6c4e
-	ld a,0c0h		;6c50
+	neg		;6c4c   ; relleno: iguala los ciclos
+	neg		;6c4e   ; relleno: iguala los ciclos
+	ld a,0c0h		;6c50   ; hasta el final del sample
 	cp h			;6c52
 	jp nz,L_6C0A		;6c53
-	jp L_6E9B		;6c56
-L_6C59:
-	ld a,(hl)			;6c59
-	ld (04000h),a		;6c5a
+	jp fin_de_nota_sin_bucle		;6c56
+sin_bucle_10:		; rutina 10 de 0x6709: como 0x6743, con otro relleno de ciclos
+	ld a,(hl)			;6c59   ; la muestra...
+	ld (04000h),a		;6c5a   ; ...al DAC
 	inc hl			;6c5d
-	ld a,d			;6c5e
+	ld a,d			;6c5e   ; el retardo D
 L_6C5F:
 	dec a			;6c5f
 	jp nz,L_6C5F		;6c60
 	ld a,i		;6c63
-	nop			;6c65
-	in a,(0a9h)		;6c66
-	and c			;6c68
+	nop			;6c65   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6c66   ; la fila de la tecla:
+	and c			;6c68   ; su bit a 1, suelta
 	jp nz,L_6C83		;6c69
-	ld a,(hl)			;6c6c
-	ld (04000h),a		;6c6d
+	ld a,(hl)			;6c6c   ; la muestra...
+	ld (04000h),a		;6c6d   ; ...al DAC
 	inc hl			;6c70
-	ld a,d			;6c71
+	ld a,d			;6c71   ; el retardo D
 L_6C72:
 	dec a			;6c72
 	jp nz,L_6C72		;6c73
 	ld a,i		;6c76
-	neg		;6c78
-	ld a,0c0h		;6c7a
+	neg		;6c78   ; relleno: iguala los ciclos
+	ld a,0c0h		;6c7a   ; hasta el final del sample
 	cp h			;6c7c
-	jp nz,L_6C59		;6c7d
-	jp L_6EAD		;6c80
+	jp nz,sin_bucle_10		;6c7d
+	jp final_del_sample		;6c80
 L_6C83:
-	ld a,(hl)			;6c83
-	ld (04000h),a		;6c84
+	ld a,(hl)			;6c83   ; la muestra...
+	ld (04000h),a		;6c84   ; ...al DAC
 	inc hl			;6c87
-	ld a,d			;6c88
+	ld a,d			;6c88   ; el retardo D
 L_6C89:
 	dec a			;6c89
 	jp nz,L_6C89		;6c8a
 	ld a,i		;6c8d
-	cp 000h		;6c8f
-	nop			;6c91
-	ld a,l			;6c92
+	cp 000h		;6c8f   ; relleno: iguala los ciclos
+	nop			;6c91   ; relleno: iguala los ciclos
+	ld a,l			;6c92   ; hasta acabar la pagina
 	or a			;6c93
 	jp nz,L_6C83		;6c94
 L_6C97:
-	ld a,(hl)			;6c97
-	ld (04000h),a		;6c98
+	ld a,(hl)			;6c97   ; la muestra...
+	ld (04000h),a		;6c98   ; ...al DAC
 	inc hl			;6c9b
-	ld a,d			;6c9c
+	ld a,d			;6c9c   ; el retardo D
 L_6C9D:
 	dec a			;6c9d
 	jp nz,L_6C9D		;6c9e
 	ld a,i		;6ca1
-	inc ix		;6ca3
-	in a,(0aah)		;6ca5
+	inc ix		;6ca3   ; relleno: iguala los ciclos
+	in a,(0aah)		;6ca5   ; la fila siguiente...
 	inc a			;6ca7
 	ld e,a			;6ca8
-	ld a,(hl)			;6ca9
-	ld (04000h),a		;6caa
+	ld a,(hl)			;6ca9   ; la muestra...
+	ld (04000h),a		;6caa   ; ...al DAC
 	inc hl			;6cad
-	ld a,d			;6cae
+	ld a,d			;6cae   ; el retardo D
 L_6CAF:
 	dec a			;6caf
 	jp nz,L_6CAF		;6cb0
 	ld a,i		;6cb3
-	cp 000h		;6cb5
+	cp 000h		;6cb5   ; relleno: iguala los ciclos
 	ld a,e			;6cb7
-	and 0f7h		;6cb8
+	and 0f7h		;6cb8   ; ...de la 0 a la 7
 	out (0aah),a		;6cba
-	ld a,(hl)			;6cbc
-	ld (04000h),a		;6cbd
+	ld a,(hl)			;6cbc   ; la muestra...
+	ld (04000h),a		;6cbd   ; ...al DAC
 	inc hl			;6cc0
-	ld a,d			;6cc1
+	ld a,d			;6cc1   ; el retardo D
 L_6CC2:
 	dec a			;6cc2
 	jp nz,L_6CC2		;6cc3
 	ld a,i		;6cc6
-	nop			;6cc8
-	in a,(0a9h)		;6cc9
+	nop			;6cc8   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6cc9   ; alguna tecla en esta fila?
 	inc a			;6ccb
-	jp nz,L_6EA2		;6ccc
-	ld a,(hl)			;6ccf
-	ld (04000h),a		;6cd0
+	jp nz,otra_nota_sin_bucle		;6ccc
+	ld a,(hl)			;6ccf   ; la muestra...
+	ld (04000h),a		;6cd0   ; ...al DAC
 	inc hl			;6cd3
-	ld a,d			;6cd4
+	ld a,d			;6cd4   ; el retardo D
 L_6CD5:
 	dec a			;6cd5
 	jp nz,L_6CD5		;6cd6
 	ld a,i		;6cd9
-	neg		;6cdb
-	ld a,0c0h		;6cdd
+	neg		;6cdb   ; relleno: iguala los ciclos
+	ld a,0c0h		;6cdd   ; hasta el final del sample
 	cp h			;6cdf
 	jp nz,L_6C97		;6ce0
-	jp L_6E9B		;6ce3
-L_6CE6:
-	ld a,(hl)			;6ce6
-	ld (04000h),a		;6ce7
+	jp fin_de_nota_sin_bucle		;6ce3
+sin_bucle_11:		; rutina 11 de 0x6709: como 0x6743, con otro relleno de ciclos
+	ld a,(hl)			;6ce6   ; la muestra...
+	ld (04000h),a		;6ce7   ; ...al DAC
 	inc hl			;6cea
-	ld a,d			;6ceb
+	ld a,d			;6ceb   ; el retardo D
 L_6CEC:
 	dec a			;6cec
 	jp nz,L_6CEC		;6ced
-	inc ix		;6cf0
-	nop			;6cf2
-	in a,(0a9h)		;6cf3
-	and c			;6cf5
+	inc ix		;6cf0   ; relleno: iguala los ciclos
+	nop			;6cf2   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6cf3   ; la fila de la tecla:
+	and c			;6cf5   ; su bit a 1, suelta
 	jp nz,L_6D10		;6cf6
-	ld a,(hl)			;6cf9
-	ld (04000h),a		;6cfa
+	ld a,(hl)			;6cf9   ; la muestra...
+	ld (04000h),a		;6cfa   ; ...al DAC
 	inc hl			;6cfd
-	ld a,d			;6cfe
+	ld a,d			;6cfe   ; el retardo D
 L_6CFF:
 	dec a			;6cff
 	jp nz,L_6CFF		;6d00
-	inc ix		;6d03
-	neg		;6d05
-	ld a,0c0h		;6d07
+	inc ix		;6d03   ; relleno: iguala los ciclos
+	neg		;6d05   ; relleno: iguala los ciclos
+	ld a,0c0h		;6d07   ; hasta el final del sample
 	cp h			;6d09
-	jp nz,L_6CE6		;6d0a
-	jp L_6EAD		;6d0d
+	jp nz,sin_bucle_11		;6d0a
+	jp final_del_sample		;6d0d
 L_6D10:
-	ld a,(hl)			;6d10
-	ld (04000h),a		;6d11
+	ld a,(hl)			;6d10   ; la muestra...
+	ld (04000h),a		;6d11   ; ...al DAC
 	inc hl			;6d14
-	ld a,d			;6d15
+	ld a,d			;6d15   ; el retardo D
 L_6D16:
 	dec a			;6d16
 	jp nz,L_6D16		;6d17
-	inc ix		;6d1a
-	cp 000h		;6d1c
-	nop			;6d1e
-	ld a,l			;6d1f
+	inc ix		;6d1a   ; relleno: iguala los ciclos
+	cp 000h		;6d1c   ; relleno: iguala los ciclos
+	nop			;6d1e   ; relleno: iguala los ciclos
+	ld a,l			;6d1f   ; hasta acabar la pagina
 	or a			;6d20
 	jp nz,L_6D10		;6d21
 L_6D24:
-	ld a,(hl)			;6d24
-	ld (04000h),a		;6d25
+	ld a,(hl)			;6d24   ; la muestra...
+	ld (04000h),a		;6d25   ; ...al DAC
 	inc hl			;6d28
-	ld a,d			;6d29
+	ld a,d			;6d29   ; el retardo D
 L_6D2A:
 	dec a			;6d2a
 	jp nz,L_6D2A		;6d2b
-	inc ix		;6d2e
-	inc ix		;6d30
-	in a,(0aah)		;6d32
+	inc ix		;6d2e   ; relleno: iguala los ciclos
+	inc ix		;6d30   ; relleno: iguala los ciclos
+	in a,(0aah)		;6d32   ; la fila siguiente...
 	inc a			;6d34
 	ld e,a			;6d35
-	ld a,(hl)			;6d36
-	ld (04000h),a		;6d37
+	ld a,(hl)			;6d36   ; la muestra...
+	ld (04000h),a		;6d37   ; ...al DAC
 	inc hl			;6d3a
-	ld a,d			;6d3b
+	ld a,d			;6d3b   ; el retardo D
 L_6D3C:
 	dec a			;6d3c
 	jp nz,L_6D3C		;6d3d
-	inc ix		;6d40
-	cp 000h		;6d42
+	inc ix		;6d40   ; relleno: iguala los ciclos
+	cp 000h		;6d42   ; relleno: iguala los ciclos
 	ld a,e			;6d44
-	and 0f7h		;6d45
+	and 0f7h		;6d45   ; ...de la 0 a la 7
 	out (0aah),a		;6d47
-	ld a,(hl)			;6d49
-	ld (04000h),a		;6d4a
+	ld a,(hl)			;6d49   ; la muestra...
+	ld (04000h),a		;6d4a   ; ...al DAC
 	inc hl			;6d4d
-	ld a,d			;6d4e
+	ld a,d			;6d4e   ; el retardo D
 L_6D4F:
 	dec a			;6d4f
 	jp nz,L_6D4F		;6d50
-	inc ix		;6d53
-	nop			;6d55
-	in a,(0a9h)		;6d56
+	inc ix		;6d53   ; relleno: iguala los ciclos
+	nop			;6d55   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6d56   ; alguna tecla en esta fila?
 	inc a			;6d58
-	jp nz,L_6EA2		;6d59
-	ld a,(hl)			;6d5c
-	ld (04000h),a		;6d5d
+	jp nz,otra_nota_sin_bucle		;6d59
+	ld a,(hl)			;6d5c   ; la muestra...
+	ld (04000h),a		;6d5d   ; ...al DAC
 	inc hl			;6d60
-	ld a,d			;6d61
+	ld a,d			;6d61   ; el retardo D
 L_6D62:
 	dec a			;6d62
 	jp nz,L_6D62		;6d63
-	inc ix		;6d66
-	neg		;6d68
-	ld a,0c0h		;6d6a
+	inc ix		;6d66   ; relleno: iguala los ciclos
+	neg		;6d68   ; relleno: iguala los ciclos
+	ld a,0c0h		;6d6a   ; hasta el final del sample
 	cp h			;6d6c
 	jp nz,L_6D24		;6d6d
-	jp L_6E9B		;6d70
-L_6D73:
-	ld a,(hl)			;6d73
-	ld (04000h),a		;6d74
+	jp fin_de_nota_sin_bucle		;6d70
+sin_bucle_12:		; rutina 12 de 0x6709: como 0x6743, con otro relleno de ciclos
+	ld a,(hl)			;6d73   ; la muestra...
+	ld (04000h),a		;6d74   ; ...al DAC
 	inc hl			;6d77
-	ld a,d			;6d78
+	ld a,d			;6d78   ; el retardo D
 L_6D79:
 	dec a			;6d79
 	jp nz,L_6D79		;6d7a
-	cp 000h		;6d7d
-	nop			;6d7f
-	nop			;6d80
-	in a,(0a9h)		;6d81
-	and c			;6d83
+	cp 000h		;6d7d   ; relleno: iguala los ciclos
+	nop			;6d7f   ; relleno: iguala los ciclos
+	nop			;6d80   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6d81   ; la fila de la tecla:
+	and c			;6d83   ; su bit a 1, suelta
 	jp nz,L_6D9F		;6d84
-	ld a,(hl)			;6d87
-	ld (04000h),a		;6d88
+	ld a,(hl)			;6d87   ; la muestra...
+	ld (04000h),a		;6d88   ; ...al DAC
 	inc hl			;6d8b
-	ld a,d			;6d8c
+	ld a,d			;6d8c   ; el retardo D
 L_6D8D:
 	dec a			;6d8d
 	jp nz,L_6D8D		;6d8e
-	cp 000h		;6d91
-	nop			;6d93
-	neg		;6d94
-	ld a,0c0h		;6d96
+	cp 000h		;6d91   ; relleno: iguala los ciclos
+	nop			;6d93   ; relleno: iguala los ciclos
+	neg		;6d94   ; relleno: iguala los ciclos
+	ld a,0c0h		;6d96   ; hasta el final del sample
 	cp h			;6d98
-	jp nz,L_6D73		;6d99
-	jp L_6EAD		;6d9c
+	jp nz,sin_bucle_12		;6d99
+	jp final_del_sample		;6d9c
 L_6D9F:
-	ld a,(hl)			;6d9f
-	ld (04000h),a		;6da0
+	ld a,(hl)			;6d9f   ; la muestra...
+	ld (04000h),a		;6da0   ; ...al DAC
 	inc hl			;6da3
-	ld a,d			;6da4
+	ld a,d			;6da4   ; el retardo D
 L_6DA5:
 	dec a			;6da5
 	jp nz,L_6DA5		;6da6
-	cp 000h		;6da9
-	nop			;6dab
-	cp 000h		;6dac
-	nop			;6dae
-	ld a,l			;6daf
+	cp 000h		;6da9   ; relleno: iguala los ciclos
+	nop			;6dab   ; relleno: iguala los ciclos
+	cp 000h		;6dac   ; relleno: iguala los ciclos
+	nop			;6dae   ; relleno: iguala los ciclos
+	ld a,l			;6daf   ; hasta acabar la pagina
 	or a			;6db0
 	jp nz,L_6D9F		;6db1
 L_6DB4:
-	ld a,(hl)			;6db4
-	ld (04000h),a		;6db5
+	ld a,(hl)			;6db4   ; la muestra...
+	ld (04000h),a		;6db5   ; ...al DAC
 	inc hl			;6db8
-	ld a,d			;6db9
+	ld a,d			;6db9   ; el retardo D
 L_6DBA:
 	dec a			;6dba
 	jp nz,L_6DBA		;6dbb
-	cp 000h		;6dbe
-	nop			;6dc0
-	inc ix		;6dc1
-	in a,(0aah)		;6dc3
+	cp 000h		;6dbe   ; relleno: iguala los ciclos
+	nop			;6dc0   ; relleno: iguala los ciclos
+	inc ix		;6dc1   ; relleno: iguala los ciclos
+	in a,(0aah)		;6dc3   ; la fila siguiente...
 	inc a			;6dc5
 	ld e,a			;6dc6
-	ld a,(hl)			;6dc7
-	ld (04000h),a		;6dc8
+	ld a,(hl)			;6dc7   ; la muestra...
+	ld (04000h),a		;6dc8   ; ...al DAC
 	inc hl			;6dcb
-	ld a,d			;6dcc
+	ld a,d			;6dcc   ; el retardo D
 L_6DCD:
 	dec a			;6dcd
 	jp nz,L_6DCD		;6dce
-	cp 000h		;6dd1
-	nop			;6dd3
-	cp 000h		;6dd4
+	cp 000h		;6dd1   ; relleno: iguala los ciclos
+	nop			;6dd3   ; relleno: iguala los ciclos
+	cp 000h		;6dd4   ; relleno: iguala los ciclos
 	ld a,e			;6dd6
-	and 0f7h		;6dd7
+	and 0f7h		;6dd7   ; ...de la 0 a la 7
 	out (0aah),a		;6dd9
-	ld a,(hl)			;6ddb
-	ld (04000h),a		;6ddc
+	ld a,(hl)			;6ddb   ; la muestra...
+	ld (04000h),a		;6ddc   ; ...al DAC
 	inc hl			;6ddf
-	ld a,d			;6de0
+	ld a,d			;6de0   ; el retardo D
 L_6DE1:
 	dec a			;6de1
 	jp nz,L_6DE1		;6de2
-	cp 000h		;6de5
-	nop			;6de7
-	nop			;6de8
-	in a,(0a9h)		;6de9
+	cp 000h		;6de5   ; relleno: iguala los ciclos
+	nop			;6de7   ; relleno: iguala los ciclos
+	nop			;6de8   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6de9   ; alguna tecla en esta fila?
 	inc a			;6deb
-	jp nz,L_6EA2		;6dec
-	ld a,(hl)			;6def
-	ld (04000h),a		;6df0
+	jp nz,otra_nota_sin_bucle		;6dec
+	ld a,(hl)			;6def   ; la muestra...
+	ld (04000h),a		;6df0   ; ...al DAC
 	inc hl			;6df3
-	ld a,d			;6df4
+	ld a,d			;6df4   ; el retardo D
 L_6DF5:
 	dec a			;6df5
 	jp nz,L_6DF5		;6df6
-	cp 000h		;6df9
-	nop			;6dfb
-	neg		;6dfc
-	ld a,0c0h		;6dfe
+	cp 000h		;6df9   ; relleno: iguala los ciclos
+	nop			;6dfb   ; relleno: iguala los ciclos
+	neg		;6dfc   ; relleno: iguala los ciclos
+	ld a,0c0h		;6dfe   ; hasta el final del sample
 	cp h			;6e00
 	jp nz,L_6DB4		;6e01
-	jp L_6E9B		;6e04
-L_6E07:
-	ld a,(hl)			;6e07
-	ld (04000h),a		;6e08
+	jp fin_de_nota_sin_bucle		;6e04
+sin_bucle_13:		; rutina 13 de 0x6709: como 0x6743, con otro relleno de ciclos
+	ld a,(hl)			;6e07   ; la muestra...
+	ld (04000h),a		;6e08   ; ...al DAC
 	inc hl			;6e0b
-	ld a,d			;6e0c
+	ld a,d			;6e0c   ; el retardo D
 L_6E0D:
 	dec a			;6e0d
 	jp nz,L_6E0D		;6e0e
-	neg		;6e11
-	nop			;6e13
-	nop			;6e14
-	in a,(0a9h)		;6e15
-	and c			;6e17
+	neg		;6e11   ; relleno: iguala los ciclos
+	nop			;6e13   ; relleno: iguala los ciclos
+	nop			;6e14   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6e15   ; la fila de la tecla:
+	and c			;6e17   ; su bit a 1, suelta
 	jp nz,L_6E33		;6e18
-	ld a,(hl)			;6e1b
-	ld (04000h),a		;6e1c
+	ld a,(hl)			;6e1b   ; la muestra...
+	ld (04000h),a		;6e1c   ; ...al DAC
 	inc hl			;6e1f
-	ld a,d			;6e20
+	ld a,d			;6e20   ; el retardo D
 L_6E21:
 	dec a			;6e21
 	jp nz,L_6E21		;6e22
-	neg		;6e25
-	nop			;6e27
-	neg		;6e28
-	ld a,0c0h		;6e2a
+	neg		;6e25   ; relleno: iguala los ciclos
+	nop			;6e27   ; relleno: iguala los ciclos
+	neg		;6e28   ; relleno: iguala los ciclos
+	ld a,0c0h		;6e2a   ; hasta el final del sample
 	cp h			;6e2c
-	jp nz,L_6E07		;6e2d
-	jp L_6EAD		;6e30
+	jp nz,sin_bucle_13		;6e2d
+	jp final_del_sample		;6e30
 L_6E33:
-	ld a,(hl)			;6e33
-	ld (04000h),a		;6e34
+	ld a,(hl)			;6e33   ; la muestra...
+	ld (04000h),a		;6e34   ; ...al DAC
 	inc hl			;6e37
-	ld a,d			;6e38
+	ld a,d			;6e38   ; el retardo D
 L_6E39:
 	dec a			;6e39
 	jp nz,L_6E39		;6e3a
-	neg		;6e3d
-	nop			;6e3f
-	cp 000h		;6e40
-	nop			;6e42
-	ld a,l			;6e43
+	neg		;6e3d   ; relleno: iguala los ciclos
+	nop			;6e3f   ; relleno: iguala los ciclos
+	cp 000h		;6e40   ; relleno: iguala los ciclos
+	nop			;6e42   ; relleno: iguala los ciclos
+	ld a,l			;6e43   ; hasta acabar la pagina
 	or a			;6e44
 	jp nz,L_6E33		;6e45
 L_6E48:
-	ld a,(hl)			;6e48
-	ld (04000h),a		;6e49
+	ld a,(hl)			;6e48   ; la muestra...
+	ld (04000h),a		;6e49   ; ...al DAC
 	inc hl			;6e4c
-	ld a,d			;6e4d
+	ld a,d			;6e4d   ; el retardo D
 L_6E4E:
 	dec a			;6e4e
 	jp nz,L_6E4E		;6e4f
-	neg		;6e52
-	nop			;6e54
-	inc ix		;6e55
-	in a,(0aah)		;6e57
+	neg		;6e52   ; relleno: iguala los ciclos
+	nop			;6e54   ; relleno: iguala los ciclos
+	inc ix		;6e55   ; relleno: iguala los ciclos
+	in a,(0aah)		;6e57   ; la fila siguiente...
 	inc a			;6e59
 	ld e,a			;6e5a
-	ld a,(hl)			;6e5b
-	ld (04000h),a		;6e5c
+	ld a,(hl)			;6e5b   ; la muestra...
+	ld (04000h),a		;6e5c   ; ...al DAC
 	inc hl			;6e5f
-	ld a,d			;6e60
+	ld a,d			;6e60   ; el retardo D
 L_6E61:
 	dec a			;6e61
 	jp nz,L_6E61		;6e62
-	neg		;6e65
-	nop			;6e67
-	cp 000h		;6e68
+	neg		;6e65   ; relleno: iguala los ciclos
+	nop			;6e67   ; relleno: iguala los ciclos
+	cp 000h		;6e68   ; relleno: iguala los ciclos
 	ld a,e			;6e6a
-	and 0f7h		;6e6b
+	and 0f7h		;6e6b   ; ...de la 0 a la 7
 	out (0aah),a		;6e6d
-	ld a,(hl)			;6e6f
-	ld (04000h),a		;6e70
+	ld a,(hl)			;6e6f   ; la muestra...
+	ld (04000h),a		;6e70   ; ...al DAC
 	inc hl			;6e73
-	ld a,d			;6e74
+	ld a,d			;6e74   ; el retardo D
 L_6E75:
 	dec a			;6e75
 	jp nz,L_6E75		;6e76
-	neg		;6e79
-	nop			;6e7b
-	nop			;6e7c
-	in a,(0a9h)		;6e7d
+	neg		;6e79   ; relleno: iguala los ciclos
+	nop			;6e7b   ; relleno: iguala los ciclos
+	nop			;6e7c   ; relleno: iguala los ciclos
+	in a,(0a9h)		;6e7d   ; alguna tecla en esta fila?
 	inc a			;6e7f
-	jp nz,L_6EA2		;6e80
-	ld a,(hl)			;6e83
-	ld (04000h),a		;6e84
+	jp nz,otra_nota_sin_bucle		;6e80
+	ld a,(hl)			;6e83   ; la muestra...
+	ld (04000h),a		;6e84   ; ...al DAC
 	inc hl			;6e87
-	ld a,d			;6e88
+	ld a,d			;6e88   ; el retardo D
 L_6E89:
 	dec a			;6e89
 	jp nz,L_6E89		;6e8a
-	neg		;6e8d
-	nop			;6e8f
-	neg		;6e90
-	ld a,0c0h		;6e92
+	neg		;6e8d   ; relleno: iguala los ciclos
+	nop			;6e8f   ; relleno: iguala los ciclos
+	neg		;6e90   ; relleno: iguala los ciclos
+	ld a,0c0h		;6e92   ; hasta el final del sample
 	cp h			;6e94
 	jp nz,L_6E48		;6e95
-	jp L_6E9B		;6e98
-L_6E9B:
+	jp fin_de_nota_sin_bucle		;6e98
+fin_de_nota_sin_bucle:		; la tecla vuelve a su dibujo y el cartucho a la pagina 2
 	call tecla_soltada		;6e9b
 	call cartucho_en_la_pagina_2		;6e9e
 	ret			;6ea1
-L_6EA2:
+otra_nota_sin_bucle:		; otra tecla durante la cola: la nota nueva
 	push af			;6ea2
 	call tecla_soltada		;6ea3
 	call cartucho_en_la_pagina_2		;6ea6
 	pop af			;6ea9
-	jp L_6727		;6eaa
-L_6EAD:
+	jp nota_sin_bucle		;6eaa
+final_del_sample:		; el DAC al reposo y espera a que no haya ninguna tecla
 	ld a,080h		;6ead
 	ld (04000h),a		;6eaf
 L_6EB2:
 	in a,(0a9h)		;6eb2
 	inc a			;6eb4
 	jp nz,L_6EB2		;6eb5
-	jp L_6E9B		;6eb8
+	jp fin_de_nota_sin_bucle		;6eb8
 
 ; ----------------------------------------------------------------------
 ; DATOS reproduce_samp: las 13 rutinas para la muestra cargada de cinta (SAMP)
@@ -6924,427 +6924,427 @@ DATA_reproduce_samp:
 ; ======================================================================
 
 
-L_6ED5:
+escucha_onda:		; WAVE EDIT: la onda del usuario, con el paso de FEET, en 0xDD00, y suena en bucle mientras se tiene la tecla 0xDC47
 	di			;6ed5
-	ld de,0dd00h		;6ed6
-	ld a,(0db00h)		;6ed9
+	ld de,0dd00h		;6ed6   ; destino 0xDD00
+	ld a,(0db00h)		;6ed9   ; la onda del usuario 0xDB00...
 	add a,0c0h		;6edc
-	ld h,a			;6ede
+	ld h,a			;6ede   ; ...en 0xC000 + 0x100 * onda
 	ld l,e			;6edf
-	ld a,(0dc01h)		;6ee0
+	ld a,(0dc01h)		;6ee0   ; el paso: FEET (0xDC01)
 	ld b,a			;6ee3
 L_6EE4:
-	ld a,(hl)			;6ee4
-	add a,080h		;6ee5
-	ld (de),a			;6ee7
-	ld a,b			;6ee8
+	ld a,(hl)			;6ee4   ; la muestra...
+	add a,080h		;6ee5   ; ...sin signo...
+	ld (de),a			;6ee7   ; ...a 0xDD00
+	ld a,b			;6ee8   ; la fase avanza FEET
 	add a,l			;6ee9
 	ld l,a			;6eea
 	inc e			;6eeb
 	jp nz,L_6EE4		;6eec
-	ld a,(0dc47h)		;6eef
+	ld a,(0dc47h)		;6eef   ; la fila y el bit de la tecla 0xDC47
 	dec a			;6ef2
 L_6EF3:
 	ld b,a			;6ef3
 	sub 008h		;6ef4
 	jp nc,L_6EF3		;6ef6
-	ld c,080h		;6ef9
+	ld c,080h		;6ef9   ; C = la mascara del bit
 	inc b			;6efb
 L_6EFC:
 	rlc c		;6efc
 	djnz L_6EFC		;6efe
-	ld a,(0dc47h)		;6f00
-	call L_5D81		;6f03
+	ld a,(0dc47h)		;6f00   ; su rutina y su retardo
+	call rutina_de_la_tecla		;6f03
 	ret z			;6f06
-	ld hl,06ebbh		;6f07
-	call L_5D9A		;6f0a
-	ld hl,0dd00h		;6f0d
+	ld hl,06ebbh		;6f07   ; la rutina de 0x6EBB
+	call rutina_en_ix		;6f0a
+	ld hl,0dd00h		;6f0d   ; la pagina 0xDD
 	ld e,h			;6f10
-	call L_6F1A		;6f11
-	ld a,080h		;6f14
+	call salta_ix		;6f11
+	ld a,080h		;6f14   ; el DAC al reposo
 	ld (04000h),a		;6f16
 	ret			;6f19
-L_6F1A:
+salta_ix:		; `jp (ix)`
 	jp (ix)		;6f1a
-L_6F1C:
-	ld a,(hl)			;6f1c
-	ld (04000h),a		;6f1d
+escucha_01:		; rutina 1 de 0x6EBB: la pagina 0xDD una y otra vez mientras se tiene la tecla
+	ld a,(hl)			;6f1c   ; la muestra...
+	ld (04000h),a		;6f1d   ; ...al DAC
 	inc hl			;6f20
-	ld a,d			;6f21
+	ld a,d			;6f21   ; el retardo D
 L_6F22:
 	dec a			;6f22
 	jp nz,L_6F22		;6f23
-	ld h,e			;6f26
-	in a,(0a9h)		;6f27
-	and c			;6f29
-	jp z,L_6F1C		;6f2a
+	ld h,e			;6f26   ; se queda en la pagina de bucle
+	in a,(0a9h)		;6f27   ; la fila de la tecla:
+	and c			;6f29   ; su bit a 1, suelta
+	jp z,escucha_01		;6f2a
 L_6F2D:
-	ld a,(hl)			;6f2d
-	ld (04000h),a		;6f2e
+	ld a,(hl)			;6f2d   ; la muestra...
+	ld (04000h),a		;6f2e   ; ...al DAC
 	inc hl			;6f31
-	ld a,d			;6f32
+	ld a,d			;6f32   ; el retardo D
 L_6F33:
 	dec a			;6f33
 	jp nz,L_6F33		;6f34
-	cp 000h		;6f37
-	nop			;6f39
-	ld a,l			;6f3a
+	cp 000h		;6f37   ; relleno: iguala los ciclos
+	nop			;6f39   ; relleno: iguala los ciclos
+	ld a,l			;6f3a   ; hasta acabar la pagina
 	or a			;6f3b
 	jp nz,L_6F2D		;6f3c
 	ret			;6f3f
-L_6F40:
-	dec d			;6f40
+escucha_02:		; rutina 2 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	dec d			;6f40   ; D - 1 para esta rutina
 L_6F41:
-	ld a,(hl)			;6f41
-	ld (04000h),a		;6f42
+	ld a,(hl)			;6f41   ; la muestra...
+	ld (04000h),a		;6f42   ; ...al DAC
 	inc hl			;6f45
-	ld a,d			;6f46
+	ld a,d			;6f46   ; el retardo D
 L_6F47:
 	dec a			;6f47
 	jp nz,L_6F47		;6f48
-	add ix,ix		;6f4b
-	ld h,e			;6f4d
-	in a,(0a9h)		;6f4e
-	and c			;6f50
+	add ix,ix		;6f4b   ; relleno: iguala los ciclos
+	ld h,e			;6f4d   ; se queda en la pagina de bucle
+	in a,(0a9h)		;6f4e   ; la fila de la tecla:
+	and c			;6f50   ; su bit a 1, suelta
 	jp z,L_6F41		;6f51
 L_6F54:
-	ld a,(hl)			;6f54
-	ld (04000h),a		;6f55
+	ld a,(hl)			;6f54   ; la muestra...
+	ld (04000h),a		;6f55   ; ...al DAC
 	inc hl			;6f58
-	ld a,d			;6f59
+	ld a,d			;6f59   ; el retardo D
 L_6F5A:
 	dec a			;6f5a
 	jp nz,L_6F5A		;6f5b
-	add ix,ix		;6f5e
-	cp 000h		;6f60
-	nop			;6f62
-	ld a,l			;6f63
+	add ix,ix		;6f5e   ; relleno: iguala los ciclos
+	cp 000h		;6f60   ; relleno: iguala los ciclos
+	nop			;6f62   ; relleno: iguala los ciclos
+	ld a,l			;6f63   ; hasta acabar la pagina
 	or a			;6f64
 	jp nz,L_6F54		;6f65
 	ret			;6f68
-L_6F69:
-	dec d			;6f69
+escucha_03:		; rutina 3 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	dec d			;6f69   ; D - 1 para esta rutina
 L_6F6A:
-	ld a,(hl)			;6f6a
-	ld (04000h),a		;6f6b
+	ld a,(hl)			;6f6a   ; la muestra...
+	ld (04000h),a		;6f6b   ; ...al DAC
 	inc hl			;6f6e
-	ld a,d			;6f6f
+	ld a,d			;6f6f   ; el retardo D
 L_6F70:
 	dec a			;6f70
 	jp nz,L_6F70		;6f71
-	neg		;6f74
-	neg		;6f76
-	ld h,e			;6f78
-	in a,(0a9h)		;6f79
-	and c			;6f7b
+	neg		;6f74   ; relleno: iguala los ciclos
+	neg		;6f76   ; relleno: iguala los ciclos
+	ld h,e			;6f78   ; se queda en la pagina de bucle
+	in a,(0a9h)		;6f79   ; la fila de la tecla:
+	and c			;6f7b   ; su bit a 1, suelta
 	jp z,L_6F6A		;6f7c
 L_6F7F:
-	ld a,(hl)			;6f7f
-	ld (04000h),a		;6f80
+	ld a,(hl)			;6f7f   ; la muestra...
+	ld (04000h),a		;6f80   ; ...al DAC
 	inc hl			;6f83
-	ld a,d			;6f84
+	ld a,d			;6f84   ; el retardo D
 L_6F85:
 	dec a			;6f85
 	jp nz,L_6F85		;6f86
-	neg		;6f89
-	neg		;6f8b
-	cp 000h		;6f8d
-	nop			;6f8f
-	ld a,l			;6f90
+	neg		;6f89   ; relleno: iguala los ciclos
+	neg		;6f8b   ; relleno: iguala los ciclos
+	cp 000h		;6f8d   ; relleno: iguala los ciclos
+	nop			;6f8f   ; relleno: iguala los ciclos
+	ld a,l			;6f90   ; hasta acabar la pagina
 	or a			;6f91
 	jp nz,L_6F7F		;6f92
 	ret			;6f95
-L_6F96:
-	dec d			;6f96
+escucha_04:		; rutina 4 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	dec d			;6f96   ; D - 1 para esta rutina
 L_6F97:
-	ld a,(hl)			;6f97
-	ld (04000h),a		;6f98
+	ld a,(hl)			;6f97   ; la muestra...
+	ld (04000h),a		;6f98   ; ...al DAC
 	inc hl			;6f9b
-	ld a,d			;6f9c
+	ld a,d			;6f9c   ; el retardo D
 L_6F9D:
 	dec a			;6f9d
 	jp nz,L_6F9D		;6f9e
-	inc ix		;6fa1
-	cp 000h		;6fa3
-	ld h,e			;6fa5
-	in a,(0a9h)		;6fa6
-	and c			;6fa8
+	inc ix		;6fa1   ; relleno: iguala los ciclos
+	cp 000h		;6fa3   ; relleno: iguala los ciclos
+	ld h,e			;6fa5   ; se queda en la pagina de bucle
+	in a,(0a9h)		;6fa6   ; la fila de la tecla:
+	and c			;6fa8   ; su bit a 1, suelta
 	jp z,L_6F97		;6fa9
 L_6FAC:
-	ld a,(hl)			;6fac
-	ld (04000h),a		;6fad
+	ld a,(hl)			;6fac   ; la muestra...
+	ld (04000h),a		;6fad   ; ...al DAC
 	inc hl			;6fb0
-	ld a,d			;6fb1
+	ld a,d			;6fb1   ; el retardo D
 L_6FB2:
 	dec a			;6fb2
 	jp nz,L_6FB2		;6fb3
-	inc ix		;6fb6
-	cp 000h		;6fb8
-	cp 000h		;6fba
-	nop			;6fbc
-	ld a,l			;6fbd
+	inc ix		;6fb6   ; relleno: iguala los ciclos
+	cp 000h		;6fb8   ; relleno: iguala los ciclos
+	cp 000h		;6fba   ; relleno: iguala los ciclos
+	nop			;6fbc   ; relleno: iguala los ciclos
+	ld a,l			;6fbd   ; hasta acabar la pagina
 	or a			;6fbe
 	jp nz,L_6FAC		;6fbf
 	ret			;6fc2
-L_6FC3:
-	ld a,(hl)			;6fc3
-	ld (04000h),a		;6fc4
+escucha_05:		; rutina 5 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	ld a,(hl)			;6fc3   ; la muestra...
+	ld (04000h),a		;6fc4   ; ...al DAC
 	inc hl			;6fc7
-	ld a,d			;6fc8
+	ld a,d			;6fc8   ; el retardo D
 L_6FC9:
 	dec a			;6fc9
 	jp nz,L_6FC9		;6fca
-	nop			;6fcd
-	ld h,e			;6fce
-	in a,(0a9h)		;6fcf
-	and c			;6fd1
-	jp z,L_6FC3		;6fd2
+	nop			;6fcd   ; relleno: iguala los ciclos
+	ld h,e			;6fce   ; se queda en la pagina de bucle
+	in a,(0a9h)		;6fcf   ; la fila de la tecla:
+	and c			;6fd1   ; su bit a 1, suelta
+	jp z,escucha_05		;6fd2
 L_6FD5:
-	ld a,(hl)			;6fd5
-	ld (04000h),a		;6fd6
+	ld a,(hl)			;6fd5   ; la muestra...
+	ld (04000h),a		;6fd6   ; ...al DAC
 	inc hl			;6fd9
-	ld a,d			;6fda
+	ld a,d			;6fda   ; el retardo D
 L_6FDB:
 	dec a			;6fdb
 	jp nz,L_6FDB		;6fdc
-	nop			;6fdf
-	cp 000h		;6fe0
-	nop			;6fe2
-	ld a,l			;6fe3
+	nop			;6fdf   ; relleno: iguala los ciclos
+	cp 000h		;6fe0   ; relleno: iguala los ciclos
+	nop			;6fe2   ; relleno: iguala los ciclos
+	ld a,l			;6fe3   ; hasta acabar la pagina
 	or a			;6fe4
 	jp nz,L_6FD5		;6fe5
 	ret			;6fe8
-L_6FE9:
-	dec d			;6fe9
+escucha_06:		; rutina 6 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	dec d			;6fe9   ; D - 1 para esta rutina
 L_6FEA:
-	ld a,(hl)			;6fea
-	ld (04000h),a		;6feb
+	ld a,(hl)			;6fea   ; la muestra...
+	ld (04000h),a		;6feb   ; ...al DAC
 	inc hl			;6fee
-	ld a,d			;6fef
+	ld a,d			;6fef   ; el retardo D
 L_6FF0:
 	dec a			;6ff0
 	jp nz,L_6FF0		;6ff1
 	add a,(ix+000h)		;6ff4
-	ld h,e			;6ff7
-	in a,(0a9h)		;6ff8
-	and c			;6ffa
+	ld h,e			;6ff7   ; se queda en la pagina de bucle
+	in a,(0a9h)		;6ff8   ; la fila de la tecla:
+	and c			;6ffa   ; su bit a 1, suelta
 	jp z,L_6FEA		;6ffb
 L_6FFE:
-	ld a,(hl)			;6ffe
-	ld (04000h),a		;6fff
+	ld a,(hl)			;6ffe   ; la muestra...
+	ld (04000h),a		;6fff   ; ...al DAC
 	inc hl			;7002
-	ld a,d			;7003
+	ld a,d			;7003   ; el retardo D
 L_7004:
 	dec a			;7004
 	jp nz,L_7004		;7005
 	add a,(ix+000h)		;7008
-	cp 000h		;700b
-	nop			;700d
-	ld a,l			;700e
+	cp 000h		;700b   ; relleno: iguala los ciclos
+	nop			;700d   ; relleno: iguala los ciclos
+	ld a,l			;700e   ; hasta acabar la pagina
 	or a			;700f
 	jp nz,L_6FFE		;7010
 	ret			;7013
-L_7014:
-	dec d			;7014
+escucha_07:		; rutina 7 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	dec d			;7014   ; D - 1 para esta rutina
 L_7015:
-	ld a,(hl)			;7015
-	ld (04000h),a		;7016
+	ld a,(hl)			;7015   ; la muestra...
+	ld (04000h),a		;7016   ; ...al DAC
 	inc hl			;7019
-	ld a,d			;701a
+	ld a,d			;701a   ; el retardo D
 L_701B:
 	dec a			;701b
 	jp nz,L_701B		;701c
-	inc ix		;701f
-	inc ix		;7021
-	ld h,e			;7023
-	in a,(0a9h)		;7024
-	and c			;7026
+	inc ix		;701f   ; relleno: iguala los ciclos
+	inc ix		;7021   ; relleno: iguala los ciclos
+	ld h,e			;7023   ; se queda en la pagina de bucle
+	in a,(0a9h)		;7024   ; la fila de la tecla:
+	and c			;7026   ; su bit a 1, suelta
 	jp z,L_7015		;7027
 L_702A:
-	ld a,(hl)			;702a
-	ld (04000h),a		;702b
+	ld a,(hl)			;702a   ; la muestra...
+	ld (04000h),a		;702b   ; ...al DAC
 	inc hl			;702e
-	ld a,d			;702f
+	ld a,d			;702f   ; el retardo D
 L_7030:
 	dec a			;7030
 	jp nz,L_7030		;7031
-	inc ix		;7034
-	inc ix		;7036
-	cp 000h		;7038
-	nop			;703a
-	ld a,l			;703b
+	inc ix		;7034   ; relleno: iguala los ciclos
+	inc ix		;7036   ; relleno: iguala los ciclos
+	cp 000h		;7038   ; relleno: iguala los ciclos
+	nop			;703a   ; relleno: iguala los ciclos
+	ld a,l			;703b   ; hasta acabar la pagina
 	or a			;703c
 	jp nz,L_702A		;703d
 	ret			;7040
-L_7041:
-	ld a,(hl)			;7041
-	ld (04000h),a		;7042
+escucha_08:		; rutina 8 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	ld a,(hl)			;7041   ; la muestra...
+	ld (04000h),a		;7042   ; ...al DAC
 	inc hl			;7045
-	ld a,d			;7046
+	ld a,d			;7046   ; el retardo D
 L_7047:
 	dec a			;7047
 	jp nz,L_7047		;7048
-	cp 000h		;704b
-	ld h,e			;704d
-	in a,(0a9h)		;704e
-	and c			;7050
-	jp z,L_7041		;7051
+	cp 000h		;704b   ; relleno: iguala los ciclos
+	ld h,e			;704d   ; se queda en la pagina de bucle
+	in a,(0a9h)		;704e   ; la fila de la tecla:
+	and c			;7050   ; su bit a 1, suelta
+	jp z,escucha_08		;7051
 L_7054:
-	ld a,(hl)			;7054
-	ld (04000h),a		;7055
+	ld a,(hl)			;7054   ; la muestra...
+	ld (04000h),a		;7055   ; ...al DAC
 	inc hl			;7058
-	ld a,d			;7059
+	ld a,d			;7059   ; el retardo D
 L_705A:
 	dec a			;705a
 	jp nz,L_705A		;705b
-	cp 000h		;705e
-	cp 000h		;7060
-	nop			;7062
-	ld a,l			;7063
+	cp 000h		;705e   ; relleno: iguala los ciclos
+	cp 000h		;7060   ; relleno: iguala los ciclos
+	nop			;7062   ; relleno: iguala los ciclos
+	ld a,l			;7063   ; hasta acabar la pagina
 	or a			;7064
 	jp nz,L_7054		;7065
 	ret			;7068
-L_7069:
-	ld a,(hl)			;7069
-	ld (04000h),a		;706a
+escucha_09:		; rutina 9 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	ld a,(hl)			;7069   ; la muestra...
+	ld (04000h),a		;706a   ; ...al DAC
 	inc hl			;706d
-	ld a,d			;706e
+	ld a,d			;706e   ; el retardo D
 L_706F:
 	dec a			;706f
 	jp nz,L_706F		;7070
-	neg		;7073
-	ld h,e			;7075
-	in a,(0a9h)		;7076
-	and c			;7078
-	jp z,L_7069		;7079
+	neg		;7073   ; relleno: iguala los ciclos
+	ld h,e			;7075   ; se queda en la pagina de bucle
+	in a,(0a9h)		;7076   ; la fila de la tecla:
+	and c			;7078   ; su bit a 1, suelta
+	jp z,escucha_09		;7079
 L_707C:
-	ld a,(hl)			;707c
-	ld (04000h),a		;707d
+	ld a,(hl)			;707c   ; la muestra...
+	ld (04000h),a		;707d   ; ...al DAC
 	inc hl			;7080
-	ld a,d			;7081
+	ld a,d			;7081   ; el retardo D
 L_7082:
 	dec a			;7082
 	jp nz,L_7082		;7083
-	neg		;7086
-	cp 000h		;7088
-	nop			;708a
-	ld a,l			;708b
+	neg		;7086   ; relleno: iguala los ciclos
+	cp 000h		;7088   ; relleno: iguala los ciclos
+	nop			;708a   ; relleno: iguala los ciclos
+	ld a,l			;708b   ; hasta acabar la pagina
 	or a			;708c
 	jp nz,L_707C		;708d
 	ret			;7090
-L_7091:
-	ld a,(hl)			;7091
-	ld (04000h),a		;7092
+escucha_10:		; rutina 10 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	ld a,(hl)			;7091   ; la muestra...
+	ld (04000h),a		;7092   ; ...al DAC
 	inc hl			;7095
-	ld a,d			;7096
+	ld a,d			;7096   ; el retardo D
 L_7097:
 	dec a			;7097
 	jp nz,L_7097		;7098
 	ld a,i		;709b
-	ld h,e			;709d
-	in a,(0a9h)		;709e
-	and c			;70a0
-	jp z,L_7091		;70a1
+	ld h,e			;709d   ; se queda en la pagina de bucle
+	in a,(0a9h)		;709e   ; la fila de la tecla:
+	and c			;70a0   ; su bit a 1, suelta
+	jp z,escucha_10		;70a1
 L_70A4:
-	ld a,(hl)			;70a4
-	ld (04000h),a		;70a5
+	ld a,(hl)			;70a4   ; la muestra...
+	ld (04000h),a		;70a5   ; ...al DAC
 	inc hl			;70a8
-	ld a,d			;70a9
+	ld a,d			;70a9   ; el retardo D
 L_70AA:
 	dec a			;70aa
 	jp nz,L_70AA		;70ab
 	ld a,i		;70ae
-	cp 000h		;70b0
-	nop			;70b2
-	ld a,l			;70b3
+	cp 000h		;70b0   ; relleno: iguala los ciclos
+	nop			;70b2   ; relleno: iguala los ciclos
+	ld a,l			;70b3   ; hasta acabar la pagina
 	or a			;70b4
 	jp nz,L_70A4		;70b5
 	ret			;70b8
-L_70B9:
-	ld a,(hl)			;70b9
-	ld (04000h),a		;70ba
+escucha_11:		; rutina 11 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	ld a,(hl)			;70b9   ; la muestra...
+	ld (04000h),a		;70ba   ; ...al DAC
 	inc hl			;70bd
-	ld a,d			;70be
+	ld a,d			;70be   ; el retardo D
 L_70BF:
 	dec a			;70bf
 	jp nz,L_70BF		;70c0
-	inc ix		;70c3
-	ld h,e			;70c5
-	in a,(0a9h)		;70c6
-	and c			;70c8
-	jp z,L_70B9		;70c9
+	inc ix		;70c3   ; relleno: iguala los ciclos
+	ld h,e			;70c5   ; se queda en la pagina de bucle
+	in a,(0a9h)		;70c6   ; la fila de la tecla:
+	and c			;70c8   ; su bit a 1, suelta
+	jp z,escucha_11		;70c9
 L_70CC:
-	ld a,(hl)			;70cc
-	ld (04000h),a		;70cd
+	ld a,(hl)			;70cc   ; la muestra...
+	ld (04000h),a		;70cd   ; ...al DAC
 	inc hl			;70d0
-	ld a,d			;70d1
+	ld a,d			;70d1   ; el retardo D
 L_70D2:
 	dec a			;70d2
 	jp nz,L_70D2		;70d3
-	inc ix		;70d6
-	cp 000h		;70d8
-	nop			;70da
-	ld a,l			;70db
+	inc ix		;70d6   ; relleno: iguala los ciclos
+	cp 000h		;70d8   ; relleno: iguala los ciclos
+	nop			;70da   ; relleno: iguala los ciclos
+	ld a,l			;70db   ; hasta acabar la pagina
 	or a			;70dc
 	jp nz,L_70CC		;70dd
 	ret			;70e0
-L_70E1:
-	ld a,(hl)			;70e1
-	ld (04000h),a		;70e2
+escucha_12:		; rutina 12 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	ld a,(hl)			;70e1   ; la muestra...
+	ld (04000h),a		;70e2   ; ...al DAC
 	inc hl			;70e5
-	ld a,d			;70e6
+	ld a,d			;70e6   ; el retardo D
 L_70E7:
 	dec a			;70e7
 	jp nz,L_70E7		;70e8
-	cp 000h		;70eb
-	nop			;70ed
-	ld h,e			;70ee
-	in a,(0a9h)		;70ef
-	and c			;70f1
-	jp z,L_70E1		;70f2
+	cp 000h		;70eb   ; relleno: iguala los ciclos
+	nop			;70ed   ; relleno: iguala los ciclos
+	ld h,e			;70ee   ; se queda en la pagina de bucle
+	in a,(0a9h)		;70ef   ; la fila de la tecla:
+	and c			;70f1   ; su bit a 1, suelta
+	jp z,escucha_12		;70f2
 L_70F5:
-	ld a,(hl)			;70f5
-	ld (04000h),a		;70f6
+	ld a,(hl)			;70f5   ; la muestra...
+	ld (04000h),a		;70f6   ; ...al DAC
 	inc hl			;70f9
-	ld a,d			;70fa
+	ld a,d			;70fa   ; el retardo D
 L_70FB:
 	dec a			;70fb
 	jp nz,L_70FB		;70fc
-	cp 000h		;70ff
-	nop			;7101
-	cp 000h		;7102
-	nop			;7104
-	ld a,l			;7105
+	cp 000h		;70ff   ; relleno: iguala los ciclos
+	nop			;7101   ; relleno: iguala los ciclos
+	cp 000h		;7102   ; relleno: iguala los ciclos
+	nop			;7104   ; relleno: iguala los ciclos
+	ld a,l			;7105   ; hasta acabar la pagina
 	or a			;7106
 	jp nz,L_70F5		;7107
 	ret			;710a
-L_710B:
-	ld a,(hl)			;710b
-	ld (04000h),a		;710c
+escucha_13:		; rutina 13 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
+	ld a,(hl)			;710b   ; la muestra...
+	ld (04000h),a		;710c   ; ...al DAC
 	inc hl			;710f
-	ld a,d			;7110
+	ld a,d			;7110   ; el retardo D
 L_7111:
 	dec a			;7111
 	jp nz,L_7111		;7112
-	neg		;7115
-	nop			;7117
-	ld h,e			;7118
-	in a,(0a9h)		;7119
-	and c			;711b
-	jp z,L_710B		;711c
+	neg		;7115   ; relleno: iguala los ciclos
+	nop			;7117   ; relleno: iguala los ciclos
+	ld h,e			;7118   ; se queda en la pagina de bucle
+	in a,(0a9h)		;7119   ; la fila de la tecla:
+	and c			;711b   ; su bit a 1, suelta
+	jp z,escucha_13		;711c
 L_711F:
-	ld a,(hl)			;711f
-	ld (04000h),a		;7120
+	ld a,(hl)			;711f   ; la muestra...
+	ld (04000h),a		;7120   ; ...al DAC
 	inc hl			;7123
-	ld a,d			;7124
+	ld a,d			;7124   ; el retardo D
 L_7125:
 	dec a			;7125
 	jp nz,L_7125		;7126
-	neg		;7129
-	nop			;712b
-	cp 000h		;712c
-	nop			;712e
-	ld a,l			;712f
+	neg		;7129   ; relleno: iguala los ciclos
+	nop			;712b   ; relleno: iguala los ciclos
+	cp 000h		;712c   ; relleno: iguala los ciclos
+	nop			;712e   ; relleno: iguala los ciclos
+	ld a,l			;712f   ; hasta acabar la pagina
 	or a			;7130
 	jp nz,L_711F		;7131
 	ret			;7134
@@ -9631,7 +9631,7 @@ L_AE01:
 	cp 031h		;ae1b
 	jr nc,L_AE26		;ae1d
 	ld (0dc47h),a		;ae1f
-	call L_6ED5		;ae22
+	call escucha_onda		;ae22
 	ei			;ae25
 L_AE26:
 	call L_AE88		;ae26
@@ -11430,7 +11430,7 @@ L_BB78:
 	bit 1,a		;bb8f
 	ret nz			;bb91
 	call layout_de_fabrica		;bb92
-	call L_55DC		;bb95
+	call teclas_de_fabrica		;bb95
 	call L_BD33		;bb98
 	ld hl,0d8fah		;bb9b
 	dec (hl)			;bb9e
