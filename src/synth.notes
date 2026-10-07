@@ -418,3 +418,534 @@ C 0x5CFA la fase del LFO avanza FEET del LFO * 16
 L 0x5D18 lfo_ruido  muestreo y retencion: el valor nuevo sale del ruido (como 0x5AD4)
 L 0x5D39 lfo_apagado  sin LFO: nada
 L 0x5D3A play  PLAY: sin pagina de bucle (0xDCFD = 0) las rutinas de 0x6709; con bucle, las de 0x5E8B
+
+# ----------------------------------------------------------------------
+# LA INTRO: FASES 0xD800 / PASOS 0xD801 (tanda 3)
+# Fase 0: logotipo de Konami y el 新世SIZER; 1: el titulo esperando; 2: la
+# cortina y vuelta a empezar; 3: ESPACIO pulsado, parpadeo; 4 y 5: al
+# programa. El paso va en B y se reparte con `djnz`: el paso 0 es el ultimo
+# destino de la cadena.
+# ----------------------------------------------------------------------
+L 0x4154 fase_0  paso 1: la cortina del logotipo de Konami, un tramo cada dos cuadros
+C 0x4154 paso 1 aqui; los demas, mas abajo
+C 0x4156 cuadros impares nada
+C 0x415B la cortina; Z al acabar las seis filas
+C 0x415F 0xD804 = 0 y el paso siguiente
+L 0x4163 fase_0_paso_2  espera 256 cuadros y prepara el logotipo 新世SIZER
+C 0x4165 0xD804: cuenta atras
+C 0x416A colores del logotipo y pantalla
+C 0x416D sus patrones, 0x428 bytes desde 0x2200...
+C 0x4173 ...a 0xFF en los tres tercios
+C 0x4178 la tabla de nombres del logotipo
+C 0x417B siete pasadas de pincel
+L 0x4182 fase_0_paso_3  cada 16 cuadros una pasada de pincel: los patrones de 0x9E97, de ocho en ocho
+C 0x4184 solo uno de cada 16 cuadros
+C 0x418A destino: los patrones de 0x2200...
+C 0x418D ...origen: 0x9E97...
+C 0x4190 ...los dos mas la pasada (0xD910)
+C 0x419B 0x85 bytes, uno de cada ocho
+C 0x419F un byte...
+C 0x41A4 ...en los tres tercios
+C 0x41A9 ocho mas alla
+C 0x41B6 la pasada siguiente
+C 0x41BA quedan pasadas
+C 0x41BB el rotulo de 0xBE75
+C 0x41C1 fase 1 con 0xD804 = 0
+L 0x41C5 fase_0_paso_0  registros del VDP, pantalla en blanco, la fuente y el logotipo de Konami
+C 0x41C5 los 8 registros
+C 0x41C8 sprites fuera y nombres a cero
+C 0x41CB la fuente
+C 0x41CE el logotipo de Konami
+L 0x41D3 fase_1  el titulo: espera 256 cuadros y pasa a la fase 2
+L 0x41DB fase_2  paso 1: espera a 0xD863 y vuelve a la fase 0
+C 0x41DD 0xBE62
+C 0x41E0 0xD863 sin acabar: espera
+C 0x41E5 otra vez el logotipo de Konami
+L 0x41F0 fase_2_paso_0  la cortina que borra la tabla de nombres, columna a columna
+C 0x41F0 una columna; P mientras quedan
+C 0x41F4 0xBE41
+L 0x41F9 siguiente_paso_con_cuenta  0xD804 = A y 0xD801 + 1
+L 0x41FC siguiente_paso  0xD801 + 1
+L 0x4201 fase_3  paso 1: la segunda linea del rotulo (0xBE84) parpadea, 4 cuadros escrita y 4 borrada
+C 0x4206 bit 2 de la cuenta:
+C 0x420D escrita...
+C 0x4212 ...o borrada
+C 0x4215 0x50 cuadros
+L 0x421C fase_3_paso_2  prepara el programa y pasa a la fase 4
+L 0x4223 fase_3_paso_0  0xD804 = 0x50 cuadros de parpadeo
+L 0x4227 fase_4  paso 1: a la fase 5
+L 0x4229 siguiente_fase  0xD804 = 0x20
+L 0x422B siguiente_fase_con_cuenta  0xD804 = A, 0xD800 + 1 y el paso a 0
+L 0x4232 paso_0  0xD801 = 0
+L 0x4237 fase_4_paso_0  0xD804 = 0x78
+L 0x423F fase_5  el programa (0x47DB)
+L 0x4242 tecla_en_la_intro  tras las fases 0-2: una tecla salta al titulo, y ESPACIO o SELECT en el titulo arrancan
+C 0x4242 el byte de teclas
+C 0x4245 0xD852 ahora, 0xD851 las recien pulsadas
+C 0x424C ninguna nueva: nada
+C 0x424D 0xD804 = 0
+C 0x4255 B = la fase
+C 0x4256 en la fase 1 (el titulo)...
+C 0x4258 ...ESPACIO o SELECT (bits 4 y 5)...
+C 0x425B ...0xD802 = 0x40...
+C 0x4260 ...fase 3, paso 0
+C 0x4266 en las fases 0 y 2: al titulo (fase 1)...
+C 0x4268 ...con el efecto 8...
+C 0x426D ...y el logotipo entero de golpe
+C 0x4270 R7 del PSG = 0xB8: los tres canales de tono
+C 0x4275 el efecto 8
+C 0x427A los 16 KB de la VRAM a cero
+C 0x4284 desde 0x4295...
+C 0x4287 ...8 registros, del R0
+C 0x428C WRTVDP: registro C, valor B
+L 0x429D color_de_borde  R7 del VDP = B
+C 0x42A2 A = el byte de teclas
+C 0x42A5 0xD807 las de ahora, 0xD806 las recien pulsadas
+L 0x42A8 flancos  (HL) = A; (HL - 1) = las que no estaban antes; vuelve con ellas en A
+C 0x42A8 las de antes
+C 0x42AA las que han cambiado...
+C 0x42AB ...y estan pulsadas
+C 0x42AF 0xD8FF
+L 0x42B7 byte_de_teclas  bit 0 arriba, 1 abajo, 2 izquierda, 3 derecha, 4 ESPACIO, 5 SELECT
+C 0x42B7 fila 7
+C 0x42BC SELECT (bit 6) al bit 5
+C 0x42C1 fila 8
+C 0x42C6 izquierda (bit 4) al bit 2
+C 0x42CE derecha y ESPACIO a los bits 3 y 4
+C 0x42D6 arriba y abajo a los bits 0 y 1
+L 0x42DC limpia_pantalla  sprites fuera y la tabla de nombres (0x3800) a cero
+C 0x42DC sprites fuera
+C 0x42DF 0x300 nombres a cero
+L 0x42E9 vram_escribe_desde  SETWRT en HL y en C' el puerto de escritura del VDP (0x0007)
+C 0x42EA SETWRT
+C 0x42EE el puerto de la BIOS
+L 0x42F5 vram_lee_desde  SETRD en HL y en C' el puerto de lectura del VDP (0x0006)
+L 0x42FF copia_a_vram  LDIRVM de DE a la VRAM de HL, BC bytes
+L 0x4303 copia_a_vram_x3  lo mismo en los tres tercios de la pantalla (0x800 de distancia)
+C 0x4309 un tercio
+C 0x430C el siguiente
+L 0x4316 rellena_vram_x3  FILVRM de A en HL, BC bytes, en los tres tercios
+C 0x431A un tercio
+C 0x431D el siguiente
+L 0x4327 rle_a_vram_x3  el flujo RLE de DE en HL, en los tres tercios
+C 0x432B un tercio
+C 0x432E el siguiente
+L 0x4337 escribe_lista  escribe la lista de DE: palabra = direccion de VRAM, bytes hasta 0xFF; 0xFE trae otra direccion
+L 0x4339 escribe_lista_and_c  la lista con cada byte AND C (C = 0: la borra)
+C 0x4339 HL = la direccion...
+C 0x433E ...DE = el primer byte
+C 0x433F el byte
+C 0x4342 0xFF: se acabo
+C 0x4344 0xFE: otra direccion
+C 0x4347 AND C...
+C 0x4348 ...a la VRAM
+L 0x434E borra_lista  la lista de DE con ceros
+L 0x4352 rle_a_vram  el flujo RLE de DE: palabra = direccion de VRAM y luego los tramos
+C 0x4352 HL = la direccion
+L 0x4358 rle_a_vram_en_hl  los tramos desde HL: n < 0x80 repite el byte siguiente n veces, 0x80 + n copia n bytes, 0x80 trae otra direccion, 0 acaba
+C 0x435B el byte de control
+C 0x435C 0: se acabo
+C 0x4360 bit 7 a cero:
+C 0x4363 repeticion
+C 0x4365 0x80:
+C 0x4366 otra direccion
+C 0x4368 0x80 + n: n bytes tal cual
+C 0x436C al VDP
+C 0x4373 el byte que se repite
+C 0x4376 al VDP
+L 0x437D prepara_el_programa  al salir del titulo: borra la RAM del programa, mira si hay disco, copia timbres y ondas de fabrica y trae los sprites
+C 0x437D 0xC000-0xD7FF a cero: ondas, timbres, LAYOUT
+C 0x4386 0xD856-0xDBFF a cero
+C 0x438F H.PHYD (0xFFA7) todavia `ret`...
+C 0x4396 ...no hay disco: 0xD9DE = 1
+C 0x439B los 16 timbres de fabrica y las ondas
+C 0x439E 0x4B21
+C 0x43A1 los patrones de los sprites (0x8000)
+L 0x43A8 borra_memoria  HL a HL + BC a cero
+L 0x43B0 cortina_de_salida  borra una columna de la tabla de nombres por cuadro; M al acabar
+C 0x43B0 la columna, contando hacia atras
+C 0x43B5 0x3800 + (columna XOR 0x1F)
+C 0x43BD las 24 filas...
+C 0x43C0 ...de 32 en 32
+L 0x43C9 sprites_fuera  la copia de los atributos (0xD870) a cero y 0xD0 en 0x3B00: no se ve ninguno
+C 0x43C9 0xD870-0xD8EF a cero
+C 0x43D2 0xD0 en el primer sprite: corta la lista
+L 0x43DC cifras  B cifras de DE hacia la izquierda desde HL, dos por byte (BCD), tile 0x10 + cifra
+L 0x43E0 cifras_40  igual con el tile 0x40 + cifra
+C 0x43E2 la cifra baja
+C 0x43E9 B cifras
+C 0x43EC la alta
+C 0x43F3 la alta siempre con 0x10
+L 0x43FD fuente  los tiles 0-15 a cero, la fuente de 0x4414 desde el tile 0x10 y su color 0xF0
+C 0x43FD los tiles 0-15
+C 0x4400 la fuente, patrones desde 0x2080
+C 0x4409 su color, blanco sobre negro
+L 0x4536 tiles_0_15  patrones de los tiles 0-15 a cero y sus colores 0x00, 0x01... uno por tile
+C 0x4536 patrones a cero
+C 0x4540 los colores: 16 tiles de 8 bytes
+C 0x4552 el siguiente color
+L 0x4557 logo_konami  el logotipo de Konami: 0xD80E = 0 para su cortina
+L 0x455D logo_konami_tiles  los 120 tiles del logotipo (0x45B9), su color a cero y 20 x 6 nombres seguidos desde el 0x40
+C 0x455D los patrones
+C 0x4563 los colores a cero: no se ve
+C 0x456D en la tabla de nombres, desde 0x3907...
+C 0x4570 ...los tiles 0x40 en adelante...
+C 0x4572 ...6 filas...
+C 0x4577 ...de 20
+C 0x4580 la fila siguiente
+L 0x4585 cortina_logo_konami  pinta 0xF0 en una linea de los 20 tiles de la fila 0xD80F; Z al acabar las seis filas
+C 0x4585 C = linea, B = fila
+C 0x4589 A = 20 * fila
+C 0x4590 por 8, desde los colores 0x0A00
+C 0x4599 mas la linea
+C 0x459D 20 tiles...
+C 0x45A2 ...en blanco sobre negro
+C 0x45AA la linea siguiente
+C 0x45B3 y la fila
+C 0x45B6 6 filas
+
+# ----------------------------------------------------------------------
+# EL PROGRAMA: PANTALLAS, TECLADO, EFECTOS DEL PSG (tanda 4)
+# 0xD8F4 = la pantalla (tabla 0x4805): F1-F5 dan 0-4 y, con la segunda pagina
+# del menu (0xD8F0, SHIFT), 5-8. 0xD802 bit 6: el programa en marcha.
+# ----------------------------------------------------------------------
+L 0x4708 logo_sizer_entero  los patrones del logotipo 新世SIZER (0x9E97) de una vez
+C 0x4708 0x428 bytes de 0x9E97...
+C 0x470B ...a los patrones de 0x2200
+L 0x4714 logo_sizer_pantalla  borde 0xE0, pantalla limpia, la fuente y los colores del logotipo (0xA2BF)
+C 0x4714 R7 = 0xE0
+C 0x471F 0x70 en los colores de la zona del logotipo
+C 0x4733 y 0xE0 en otra franja
+C 0x473E los colores del logotipo, en RLE
+L 0x4747 titulo_de_golpe  el logotipo entero, sus nombres y el rotulo, sin pinceladas
+C 0x474D el rotulo de 0xBE75
+L 0x4754 logo_sizer_nombres  la tabla de nombres del logotipo (0xA2E5)
+C 0x4761 C = 1: el registro de tono grueso del canal A
+C 0x4763 los tres canales, 5 bytes cada uno
+C 0x476E (IX+2): canal activo
+C 0x4775 los registros del canal siguiente
+L 0x4786 efecto_canal  un canal: cuando acaba la cuenta (IX+0), la nota siguiente de la lista (IX+3)
+C 0x4789 la cuenta de la nota
+C 0x478D HL = la lista
+C 0x4794 0xFF: se acabo
+C 0x4798 0x2n: n = duracion de las notas (IX+1)
+C 0x47A5 alto: volumen; bajo: tono grueso...
+C 0x47AC ...y el byte siguiente, el fino
+C 0x47AE la lista avanza
+C 0x47B5 tono grueso en el registro C
+C 0x47BA y el fino en C - 1
+C 0x47C0 el volumen al nibble bajo
+C 0x47C6 la cuenta, otra vez la duracion
+L 0x47CE efecto_acabado  canal inactivo y volumen a cero
+L 0x47D3 volumen_del_canal  registro 8 + C / 2 = H
+C 0x47D4 C = 1, 3, 5 -> registros 8, 9, 10
+L 0x47DB fase_programa  cada cuadro del programa: la pantalla en curso y los sprites a la VRAM
+L 0x47DE sprites_a_vram  la copia de los atributos (0xD870) a 0x3B00, 128 bytes
+L 0x47EB pantalla_en_curso  lee el teclado, cambia de pantalla con F1-F5 y SHIFT, y salta a la de 0xD8F4
+C 0x47EB 0xD904: SYN en marcha, nada
+C 0x47F0 la tecla
+C 0x47F3 0xD901: cambiando de pantalla
+C 0x47F9 SHIFT: la otra pagina del menu
+C 0x47FC F1-F5: otra pantalla
+C 0x47FF la pantalla
+L 0x4817 tecla_de_la_matriz  la primera tecla pulsada como fila * 8 + bit + 1 en 0xD8F2; 0xD8F1 = la nueva; 0xD8F3 con repeticion
+C 0x4817 solo con el programa en marcha
+C 0x481D las filas 0 a 8
+C 0x4826 una tecla en esta fila
+C 0x482E ninguna: 0
+C 0x4831 D = la fila
+C 0x4836 C = bit + 1
+C 0x483D fila * 8 + C
+C 0x4842 0xD8F2: la de ahora
+C 0x4848 la misma que antes:
+C 0x484B no es nueva
+C 0x484C 0xD8F1: la nueva
+C 0x484E 0xD8FD: la que se repite y su cuenta
+L 0x4851 repeticion  (HL + 2) = la tecla nueva o, tenida mas de 0x28 cuadros, la de ahora en cada cuadro
+C 0x4853 nueva?
+C 0x4858 la misma que se tenia...
+C 0x485D ...mas de 0x28 cuadros:
+C 0x4860 repite
+C 0x4862 cuenta un cuadro
+C 0x4866 otra tecla: la apunta y la cuenta a cero
+L 0x486D cambio_de_pantalla  F1-F5 (0x36-0x3A) en 0xD8F1
+L 0x4877 pantalla_por_tecla  A = codigo de F1-F5: la pantalla 0-4, o 5-8 en la segunda pagina del menu
+C 0x4877 antes de F1...
+C 0x487A ...o despues de F5: nada
+C 0x487D 0 a 4
+C 0x4880 la segunda pagina...
+C 0x4886 ...suma 5, hasta la 8
+C 0x488D 0xD8FB: la de antes
+C 0x4893 0xD8F5: su estado
+C 0x4899 0xD8F4: la nueva
+C 0x489D estado 0
+C 0x48A6 el efecto 5
+L 0x48AC shift_cambia_menu  SHIFT (0x31) recien pulsada
+L 0x48B2 cambia_menu  0xD8F0 pasa de 0 a 1 o de 1 a 0
+L 0x48C4 pinta_menu  las dos filas de abajo (0x3AC0): el menu 0x8A41, o 0x8A81 en la segunda pagina
+L 0x48D9 pantalla_syn  SYN: la cortina, el teclado, y 0xD8F6 = 2 para que el bucle principal sintetice (0x4BA1)
+C 0x48D9 la cortina; M al acabar
+C 0x48DD el rotulo de SYN (0x48F4)
+C 0x48E3 sus sprites (0x4CD4) a la copia
+C 0x48EE pide la sintesis
+L 0x490B pantalla_play  PLAY: la primera vez prepara la pantalla; luego, si el programa esta en marcha, toca (0x5D3A)
+C 0x490B 0xD8FA: estado de la pantalla
+C 0x4918 a tocar
+L 0x491B play_prepara  la cortina, el teclado y los sprites de PLAY (0x4946)
+C 0x491F 0xB392
+C 0x4922 los sprites
+C 0x4931 estado 1
+L 0x4936 cortina_y_teclado  la cortina de salida y, al acabar, la pantalla del teclado; M al acabar
+C 0x4936 cambiando de pantalla
+C 0x4939 una columna
+C 0x493D la pantalla nueva
+C 0x4940 ya no se esta cambiando
+C 0x4943 M
+L 0x494E pantalla_teclado  el teclado de PLAY y SYN, y en cada tecla el nombre de su timbre segun el LAYOUT (0xD200)
+C 0x494E pantalla apagada
+C 0x4951 lo comun
+C 0x4954 patrones y colores del teclado
+C 0x4978 (0x002C) de la BIOS: el juego de caracteres
+C 0x497D japones (0): sin el dibujo de 0x97FD
+C 0x4991 los nombres del teclado
+C 0x4997 el LAYOUT, una entrada por tecla
+C 0x499A las teclas 1 a 0x30
+C 0x499F busca la entrada en 0xBCCA...
+C 0x49A8 ...su indice a 0xD905
+C 0x49AF la escribe en su tecla
+C 0x49B5 la 0x16 no esta
+C 0x49C0 pantalla encendida
+L 0x49C4 fin_de_cambio  0xD901 = 0
+L 0x49C7 empieza_cambio  0xD901 = 1
+C 0x49CF el registro A del cargador: 6 bytes por entrada
+C 0x49E1 origen, destino y longitud
+C 0x49EE los dos bits altos de la longitud dicen como:
+L 0x4A14 tecla_pulsada  la tecla 0xDC47 se pinta hundida en el teclado (0xD8F8 = 1)
+L 0x4A22 tecla_soltada  la tecla 0xDC47 vuelve a su dibujo (0xD8F8 = 0)
+C 0x4A2D su entrada del LAYOUT
+C 0x4A31 ninguna: nada
+C 0x4A33 0x13 o mas: tecla negra
+C 0x4A3F direccion de VRAM
+C 0x4A4E el puerto de escritura
+C 0x4A58 soltada: el nombre otra vez
+C 0x4A5E pulsada: lo tapa
+C 0x4A64 y los sprites de la tecla en la copia
+C 0x4A99 a la VRAM
+C 0x4A9C tecla blanca: su sitio en 0x4B3F
+C 0x4AA8 pulsada o suelta
+L 0x4AC2 nombre_en_la_tecla  escribe en la tecla el nombre de su timbre, con el cartucho en la pagina 2 mientras tanto
+C 0x4AC2 los graficos estan en el cartucho
+C 0x4ACF su indice en 0xBCCA
+C 0x4ADE la escribe
+C 0x4AE1 la RAM otra vez
+L 0x4AE4 tapa_nombre  tapa el nombre de la tecla con los tiles de 0x4B00 y 0x4B02
+L 0x4B04 entrada_del_layout  HL = 0xD200 + tecla 0xDC47 - 1
+L 0x4B0F vram_para_escribir  la direccion de escritura del VDP = HL
+C 0x4B10 el puerto de control
+C 0x4B19 bit 6: escritura
+L 0x4B21 layout_de_fabrica  los 0x30 bytes de 0x4B71 al LAYOUT (0xD200)
+L 0x4BA1 hace_syn  SYN pedido por la pantalla: copia el timbre en curso a 0xDC00, sintetiza y salta a la pantalla de la tecla que corto o acabo
+C 0x4BA1 espera a que acabe el efecto del canal C
+C 0x4BA7 0xD904: ocupado
+C 0x4BAC HL = el timbre en curso
+C 0x4BAF sus 25 bytes a 0xDC00
+C 0x4BB7 la sintesis
+C 0x4BBA borra las dos filas del menu
+C 0x4BC4 la tecla que dejo SYN: F4 al acabar
+C 0x4BCA todo a cero
+C 0x4BD9 deja entrar interrupciones
+C 0x4BDA 0xD907: cuenta de tics
+C 0x4BF6 dos cambios en la VRAM de la tabla 0x4C61
+C 0x4C00 direccion
+C 0x4C0F dos bytes
+C 0x4C1A un tic mas
+C 0x4C28 el sprite avanza en X...
+C 0x4C2D ...hasta 0x98
+C 0x4C37 cada dos tics...
+C 0x4C3B ...el dibujo siguiente de tres
+C 0x4C43 los patrones de 0x4C5B
+C 0x4C8B parpadeo: 0x4CE4 o 0x4CF4
+C 0x4C91 0x14 veces
+C 0x4CA7 0xD902
+C 0x4CAB borra dos tiles en 0x3AD4...
+C 0x4CB4 ...y en 0x3AF4
+C 0x4CC5 cada 8 tics...
+C 0x4CCD ...cambia el dibujo
+
+# ----------------------------------------------------------------------
+# FILE: CINTA Y DISCO (tanda 5)
+# 0xDB18 = el tipo: 0x21 TONE (0xC000), 0x22 LAYOUT (0xD200), 0x23 SAMP
+# (0x8000); 0xDB0F = el nombre, 7 letras en el codigo de la fuente (0x21 = A).
+# En cinta: cabecera larga con 16 veces el tipo, el nombre, la longitud
+# (+ la pagina de bucle en SAMP) y los datos, cada bloque tras su cabecera.
+# En disco: NOMBRE.T, .K o .S (0x51D8) por la BDOS del Disk BASIC (0xF37D).
+# ----------------------------------------------------------------------
+L 0x4D04 graba_en_cinta  graba el fichero del tipo 0xDB18 en cinta
+C 0x4D04 la RAM en la pagina 2
+C 0x4D08 cabecera larga
+C 0x4D0F 0xDBF0 = la direccion de los datos
+C 0x4D15 16 veces el tipo
+C 0x4D1F cabecera corta...
+C 0x4D25 ...y las 7 letras del nombre
+C 0x4D31 cabecera corta...
+C 0x4D37 ...y la longitud, 0xDCFE
+C 0x4D43 BC = la longitud
+C 0x4D47 SAMP: tambien la pagina de bucle
+C 0x4D55 cabecera corta...
+C 0x4D5C ...y los datos
+C 0x4D6B una pausa
+C 0x4D70 fin de la grabacion
+C 0x4D73 el cartucho otra vez
+L 0x4D78 error_de_cinta  para el motor, vuelve el cartucho y sale con acarreo
+L 0x4D82 byte_a_cinta  TAPOUT de A
+L 0x4D8A busca_otra_vez  otro fichero en la cinta
+L 0x4D8C carga_de_cinta  busca en la cinta un fichero del tipo 0xDB18 (y del nombre de 0xDB0F, si lo hay) y lo carga
+C 0x4D8C la RAM en la pagina 2
+C 0x4D93 SAMP: el sample en blanco antes
+C 0x4D9A una cabecera
+C 0x4D9F 16 bytes, todos del tipo
+C 0x4DAB otro tipo: a buscar otra vez
+C 0x4DAF el nombre todo espacios...
+C 0x4DBD ...vale cualquiera (C = 1)
+C 0x4DC0 la cabecera del nombre
+C 0x4DCB 7 letras
+C 0x4DD0 cualquiera, o...
+C 0x4DD4 ...la misma
+C 0x4DD7 se queda con la que llega
+C 0x4DDB el cartucho, para escribir en pantalla
+C 0x4DE1 "FOUND"...
+C 0x4DE7 ...y el nombre
+C 0x4DF3 la cabecera de la longitud
+C 0x4DF9 0xDCFE
+C 0x4E08 SAMP: la pagina de bucle
+C 0x4E18 la cabecera de los datos
+C 0x4E1E 0xDBF0 = su direccion
+C 0x4E21 BC = la longitud
+C 0x4E2A los datos
+C 0x4E37 una pausa
+C 0x4E3C fin de la lectura
+C 0x4E44 0x80 desde 0x8000...
+C 0x4E47 ...0x3FFF bytes mas
+L 0x4E52 byte_de_cinta  TAPIN a A; acarreo si falla
+L 0x4E5A direccion_de_carga  0xDBF0 = la direccion del tipo 0xDB18 (0x4E7A)
+C 0x4E5A el tipo, de 0 a 2...
+C 0x4E5F ...por dos
+L 0x4E6F pausa  B vueltas de 65536
+L 0x4E89 graba_en_disco  NOMBRE.ext con la longitud (y el bucle en SAMP) delante de los datos
+C 0x4E89 para volver si hay error (0x5119)
+C 0x4E90 la RAM en la pagina 2
+C 0x4E93 el FCB en 0xD980
+C 0x4E9C crea el fichero
+C 0x4EA2 la longitud, 2 bytes
+C 0x4EAF SAMP: la pagina de bucle
+C 0x4EB8 la direccion de los datos...
+C 0x4EBC ...a la DMA
+C 0x4EC1 los datos, de un tiron
+C 0x4EC7 cierra
+L 0x4ED1 carga_de_disco  abre NOMBRE.ext, lee la longitud (y el bucle) y los datos
+C 0x4EEB SAMP: el sample en blanco antes
+C 0x4EEE abre
+C 0x4EF4 la longitud
+C 0x4F01 SAMP: la pagina de bucle
+C 0x4F0A la DMA
+C 0x4F13 los datos
+C 0x4F19 cierra
+L 0x4F23 borra_de_disco  borra NOMBRE.ext
+C 0x4F39 BDOS 0x13: borrar
+C 0x4F44 error 1
+L 0x4F4D directorio  busca los ficheros del tipo 0xDB18: hasta 0x23 nombres en 0xD2E1, 11 bytes cada uno
+C 0x4F57 la lista, a espacios
+C 0x4F64 un FCB...
+C 0x4F71 ...con ???????? de nombre
+C 0x4F7E ninguno todavia
+C 0x4F85 la DMA en 0xD2C0
+C 0x4F8D BDOS 0x11: el primero
+C 0x4F98 la letra de la extension del tipo...
+C 0x4F9E ...y dos espacios detras
+C 0x4FAB uno mas
+C 0x4FB0 a la lista
+C 0x4FB5 0x23: no caben mas
+C 0x4FB9 BDOS 0x12: el siguiente
+C 0x4FC4 "END" si hay alguno...
+C 0x4FCE ...o "NO FILE"
+C 0x4FD7 el efecto 2
+L 0x4FF4 directorio_teclas  arriba y abajo mueven la lista de diez; RETURN (0x40) sale con acarreo
+C 0x4FF7 el byte de teclas con repeticion
+C 0x4FFD 1: arriba
+C 0x5001 2: abajo
+C 0x5005 RETURN
+C 0x5011 sube si no esta arriba
+C 0x501A baja si quedan mas de diez
+L 0x502F cambiando_pantalla  0xD901 = 1
+L 0x5033 pantalla_quieta  0xD901 = 0
+L 0x5038 lista_de_diez  diez nombres desde el 0xD9B6, uno por fila desde 0x38E8
+C 0x5043 la entrada C
+C 0x5047 a la pantalla
+C 0x504B la fila siguiente
+L 0x5058 un_nombre  escribe un nombre de la lista, con su punto, o la marca de fin
+C 0x505E vacia: nada
+C 0x5061 0x96: el final
+C 0x5065 0x40: "END"
+C 0x5069 7 letras...
+C 0x506E ...el punto...
+C 0x5074 ...y 3 mas
+L 0x5086 letras_a_vram  B caracteres ASCII de DE a la VRAM de HL, convertidos a tiles
+C 0x508B espacio y @: tile 0
+C 0x5097 cifras: + 0x10
+C 0x509F letras: - 0x20
+L 0x50A9 al_directorio  la entrada 0xD2C1 del FCB encontrado a la lista
+L 0x50B0 copia_entrada  11 bytes de DE a la entrada A de la lista
+L 0x50BA entrada_de_la_lista  HL = 0xD2E1 + 11 * A
+C 0x50BF A * 3...
+C 0x50C1 ...* 4 - A = A * 11
+L 0x50CB entrada_en_de  DE = 0xD2E1 + 11 * A
+L 0x50DE error_de_disco  el codigo de error de la BIOS del disco (C) a uno de los mensajes
+L 0x50F7 mensaje_de_error  el mensaje C de 0x511F en 0x3A06, y vuelve por la pila guardada en 0xD972 con acarreo
+C 0x50F8 el cartucho para la pantalla
+C 0x5107 el mensaje
+C 0x5116 0xB8F8
+C 0x5119 la pila de antes de la operacion
+L 0x5191 fcb  arma el FCB en DE con el nombre 0xDB0F (los tiles a ASCII) y la letra del tipo
+C 0x5191 nombre todo espacios o con huecos: error 6
+C 0x519D unidad 0: la de siempre
+C 0x51A0 7 letras
+C 0x51A3 tiles 0x21-0x3F: letras, + 0x20
+C 0x51AB 0x40 en adelante: cifras, - 0x10
+C 0x51B2 la octava, un espacio
+C 0x51B6 la extension: T, K o S...
+C 0x51BB ...y dos espacios
+C 0x51C3 el resto del FCB a cero
+L 0x51CB letra_del_tipo  A = T, K o S segun 0xDB18
+L 0x51DB nombre_valido  acarreo si el nombre empieza por espacio o tiene un hueco entre letras
+L 0x520A fcb_hl  0xD970 = HL
+L 0x520D fcb_a_cero  bloque 0, registro de 1 byte y registro aleatorio 0
+C 0x5210 bloque actual = 0
+C 0x5218 tamano de registro = 1
+C 0x5222 el registro aleatorio a cero
+L 0x522A registro_aleatorio  (FCB + 0x21) = HL, con el FCB en DE
+L 0x523D abre  BDOS 0x0F; error 1
+L 0x5248 si_falla  A = 0xFF: el mensaje de error C
+L 0x524D crea  BDOS 0x16; error 5
+L 0x525A cierra  BDOS 0x10; error 2
+L 0x5267 lee_bloque  BDOS 0x27, HL registros; error 0
+L 0x5272 si_no_cero  A distinto de 0: el mensaje de error C
+L 0x5277 escribe_bloque  BDOS 0x26, HL registros; error 2
+L 0x5284 lee_byte  un byte del fichero a A, por la pila
+L 0x5289 escribe_byte  A al fichero, por la pila
+C 0x528C A en la pila...
+C 0x5292 ...es la DMA
+L 0x529E un_registro  HL = 1 y salta a BC
+L 0x52A3 escribe_palabra  HL al fichero, el bajo primero
+L 0x52AC lee_palabra  HL del fichero
+L 0x52B7 pantalla_imprime  la pantalla 7: imprime y vuelve a la pantalla de antes
+C 0x52BC espera a la impresora; acarreo si no esta
+C 0x52C1 desde WAVE EDIT...
+C 0x52C6 ...la onda
+C 0x52C9 y lo demas
+C 0x52CC vuelve a la pantalla de antes
+L 0x52D9 impresora_lista  espera a que la impresora este lista y empieza
+C 0x52D9 la pila, para salir si falla
+C 0x52E2 RAWPRT = 1: sin traducir los codigos
+L 0x52ED espera_impresora  LPTSTT hasta que conteste, con limite
+C 0x52F3 lista?
+C 0x52F8 0xFF: no hay
