@@ -197,7 +197,7 @@ cartucho_en_la_pagina_2:		; vuelve a poner el cartucho en 0x8000-0xBFFF (0xD855)
 	ld a,(0d855h)		;410f
 	jp 00024h		;4112   ; BIOS ENASLT - Switches to specified slot and page definitively
 efecto_de_sonido:		; arranca el efecto A en el PSG (0xBEB1)
-	jp L_BEB1		;4115
+	jp efecto		;4115
 interrupcion_sube_el_dac:		; la primera rutina de H.KEYI: lleva el DAC de 0 a 0x80 (el reposo) de uno en uno, un paso por interrupcion
 	ld hl,0d856h		;4118   ; 0xD856: el valor que toca (las variables empiezan a 0)
 	ld a,(hl)			;411b
@@ -305,7 +305,7 @@ fase_1:		; el titulo: espera 256 cuadros y pasa a la fase 2
 	jp siguiente_fase		;41d8
 fase_2:		; paso 1: espera a 0xD863 y vuelve a la fase 0
 	djnz fase_2_paso_0		;41db
-	call L_BE62		;41dd   ; 0xBE62
+	call demo		;41dd   ; 0xBE62
 	ld a,(0d863h)		;41e0   ; 0xD863 sin acabar: espera
 	or a			;41e3
 	ret nz			;41e4
@@ -317,7 +317,7 @@ fase_2:		; paso 1: espera a 0xD863 y vuelve a la fase 0
 fase_2_paso_0:		; la cortina que borra la tabla de nombres, columna a columna
 	call cortina_de_salida		;41f0   ; una columna; P mientras quedan
 	ret p			;41f3
-	call L_BE41		;41f4   ; 0xBE41
+	call empieza_demo		;41f4   ; 0xBE41
 	ld a,020h		;41f7
 siguiente_paso_con_cuenta:		; 0xD804 = A y 0xD801 + 1
 	ld (0d804h),a		;41f9
@@ -387,7 +387,7 @@ tecla_en_la_intro:		; tras las fases 0-2: una tecla salta al titulo, y ESPACIO o
 L_4266:
 	ld (hl),001h		;4266   ; en las fases 0 y 2: al titulo (fase 1)...
 	ld a,008h		;4268   ; ...con el efecto 8...
-	call L_BEA6		;426a
+	call efecto_si_en_marcha		;426a
 	jp titulo_de_golpe		;426d   ; ...y el logotipo entero de golpe
 prepara_vdp_y_psg:		; mezclador del PSG, efecto 8, la VRAM a cero y los 8 registros del VDP
 	ld a,0b8h		;4270   ; R7 del PSG = 0xB8: los tres canales de tono
@@ -966,7 +966,7 @@ L_47FF:
 ;   0x4805..0x4817  (18 bytes)
 DATA_saltos_por_pantalla:
 	defw 0a5aah,0adf7h,048d9h,0490bh,0b5dbh,0b3afh,0b5c8h,052b7h	; 4805
-	defw 0bb6dh	; 4815  -> L_BB6D
+	defw 0bb6dh	; 4815  -> pantalla_layout
 
 ; ======================================================================
 ; CODIGO 0x4817..0x48f4  (221 bytes)
@@ -1078,7 +1078,7 @@ L_488D:
 	ld a,020h		;48a1
 	ld (0d804h),a		;48a3
 	ld a,005h		;48a6   ; el efecto 5
-	call L_BEB1		;48a8
+	call efecto		;48a8
 	ret			;48ab
 shift_cambia_menu:		; SHIFT (0x31) recien pulsada
 	ld a,(0d8f1h)		;48ac
@@ -1145,7 +1145,7 @@ pantalla_play:		; PLAY: la primera vez prepara la pantalla; luego, si el program
 play_prepara:		; la cortina, el teclado y los sprites de PLAY (0x4946)
 	call cortina_y_teclado		;491b
 	ret p			;491e
-	call L_B392		;491f   ; 0xB392
+	call fuente_letras		;491f   ; 0xB392
 	ld hl,04946h		;4922   ; los sprites
 	ld de,0d870h		;4925
 	ld bc,00008h		;4928
@@ -1179,8 +1179,8 @@ DATA_sprite_cursor:
 
 
 pantalla_teclado:		; el teclado de PLAY y SYN, y en cada tecla el nombre de su timbre segun el LAYOUT (0xD200)
-	call L_B32E		;494e   ; pantalla apagada
-	call L_B33E		;4951   ; lo comun
+	call pantalla_apagada		;494e   ; pantalla apagada
+	call menu_cifras_y_marco		;4951   ; lo comun
 	ld de,0925ah		;4954   ; patrones y colores del teclado
 	ld hl,02080h		;4957
 	call rle_a_vram_x3		;495a
@@ -1222,7 +1222,7 @@ L_49A2:
 	pop af			;49ac
 	push af			;49ad
 	push hl			;49ae
-	call L_BBED		;49af   ; la escribe en su tecla
+	call nombre_de_nota		;49af   ; la escribe en su tecla
 	pop hl			;49b2
 	pop af			;49b3
 	inc a			;49b4
@@ -1234,7 +1234,7 @@ L_49BB:
 	inc hl			;49bb
 	cp 031h		;49bc
 	jr c,L_499C		;49be
-	call L_B32A		;49c0   ; pantalla encendida
+	call pantalla_encendida		;49c0   ; pantalla encendida
 	ret			;49c3
 fin_de_cambio:		; 0xD901 = 0
 	xor a			;49c4
@@ -1407,7 +1407,7 @@ L_4AB4:
 nombre_en_la_tecla:		; escribe en la tecla el nombre de su timbre, con el cartucho en la pagina 2 mientras tanto
 	call cartucho_en_la_pagina_2		;4ac2   ; los graficos estan en el cartucho
 	ld a,(0dc47h)		;4ac5
-	call L_BC3D		;4ac8
+	call sitio_de_tecla		;4ac8
 	ld a,(de)			;4acb
 	or a			;4acc
 	ret z			;4acd
@@ -1422,18 +1422,18 @@ L_4AD4:
 	ld a,b			;4ad9
 	ld (0d905h),a		;4ada
 	pop hl			;4add
-	call L_BC01		;4ade   ; la escribe
+	call nombre_de_nota_d905		;4ade   ; la escribe
 	jp ram_en_la_pagina_2		;4ae1   ; la RAM otra vez
 tapa_nombre:		; tapa el nombre de la tecla con los tiles de 0x4B00 y 0x4B02
 	call cartucho_en_la_pagina_2		;4ae4
 	ld a,(0dc47h)		;4ae7
-	call L_BC3D		;4aea
+	call sitio_de_tecla		;4aea
 	ld de,04b00h		;4aed
-	call L_BC37		;4af0
+	call dos_tiles		;4af0
 	ld de,00020h		;4af3
 	add hl,de			;4af6
 	ld de,04b02h		;4af7
-	call L_BC37		;4afa
+	call dos_tiles		;4afa
 	jp ram_en_la_pagina_2		;4afd
 
 ; ----------------------------------------------------------------------
@@ -1500,7 +1500,7 @@ hace_syn:		; SYN pedido por la pantalla: copia el timbre en curso a 0xDC00, sint
 	jr nz,hace_syn		;4ba5
 	ld a,001h		;4ba7   ; 0xD904: ocupado
 	ld (0d904h),a		;4ba9
-	call L_ADDB		;4bac   ; HL = el timbre en curso
+	call timbre_en_curso		;4bac   ; HL = el timbre en curso
 	ld de,0dc00h		;4baf   ; sus 25 bytes a 0xDC00
 	ld bc,00019h		;4bb2
 	ldir		;4bb5
@@ -1821,12 +1821,12 @@ L_4DD7:
 	inc hl			;4dd8
 	djnz L_4DCB		;4dd9
 	call cartucho_en_la_pagina_2		;4ddb   ; el cartucho, para escribir en pantalla
-	call L_BA66		;4dde
+	call borra_mensajes		;4dde
 	ld de,04e80h		;4de1   ; "FOUND"...
 	call escribe_lista		;4de4
 	ld de,0db0fh		;4de7   ; ...y el nombre
 	ld hl,03a0dh		;4dea
-	call L_AD21		;4ded
+	call siete_letras		;4ded
 	call ram_en_la_pagina_2		;4df0
 	call 000e1h		;4df3   ; BIOS TAPION - Reads the header block after turning the cassette motor on | la cabecera de la longitud
 	jp c,error_de_cinta		;4df6
@@ -2064,7 +2064,7 @@ L_4FD1:
 	call copia_entrada		;4fd1
 	call cartucho_en_la_pagina_2		;4fd4
 	ld a,002h		;4fd7   ; el efecto 2
-	call L_BEB1		;4fd9
+	call efecto		;4fd9
 	jr $+75		;4fdc
 
 ; ----------------------------------------------------------------------
@@ -2257,7 +2257,7 @@ L_50F5:
 mensaje_de_error:		; el mensaje C de 0x511F en 0x3A06, y vuelve por la pila guardada en 0xD972 con acarreo
 	push bc			;50f7
 	call cartucho_en_la_pagina_2		;50f8   ; el cartucho para la pantalla
-	call L_BA66		;50fb
+	call borra_mensajes		;50fb
 	call pantalla_quieta		;50fe
 	pop bc			;5101
 	ld b,000h		;5102
@@ -2272,7 +2272,7 @@ mensaje_de_error:		; el mensaje C de 0x511F en 0x3A06, y vuelve por la pila guar
 	ld hl,03a06h		;510e
 	ld c,0ffh		;5111
 	call L_433F		;5113
-	call L_B8F8		;5116   ; 0xB8F8
+	call file_reposo		;5116   ; 0xB8F8
 	ld sp,(0d972h)		;5119   ; la pila de antes de la operacion
 	scf			;511d
 	ret			;511e
@@ -2886,7 +2886,7 @@ L_554F:
 	djnz L_554F		;5554
 	call nueva_linea		;5556
 	xor a			;5559   ; HL = la onda
-	call L_B1A0		;555a
+	call muestra_a		;555a
 	ld b,008h		;555d   ; 8 filas
 L_555F:
 	push bc			;555f
@@ -2908,7 +2908,7 @@ L_5576:
 	call imprime		;5576
 	push hl			;5579
 	ld l,c			;557a
-	call L_A978		;557b   ; a decimal (0xA978)
+	call a_decimal		;557b   ; a decimal (0xA978)
 	ld hl,0dbf0h		;557e   ; las tres cifras en 0xDBF0
 	ld a,e			;5581
 	and 00fh		;5582
@@ -2977,182 +2977,182 @@ teclas_de_fabrica:		; los 0x80 bytes de 0x5DA9 a 0xD230: rutina y retardo de cad
 ; =====  SYN: la sintesis del timbre en la RAM de 0x8000  =====
 ; ----------------------------------------------------------------------
 tic_de_sintesis:		; cada 0xDC22 muestras: 0x4BD9 y 0xDC24 + 1
-	call L_4BD9		;55e8
-	ld hl,0dc24h		;55eb
+	call L_4BD9		;55e8   ; el tic (0x4BD9)
+	ld hl,0dc24h		;55eb   ; y 0xDC24 + 1
 	inc (hl)			;55ee
 	ret			;55ef
 syn:		; SYN: fabrica el timbre de 0xDC00 muestra a muestra en 0x8000-0xBFFF, la RAM del ordenador
-	di			;55f0
+	di			;55f0   ; sin interrupciones durante la sintesis
 	xor a			;55f1
 	ld (0dc24h),a		;55f2   ; 0xDC24 = 0
 	call ram_en_la_pagina_2		;55f5   ; la RAM en 0x8000
 	ld a,(0dc03h)		;55f8   ; ENV del DCO a cero: su envolvente no cuenta
 	or a			;55fb
 	jp nz,L_5605		;55fc
-	ld hl,00000h		;55ff
+	ld hl,00000h		;55ff   ; HL = 0 muestras
 	jp L_5613		;5602
 L_5605:
 	ld a,(0dc09h)		;5605   ; B, C, A = ataque, caida y sostenido del DCO
 	ld b,a			;5608
-	ld a,(0dc0ah)		;5609
+	ld a,(0dc0ah)		;5609   ; C = D
 	ld c,a			;560c
-	ld a,(0dc0bh)		;560d
+	ld a,(0dc0bh)		;560d   ; A = S
 	call muestras_ataque_y_caida		;5610   ; HL = muestras de ataque y caida
 L_5613:
 	ld (0dc1ch),hl		;5613   ; 0xDC1C: las del DCO
-	ld a,h			;5616
+	ld a,h			;5616   ; la parte alta
 	cp 040h		;5617   ; 16 KB o mas: no se calcula
 	jp nc,L_5695		;5619
 	ld a,(0dc07h)		;561c   ; ENV del DCF a cero: no cuenta
 	or a			;561f
 	jp nz,L_5629		;5620
-	ld hl,00000h		;5623
+	ld hl,00000h		;5623   ; HL = 0 muestras
 	jp L_5637		;5626
 L_5629:
 	ld a,(0dc0dh)		;5629   ; ataque, caida y sostenido del DCF
 	ld b,a			;562c
-	ld a,(0dc0eh)		;562d
+	ld a,(0dc0eh)		;562d   ; C = D
 	ld c,a			;5630
-	ld a,(0dc0fh)		;5631
-	call muestras_ataque_y_caida		;5634
+	ld a,(0dc0fh)		;5631   ; A = S
+	call muestras_ataque_y_caida		;5634   ; HL = muestras de ataque y caida
 L_5637:
 	ld (0dc1eh),hl		;5637   ; 0xDC1E: las del DCF
 	ld a,h			;563a
-	cp 040h		;563b
+	cp 040h		;563b   ; 16 KB o mas: no se calcula
 	jp nc,L_5695		;563d
 	ld a,(0dc11h)		;5640   ; ataque, caida y sostenido del DCA
 	ld b,a			;5643
-	ld a,(0dc12h)		;5644
+	ld a,(0dc12h)		;5644   ; C = D
 	ld c,a			;5647
-	ld a,(0dc13h)		;5648
-	call muestras_ataque_y_caida		;564b
+	ld a,(0dc13h)		;5648   ; A = S
+	call muestras_ataque_y_caida		;564b   ; HL = muestras de ataque y caida
 	ld (0dc20h),hl		;564e   ; 0xDC20: las del DCA
 	ld a,h			;5651
-	cp 040h		;5652
+	cp 040h		;5652   ; 16 KB o mas: no se calcula
 	jp nc,L_5695		;5654
 	ld de,(0dc1eh)		;5657   ; la mayor de las tres...
 	scf			;565b
 	ccf			;565c
-	sbc hl,de		;565d
+	sbc hl,de		;565d   ; DCA - DCF
 	jp c,L_5669		;565f
-	ld de,(0dc20h)		;5662
+	ld de,(0dc20h)		;5662   ; el DCA es mayor
 	jp L_566A		;5666
 L_5669:
 	ccf			;5669
 L_566A:
-	ld hl,(0dc1ch)		;566a
-	sbc hl,de		;566d
+	ld hl,(0dc1ch)		;566a   ; el DCO...
+	sbc hl,de		;566d   ; ...contra la mayor de las otras
 	jp c,L_5676		;566f
-	ld de,(0dc1ch)		;5672
+	ld de,(0dc1ch)		;5672   ; el DCO es mayor
 L_5676:
 	ex de,hl			;5676   ; ...redondeada a pagina entera
-	ld de,001ffh		;5677
+	ld de,001ffh		;5677   ; + 0x1FF...
 	add hl,de			;567a
-	ld l,000h		;567b
+	ld l,000h		;567b   ; ...y la pagina entera
 	push hl			;567d
 	ld a,(0dc13h)		;567e   ; mas la relajacion del DCA: sostenido x R
-	ld e,a			;5681
-	ld a,(0dc14h)		;5682
+	ld e,a			;5681   ; E = S del DCA
+	ld a,(0dc14h)		;5682   ; C = R del DCA
 	ld c,a			;5685
-	call multiplica_c_por_e		;5686
+	call multiplica_c_por_e		;5686   ; HL = S * R
 	pop de			;5689
-	add hl,de			;568a
+	add hl,de			;568a   ; mas lo anterior
 	ld de,00040h		;568b   ; mas 0x40
 	add hl,de			;568e
-	ld a,h			;568f
+	ld a,h			;568f   ; 16 KB o mas?
 	cp 040h		;5690
 	jp c,L_569A		;5692
 L_5695:
 	ld a,080h		;5695   ; si pasa de 16 KB, 0x80
-	jp L_569F		;5697
+	jp L_569F		;5697   ; 0xDC22 = 0x80
 L_569A:
 	sla l		;569a   ; 0xDC22 = la duracion calculada / 128
-	rl h		;569c
+	rl h		;569c   ; HL * 2: la parte alta es HL / 128
 	ld a,h			;569e
 L_569F:
-	ld (0dc22h),a		;569f
+	ld (0dc22h),a		;569f   ; 0xDC22: cada cuantas muestras un tic
 	ld (0dc23h),a		;56a2   ; 0xDC23: cuenta atras hasta el siguiente tic
 	xor a			;56a5
 	ld (0dcfdh),a		;56a6   ; 0xDCFD: sin pagina de bucle
 	ld hl,08000h		;56a9   ; el sample entero a 0x80, el silencio
 L_56AC:
-	ld (hl),080h		;56ac
+	ld (hl),080h		;56ac   ; 0x80...
 	inc hl			;56ae
 	ld a,h			;56af
-	cp 0c0h		;56b0
+	cp 0c0h		;56b0   ; ...hasta 0xC000
 	jp nz,L_56AC		;56b2
 	ld hl,08000h		;56b5   ; 0xDC19: el puntero de escritura, desde 0x8000
-	ld (0dc19h),hl		;56b8
+	ld (0dc19h),hl		;56b8   ; 0xDC19 = 0x8000
 	xor a			;56bb   ; 0xDC1B: ninguna envolvente en su sostenido
-	ld (0dc1bh),a		;56bc
+	ld (0dc1bh),a		;56bc   ; 0xDC1B = 0
 	ld hl,dco_ataque		;56bf   ; las tres envolventes empiezan por el ataque: rutina, cuenta 1 y nivel 0
-	ld (0dc25h),hl		;56c2
-	ld hl,0dc27h		;56c5
+	ld (0dc25h),hl		;56c2   ; la fase del DCO: el ataque
+	ld hl,0dc27h		;56c5   ; su cuenta = 1...
 	ld (hl),001h		;56c8
 	inc hl			;56ca
-	ld (hl),000h		;56cb
-	ld hl,dcf_ataque		;56cd
+	ld (hl),000h		;56cb   ; ...y su nivel = 0
+	ld hl,dcf_ataque		;56cd   ; la fase del DCF: el ataque
 	ld (0dc29h),hl		;56d0
-	ld hl,0dc2bh		;56d3
+	ld hl,0dc2bh		;56d3   ; su cuenta = 1...
 	ld (hl),001h		;56d6
 	inc hl			;56d8
-	ld (hl),000h		;56d9
-	ld hl,dca_ataque		;56db
+	ld (hl),000h		;56d9   ; ...y su nivel = 0
+	ld hl,dca_ataque		;56db   ; la fase del DCA: el ataque
 	ld (0dc2dh),hl		;56de
-	ld hl,0dc2fh		;56e1
+	ld hl,0dc2fh		;56e1   ; su cuenta = 1...
 	ld (hl),001h		;56e4
 	inc hl			;56e6
-	ld (hl),000h		;56e7
+	ld (hl),000h		;56e7   ; ...y su nivel = 0
 	ld hl,00000h		;56e9   ; 0xDC31: la fase del oscilador
 	ld (0dc31h),hl		;56ec
 	ld a,(0dc00h)		;56ef   ; la onda 14 es la del usuario...
-	cp 00eh		;56f2
+	cp 00eh		;56f2   ; la 14?
 	jp nz,L_56FF		;56f4
 	ld a,(0db00h)		;56f7   ; ...en 0xC000 + 0x100 * (0xDB00)
-	add a,0c0h		;56fa
+	add a,0c0h		;56fa   ; 0xC0 + onda del usuario
 	jp L_5701		;56fc
 L_56FF:
 	add a,072h		;56ff   ; las de la ROM, en la pagina 0x72 + onda
 L_5701:
 	ld (0dc33h),a		;5701   ; 0xDC33: la pagina de la onda
 	ld hl,00000h		;5704   ; 0xDC35: el puntero del ruido, de 0x0000 en adelante
-	ld (0dc35h),hl		;5707
+	ld (0dc35h),hl		;5707   ; 0xDC35 = 0
 	ld a,(0dc05h)		;570a   ; RES...
 	ld e,a			;570d
 	ld d,000h		;570e
-	ld hl,05c12h		;5710
+	ld hl,05c12h		;5710   ; 0x5C12[RES]
 	add hl,de			;5713
 	ld a,(hl)			;5714
 	ld (0dc38h),a		;5715   ; ...da la realimentacion (0xDC38)...
-	ld hl,05c1bh		;5718
+	ld hl,05c1bh		;5718   ; 0x5C1B[RES]
 	add hl,de			;571b
 	ld a,(hl)			;571c
 	ld (0dc39h),a		;571d   ; ...y la ganancia (0xDC39)
 	ld hl,00000h		;5720   ; los estados del filtro a cero
-	ld (0dc3ah),hl		;5723
-	ld (0dc3ch),hl		;5726
+	ld (0dc3ah),hl		;5723   ; primera etapa = 0
+	ld (0dc3ch),hl		;5726   ; segunda etapa = 0
 	ld hl,00000h		;5729   ; 0xDC42: la fase del LFO
 	ld (0dc42h),hl		;572c
 	ld a,(0dc16h)		;572f   ; la onda del LFO, igual que la del DCO
-	cp 00eh		;5732
+	cp 00eh		;5732   ; la 14?
 	jp nz,L_573F		;5734
-	ld a,(0db00h)		;5737
-	add a,0c0h		;573a
+	ld a,(0db00h)		;5737   ; la del usuario...
+	add a,0c0h		;573a   ; ...en 0xC0 + onda
 	jp L_5741		;573c
 L_573F:
-	add a,072h		;573f
+	add a,072h		;573f   ; las de la ROM: 0x72 + onda
 L_5741:
 	ld (0dc44h),a		;5741   ; 0xDC44
-	xor a			;5744
+	xor a			;5744   ; 0xDC46 = 0
 	ld (0dc46h),a		;5745   ; 0xDC46: la cuenta de la retencion
 	ld a,(0dc02h)		;5748   ; si algun LFO esta puesto (DCO, DCF o DCA)...
 	ld b,a			;574b
-	ld a,(0dc06h)		;574c
+	ld a,(0dc06h)		;574c   ; LFO del DCF...
 	or b			;574f
 	ld b,a			;5750
-	ld a,(0dc08h)		;5751
+	ld a,(0dc08h)		;5751   ; ...LFO del DCA...
 	or b			;5754
-	jp z,L_5761		;5755
+	jp z,L_5761		;5755   ; ...ninguno: 0x5D39
 	ld hl,05cceh		;5758   ; ...0xDC40 = 0x5CCE
 	ld (0dc40h),hl		;575b
 	jp bucle_de_sintesis		;575e
@@ -3161,26 +3161,26 @@ L_5761:
 	ld (0dc40h),hl		;5764
 bucle_de_sintesis:		; una muestra por vuelta, hasta 0xC000 o el fin de la envolvente del DCA
 	in a,(0aah)		;5767   ; fila 6 del teclado
-	and 0f0h		;5769
+	and 0f0h		;5769   ; la fila 6 en el PPI
 	or 006h		;576b
 	out (0aah),a		;576d
 	ld c,a			;576f
 	in a,(0a9h)		;5770   ; F1 o F2 cortan la sintesis
-	or 09fh		;5772
+	or 09fh		;5772   ; F1 y F2 (bits 5 y 6)
 	cp 0ffh		;5774
 	jp nz,syn_cortado_fila_6		;5776
-	inc c			;5779
+	inc c			;5779   ; la fila 7
 	ld a,c			;577a
 	out (0aah),a		;577b   ; fila 7
 	in a,(0a9h)		;577d   ; F4 o F5 tambien
-	or 0fch		;577f
+	or 0fch		;577f   ; F4 y F5 (bits 0 y 1)
 	cp 0ffh		;5781
 	jp nz,syn_cortado_fila_7		;5783
 	ld hl,0dc23h		;5786   ; 0xDC23: el tic, cada 0xDC22 muestras
-	dec (hl)			;5789
+	dec (hl)			;5789   ; una muestra menos
 	jp nz,L_5796		;578a
-	call tic_de_sintesis		;578d
-	ld a,(0dc22h)		;5790
+	call tic_de_sintesis		;578d   ; el tic
+	ld a,(0dc22h)		;5790   ; y la cuenta otra vez
 	ld (0dc23h),a		;5793
 L_5796:
 	call lfo		;5796   ; el LFO
@@ -3191,9 +3191,9 @@ L_5796:
 	call filtro		;57a5   ; el filtro
 	call amplitud		;57a8   ; la amplitud
 	add a,080h		;57ab   ; con signo a 0x80 = cero...
-	ld hl,(0dc19h)		;57ad
+	ld hl,(0dc19h)		;57ad   ; el puntero de escritura
 	ld (hl),a			;57b0   ; ...a la RAM
-	inc hl			;57b1
+	inc hl			;57b1   ; la siguiente
 	ld (0dc19h),hl		;57b2
 	ld a,h			;57b5
 	cp 0c0h		;57b6   ; la memoria llena: se acabo
@@ -3203,31 +3203,31 @@ L_5796:
 	jp z,bucle_de_sintesis		;57c0
 fin_de_sintesis:		; 0xDCFE = bytes escritos; 0xDC47 = 0x39, el codigo de F4; vuelve el cartucho
 	ld hl,(0dc19h)		;57c3
-	ld de,08000h		;57c6
+	ld de,08000h		;57c6   ; desde 0x8000
 	scf			;57c9
 	ccf			;57ca
 	sbc hl,de		;57cb
 	ld (0dcfeh),hl		;57cd   ; 0xDCFE: la longitud del sample
-	ld a,039h		;57d0
+	ld a,039h		;57d0   ; F4
 L_57D2:
-	ld (0dc47h),a		;57d2
-	call cartucho_en_la_pagina_2		;57d5
+	ld (0dc47h),a		;57d2   ; 0xDC47 = la tecla
+	call cartucho_en_la_pagina_2		;57d5   ; el cartucho en la pagina 2
 	ret			;57d8
 syn_cortado_fila_6:		; F1 (0x36) o F2 (0x37) a 0xDC47
-	bit 5,a		;57d9
+	bit 5,a		;57d9   ; F1 (bit 5) pulsada?
 	jp nz,L_57E3		;57db
-	ld a,036h		;57de
+	ld a,036h		;57de   ; F1
 	jp L_57D2		;57e0
 L_57E3:
-	ld a,037h		;57e3
+	ld a,037h		;57e3   ; F2
 	jp L_57D2		;57e5
 syn_cortado_fila_7:		; F4 (0x39) o F5 (0x3A) a 0xDC47
-	bit 0,a		;57e8
+	bit 0,a		;57e8   ; F4 (bit 0) pulsada?
 	jp nz,L_57F2		;57ea
-	ld a,039h		;57ed
+	ld a,039h		;57ed   ; F4
 	jp L_57D2		;57ef
 L_57F2:
-	ld a,03ah		;57f2
+	ld a,03ah		;57f2   ; F5
 	jp L_57D2		;57f4
 muestras_ataque_y_caida:		; HL = B * 255 + C * (255 - A): ataque B, caida C, sostenido A
 	neg		;57f7
@@ -3250,209 +3250,209 @@ L_5810:
 	add hl,de			;5810
 	ret			;5811
 multiplica_c_por_e:		; HL = C * E
-	ld hl,00000h		;5812
-	ld d,h			;5815
-	ld b,008h		;5816
+	ld hl,00000h		;5812   ; HL = 0
+	ld d,h			;5815   ; D = 0: DE = E
+	ld b,008h		;5816   ; 8 bits de C
 L_5818:
-	rrc c		;5818
+	rrc c		;5818   ; el bit bajo de C
 	jp nc,L_581E		;581a
-	add hl,de			;581d
+	add hl,de			;581d   ; suma E desplazado
 L_581E:
-	sla e		;581e
+	sla e		;581e   ; E por dos
 	rl d		;5820
 	djnz L_5818		;5822
 	ret			;5824
 envolvente_dco:		; salta a la fase en curso (0xDC25); cuenta en 0xDC27, nivel en 0xDC28
-	ld hl,(0dc25h)		;5825
-	jp (hl)			;5828
+	ld hl,(0dc25h)		;5825   ; la fase en curso
+	jp (hl)			;5828   ; a ella
 dco_ataque:		; sube el nivel de 1 en 1 cada A muestras hasta 0xFF; con A = 0, de golpe
 	ld a,(0dc03h)		;5829   ; sin ENV del DCO no hay envolvente:
 	or a			;582c
-	jp nz,L_583B		;582d
+	jp nz,L_583B		;582d   ; con ENV, la envolvente
 	ld a,(0dc1bh)		;5830   ; marca el sostenido y acaba
 	set 0,a		;5833
 	ld (0dc1bh),a		;5835
-	jp dco_fin		;5838
+	jp dco_fin		;5838   ; y se acaba
 L_583B:
-	ld a,(0dc09h)		;583b
+	ld a,(0dc09h)		;583b   ; A, el ataque
 	or a			;583e
-	jp nz,L_5849		;583f
-	dec a			;5842
+	jp nz,L_5849		;583f   ; A = 0:
+	dec a			;5842   ; nivel 0xFF de golpe
 	ld (0dc28h),a		;5843
-	jp L_585B		;5846
+	jp L_585B		;5846   ; a la caida
 L_5849:
 	ld hl,l584ch		;5849   ; carga 0x584C en HL y no lo guarda: la fase sigue en 0x5829, que vuelve aqui cada muestra
 L_584C:
-	ld hl,0dc27h		;584c
-	dec (hl)			;584f
+	ld hl,0dc27h		;584c   ; la cuenta
+	dec (hl)			;584f   ; una muestra menos
 	ret nz			;5850
-	ld a,(0dc09h)		;5851
+	ld a,(0dc09h)		;5851   ; se acabo: A otra vez
 	ld (hl),a			;5854
-	inc hl			;5855
-	inc (hl)			;5856
-	ld a,0ffh		;5857
+	inc hl			;5855   ; el nivel
+	inc (hl)			;5856   ; sube uno
+	ld a,0ffh		;5857   ; hasta 0xFF
 	cp (hl)			;5859
 	ret nz			;585a
 L_585B:
-	ld hl,dco_caida		;585b
+	ld hl,dco_caida		;585b   ; la fase siguiente, la caida
 	ld (0dc25h),hl		;585e
 	ret			;5861
 dco_caida:		; baja el nivel cada D muestras hasta S; con D = 0 o S = 0xFF, de golpe
-	ld a,(0dc0ah)		;5862
+	ld a,(0dc0ah)		;5862   ; D, la caida
 	or a			;5865
-	ld a,(0dc0bh)		;5866
-	jp z,L_5871		;5869
-	cp 0ffh		;586c
+	ld a,(0dc0bh)		;5866   ; S, el sostenido
+	jp z,L_5871		;5869   ; D = 0: S de golpe
+	cp 0ffh		;586c   ; S = 0xFF: tambien
 	jp nz,L_5877		;586e
 L_5871:
-	ld (0dc28h),a		;5871
+	ld (0dc28h),a		;5871   ; el nivel = S
 	jp dco_llega_al_sostenido		;5874
 L_5877:
-	ld hl,l587dh		;5877
+	ld hl,l587dh		;5877   ; la fase pasa a la caida paso a paso
 	ld (0dc25h),hl		;587a
 L_587D:
-	ld hl,0dc27h		;587d
-	dec (hl)			;5880
+	ld hl,0dc27h		;587d   ; la cuenta
+	dec (hl)			;5880   ; una muestra menos
 	ret nz			;5881
-	ld a,(0dc0ah)		;5882
+	ld a,(0dc0ah)		;5882   ; se acabo: D otra vez
 	ld (hl),a			;5885
-	inc hl			;5886
-	dec (hl)			;5887
-	ld a,(0dc0bh)		;5888
+	inc hl			;5886   ; el nivel
+	dec (hl)			;5887   ; baja uno
+	ld a,(0dc0bh)		;5888   ; hasta S
 	cp (hl)			;588b
 	ret nz			;588c
 dco_llega_al_sostenido:		; bit 0 de 0xDC1B; con S = 0 la envolvente acaba
-	ld a,(0dc1bh)		;588d
+	ld a,(0dc1bh)		;588d   ; bit 0 de 0xDC1B: el DCO en su sostenido
 	set 0,a		;5890
 	ld (0dc1bh),a		;5892
-	ld a,(0dc0bh)		;5895
+	ld a,(0dc0bh)		;5895   ; S = 0:
 	or a			;5898
-	jp z,dco_fin		;5899
-	ld hl,dco_sostenido		;589c
+	jp z,dco_fin		;5899   ; se acaba
+	ld hl,dco_sostenido		;589c   ; la fase siguiente, el sostenido
 	ld (0dc25h),hl		;589f
 	ret			;58a2
 dco_sostenido:		; espera a que las tres envolventes esten en su sostenido (0xDC1B = 7)
-	ld a,(0dc1bh)		;58a3
+	ld a,(0dc1bh)		;58a3   ; las tres en su sostenido?
 	cp 007h		;58a6
 	ret nz			;58a8
-	ld a,(0dc0ch)		;58a9
+	ld a,(0dc0ch)		;58a9   ; R, la relajacion
 	or a			;58ac
-	jp nz,L_58B6		;58ad
-	ld (0dc28h),a		;58b0
+	jp nz,L_58B6		;58ad   ; R distinto de 0: paso a paso
+	ld (0dc28h),a		;58b0   ; R = 0: el nivel a 0 de golpe
 	jp dco_fin		;58b3
 L_58B6:
-	ld hl,dco_relajacion		;58b6
+	ld hl,dco_relajacion		;58b6   ; la fase siguiente, la relajacion
 	ld (0dc25h),hl		;58b9
 dco_relajacion:		; baja el nivel cada R muestras hasta 0
-	ld hl,0dc27h		;58bc
-	dec (hl)			;58bf
+	ld hl,0dc27h		;58bc   ; la cuenta
+	dec (hl)			;58bf   ; una muestra menos
 	ret nz			;58c0
-	ld a,(0dc0ch)		;58c1
+	ld a,(0dc0ch)		;58c1   ; se acabo: R otra vez
 	ld (hl),a			;58c4
-	inc hl			;58c5
-	dec (hl)			;58c6
-	xor a			;58c7
+	inc hl			;58c5   ; el nivel
+	dec (hl)			;58c6   ; baja uno
+	xor a			;58c7   ; hasta 0
 	cp (hl)			;58c8
 	ret nz			;58c9
 dco_fin:		; la fase pasa a un `ret`
-	ld hl,l58d0h		;58ca
+	ld hl,l58d0h		;58ca   ; la fase, un `ret`
 	ld (0dc25h),hl		;58cd
 L_58D0:
 	ret			;58d0
 envolvente_dcf:		; la misma maquina para el DCF: fase en 0xDC29, cuenta 0xDC2B, nivel 0xDC2C
-	ld hl,(0dc29h)		;58d1
-	jp (hl)			;58d4
+	ld hl,(0dc29h)		;58d1   ; la fase en curso
+	jp (hl)			;58d4   ; a ella
 dcf_ataque:		; como 0x5829, con ENV del DCF y bit 1
 	ld a,(0dc07h)		;58d5
 	or a			;58d8
-	jp nz,L_58E7		;58d9
+	jp nz,L_58E7		;58d9   ; con ENV, la envolvente
 	ld a,(0dc1bh)		;58dc
 	set 1,a		;58df
 	ld (0dc1bh),a		;58e1
-	jp dcf_fin		;58e4
+	jp dcf_fin		;58e4   ; y se acaba
 L_58E7:
-	ld a,(0dc0dh)		;58e7
+	ld a,(0dc0dh)		;58e7   ; A, el ataque
 	or a			;58ea
-	jp nz,L_58F5		;58eb
-	dec a			;58ee
+	jp nz,L_58F5		;58eb   ; A = 0:
+	dec a			;58ee   ; nivel 0xFF de golpe
 	ld (0dc2ch),a		;58ef
-	jp L_5907		;58f2
+	jp L_5907		;58f2   ; a la caida
 L_58F5:
 	ld hl,l58f8h		;58f5   ; como en 0x5849: HL sin guardar
 L_58F8:
-	ld hl,0dc2bh		;58f8
-	dec (hl)			;58fb
+	ld hl,0dc2bh		;58f8   ; la cuenta
+	dec (hl)			;58fb   ; una muestra menos
 	ret nz			;58fc
-	ld a,(0dc0dh)		;58fd
+	ld a,(0dc0dh)		;58fd   ; se acabo: A otra vez
 	ld (hl),a			;5900
-	inc hl			;5901
-	inc (hl)			;5902
-	ld a,0ffh		;5903
+	inc hl			;5901   ; el nivel
+	inc (hl)			;5902   ; sube uno
+	ld a,0ffh		;5903   ; hasta 0xFF
 	cp (hl)			;5905
 	ret nz			;5906
 L_5907:
-	ld hl,dcf_caida		;5907
+	ld hl,dcf_caida		;5907   ; la fase siguiente, la caida
 	ld (0dc29h),hl		;590a
 	ret			;590d
 dcf_caida:		; como 0x5862
-	ld a,(0dc0eh)		;590e
+	ld a,(0dc0eh)		;590e   ; D, la caida
 	or a			;5911
-	ld a,(0dc0fh)		;5912
-	jp z,L_591D		;5915
-	cp 0ffh		;5918
+	ld a,(0dc0fh)		;5912   ; S, el sostenido
+	jp z,L_591D		;5915   ; D = 0: S de golpe
+	cp 0ffh		;5918   ; S = 0xFF: tambien
 	jp nz,L_5923		;591a
 L_591D:
-	ld (0dc2ch),a		;591d
+	ld (0dc2ch),a		;591d   ; el nivel = S
 	jp dcf_llega_al_sostenido		;5920
 L_5923:
-	ld hl,l5929h		;5923
+	ld hl,l5929h		;5923   ; la fase pasa a la caida paso a paso
 	ld (0dc29h),hl		;5926
 L_5929:
-	ld hl,0dc2bh		;5929
-	dec (hl)			;592c
+	ld hl,0dc2bh		;5929   ; la cuenta
+	dec (hl)			;592c   ; una muestra menos
 	ret nz			;592d
-	ld a,(0dc0eh)		;592e
+	ld a,(0dc0eh)		;592e   ; se acabo: D otra vez
 	ld (hl),a			;5931
-	inc hl			;5932
-	dec (hl)			;5933
-	ld a,(0dc0fh)		;5934
+	inc hl			;5932   ; el nivel
+	dec (hl)			;5933   ; baja uno
+	ld a,(0dc0fh)		;5934   ; hasta S
 	cp (hl)			;5937
 	ret nz			;5938
 dcf_llega_al_sostenido:		; bit 1 de 0xDC1B
-	ld a,(0dc1bh)		;5939
+	ld a,(0dc1bh)		;5939   ; bit 1 de 0xDC1B: el DCF en su sostenido
 	set 1,a		;593c
 	ld (0dc1bh),a		;593e
-	ld a,(0dc0fh)		;5941
+	ld a,(0dc0fh)		;5941   ; S = 0:
 	or a			;5944
-	jp z,dcf_fin		;5945
-	ld hl,dcf_sostenido		;5948
+	jp z,dcf_fin		;5945   ; se acaba
+	ld hl,dcf_sostenido		;5948   ; la fase siguiente, el sostenido
 	ld (0dc29h),hl		;594b
 	ret			;594e
 dcf_sostenido:		; como 0x58A3
-	ld a,(0dc1bh)		;594f
+	ld a,(0dc1bh)		;594f   ; las tres en su sostenido?
 	cp 007h		;5952
 	ret nz			;5954
-	ld a,(0dc10h)		;5955
+	ld a,(0dc10h)		;5955   ; R, la relajacion
 	or a			;5958
-	jp nz,L_5962		;5959
-	ld (0dc2ch),a		;595c
+	jp nz,L_5962		;5959   ; R distinto de 0: paso a paso
+	ld (0dc2ch),a		;595c   ; R = 0: el nivel a 0 de golpe
 	jp dcf_fin		;595f
 L_5962:
-	ld hl,dcf_relajacion		;5962
+	ld hl,dcf_relajacion		;5962   ; la fase siguiente, la relajacion
 	ld (0dc29h),hl		;5965
 dcf_relajacion:		; como 0x58BC
-	ld hl,0dc2bh		;5968
-	dec (hl)			;596b
+	ld hl,0dc2bh		;5968   ; la cuenta
+	dec (hl)			;596b   ; una muestra menos
 	ret nz			;596c
-	ld a,(0dc10h)		;596d
+	ld a,(0dc10h)		;596d   ; se acabo: R otra vez
 	ld (hl),a			;5970
-	inc hl			;5971
-	dec (hl)			;5972
-	xor a			;5973
+	inc hl			;5971   ; el nivel
+	dec (hl)			;5972   ; baja uno
+	xor a			;5973   ; hasta 0
 	cp (hl)			;5974
 	ret nz			;5975
 dcf_fin:		; la fase pasa a un `ret`
-	ld hl,l597ch		;5976
+	ld hl,l597ch		;5976   ; la fase, un `ret`
 	ld (0dc29h),hl		;5979
 L_597C:
 	ret			;597c
@@ -3460,55 +3460,55 @@ envolvente_dca:		; la del volumen: fase en 0xDC2D, cuenta 0xDC2F, nivel 0xDC30
 	ld hl,(0dc2dh)		;597d
 	jp (hl)			;5980
 dca_ataque:		; como 0x5829, sin poder apagarse
-	ld a,(0dc11h)		;5981
+	ld a,(0dc11h)		;5981   ; A, el ataque del DCA
 	or a			;5984
-	jp nz,L_598F		;5985
-	dec a			;5988
+	jp nz,L_598F		;5985   ; A = 0:
+	dec a			;5988   ; nivel 0xFF de golpe
 	ld (0dc30h),a		;5989
-	jp L_59A1		;598c
+	jp L_59A1		;598c   ; a la caida
 L_598F:
 	ld hl,l5992h		;598f   ; como en 0x5849: HL sin guardar
 L_5992:
-	ld hl,0dc2fh		;5992
-	dec (hl)			;5995
+	ld hl,0dc2fh		;5992   ; la cuenta
+	dec (hl)			;5995   ; una muestra menos
 	ret nz			;5996
-	ld a,(0dc11h)		;5997
+	ld a,(0dc11h)		;5997   ; se acabo: A otra vez
 	ld (hl),a			;599a
-	inc hl			;599b
-	inc (hl)			;599c
-	ld a,0ffh		;599d
+	inc hl			;599b   ; el nivel
+	inc (hl)			;599c   ; sube uno
+	ld a,0ffh		;599d   ; hasta 0xFF
 	cp (hl)			;599f
 	ret nz			;59a0
 L_59A1:
-	ld hl,dca_caida		;59a1
+	ld hl,dca_caida		;59a1   ; la fase siguiente, la caida
 	ld (0dc2dh),hl		;59a4
 	ret			;59a7
 dca_caida:		; como 0x5862
-	ld a,(0dc12h)		;59a8
+	ld a,(0dc12h)		;59a8   ; D, la caida
 	or a			;59ab
-	ld a,(0dc13h)		;59ac
-	jp z,L_59B7		;59af
-	cp 0ffh		;59b2
+	ld a,(0dc13h)		;59ac   ; S, el sostenido
+	jp z,L_59B7		;59af   ; D = 0: S de golpe
+	cp 0ffh		;59b2   ; S = 0xFF: tambien
 	jp nz,L_59BD		;59b4
 L_59B7:
-	ld (0dc30h),a		;59b7
+	ld (0dc30h),a		;59b7   ; el nivel = S
 	jp dca_llega_al_sostenido		;59ba
 L_59BD:
-	ld hl,l59c3h		;59bd
+	ld hl,l59c3h		;59bd   ; la fase pasa a la caida paso a paso
 	ld (0dc2dh),hl		;59c0
 L_59C3:
-	ld hl,0dc2fh		;59c3
-	dec (hl)			;59c6
+	ld hl,0dc2fh		;59c3   ; la cuenta
+	dec (hl)			;59c6   ; una muestra menos
 	ret nz			;59c7
-	ld a,(0dc12h)		;59c8
+	ld a,(0dc12h)		;59c8   ; se acabo: D otra vez
 	ld (hl),a			;59cb
-	inc hl			;59cc
-	dec (hl)			;59cd
-	ld a,(0dc13h)		;59ce
+	inc hl			;59cc   ; el nivel
+	dec (hl)			;59cd   ; baja uno
+	ld a,(0dc13h)		;59ce   ; hasta S
 	cp (hl)			;59d1
 	ret nz			;59d2
 dca_llega_al_sostenido:		; pasa a 0x59D9
-	ld hl,dca_sostenido		;59d3
+	ld hl,dca_sostenido		;59d3   ; la fase pasa al sostenido
 	ld (0dc2dh),hl		;59d6
 dca_sostenido:		; con el DCO y el DCF en su sostenido y el puntero a principio de pagina, apunta esa pagina en 0xDCFD
 	ld a,(0dc1bh)		;59d9   ; DCO y DCF en su sostenido?
@@ -3525,7 +3525,7 @@ dca_sostenido:		; con el DCO y el DCF en su sostenido y el puntero a principio d
 	jp z,L_59F7		;59f1
 	ld (0dcfdh),a		;59f4   ; 0xDCFD: la pagina que PLAY repite mientras se tiene la tecla
 L_59F7:
-	ld hl,dca_espera_pagina		;59f7
+	ld hl,dca_espera_pagina		;59f7   ; la fase siguiente: espera a principio de pagina
 	ld (0dc2dh),hl		;59fa
 	ret			;59fd
 dca_espera_pagina:		; en el siguiente principio de pagina empieza la relajacion
@@ -3538,40 +3538,40 @@ dca_espera_pagina:		; en el siguiente principio de pagina empieza la relajacion
 	ld a,(0dc13h)		;5a0b   ; S = 0: acaba ya
 	or a			;5a0e
 	jp z,dca_fin		;5a0f
-	ld a,(0dc14h)		;5a12
+	ld a,(0dc14h)		;5a12   ; R, la relajacion
 	or a			;5a15
-	jp nz,L_5A1F		;5a16
-	ld (0dc30h),a		;5a19
+	jp nz,L_5A1F		;5a16   ; R distinto de 0: paso a paso
+	ld (0dc30h),a		;5a19   ; R = 0: el nivel a 0 de golpe
 	jp dca_fin		;5a1c
 L_5A1F:
-	ld hl,dca_relajacion		;5a1f
+	ld hl,dca_relajacion		;5a1f   ; la fase pasa a la relajacion
 	ld (0dc2dh),hl		;5a22
 dca_relajacion:		; como 0x58BC
-	ld hl,0dc2fh		;5a25
-	dec (hl)			;5a28
+	ld hl,0dc2fh		;5a25   ; la cuenta
+	dec (hl)			;5a28   ; una muestra menos
 	ret nz			;5a29
-	ld a,(0dc14h)		;5a2a
+	ld a,(0dc14h)		;5a2a   ; se acabo: R otra vez
 	ld (hl),a			;5a2d
-	inc hl			;5a2e
-	dec (hl)			;5a2f
-	xor a			;5a30
+	inc hl			;5a2e   ; el nivel
+	dec (hl)			;5a2f   ; baja uno
+	xor a			;5a30   ; hasta 0
 	cp (hl)			;5a31
 	ret nz			;5a32
 dca_fin:		; bit 7 de 0xDC1B: la sintesis acaba
-	ld a,(0dc1bh)		;5a33
+	ld a,(0dc1bh)		;5a33   ; bit 7: el sample se acaba
 	set 7,a		;5a36
 	ld (0dc1bh),a		;5a38
 	ret			;5a3b
 multiplica_8:		; A = suma de E >> k por cada bit de C, del 7 al 0
-	ld e,a			;5a3c
-	ld b,008h		;5a3d
+	ld e,a			;5a3c   ; E = el multiplicando
+	ld b,008h		;5a3d   ; 8 bits de C
 	xor a			;5a3f
 L_5A40:
-	rlc c		;5a40
+	rlc c		;5a40   ; el bit alto de C
 	jp nc,L_5A46		;5a42
-	add a,e			;5a45
+	add a,e			;5a45   ; suma E desplazado
 L_5A46:
-	srl e		;5a46
+	srl e		;5a46   ; E a la mitad
 	djnz L_5A40		;5a48
 	ret			;5a4a
 oscilador:		; devuelve en A la muestra de la onda en la fase 0xDC31 y avanza la fase
@@ -3580,210 +3580,210 @@ oscilador:		; devuelve en A la muestra de la onda en la fase 0xDC31 y avanza la 
 	jp nc,ruido		;5a50
 	ld hl,(0dc32h)		;5a53   ; la muestra en la fase
 	ld a,(hl)			;5a56
-	push af			;5a57
+	push af			;5a57   ; la muestra, guardada para el final
 	ld a,(0dc02h)		;5a58   ; sin LFO del DCO, el paso es FEET * 256
 	or a			;5a5b
 	jp nz,L_5A68		;5a5c
-	ld a,(0dc01h)		;5a5f
-	ld h,a			;5a62
+	ld a,(0dc01h)		;5a5f   ; FEET...
+	ld h,a			;5a62   ; ...por 256
 	ld l,000h		;5a63
 	jp L_5A9B		;5a65
 L_5A68:
 	ld c,a			;5a68   ; con LFO: el paso, FEET por 1 + LFO
-	ld a,(0dc45h)		;5a69
+	ld a,(0dc45h)		;5a69   ; el valor del LFO...
 	bit 7,a		;5a6c   ; el LFO negativo...
 	jp z,L_5A73		;5a6e
-	neg		;5a71
+	neg		;5a71   ; ...en valor absoluto
 L_5A73:
 	ld e,a			;5a73
 	ld d,000h		;5a74
-	call multiplica_16		;5a76
-	ld a,(0dc45h)		;5a79
+	call multiplica_16		;5a76   ; HL = LFO del DCO por |LFO|
+	ld a,(0dc45h)		;5a79   ; el signo otra vez
 	bit 7,a		;5a7c
 	jp z,L_5A91		;5a7e
 	inc hl			;5a81   ; ...resta: 1 - LFO / 2
-	srl h		;5a82
+	srl h		;5a82   ; la mitad...
 	rr l		;5a84
 	ex de,hl			;5a86
-	ld hl,00100h		;5a87
+	ld hl,00100h		;5a87   ; ...restada de 1.0 (0x100)
 	scf			;5a8a
 	ccf			;5a8b
 	sbc hl,de		;5a8c
 	jp L_5A92		;5a8e
 L_5A91:
-	inc h			;5a91
+	inc h			;5a91   ; positivo: 1.0 + lo calculado
 L_5A92:
-	ld a,(0dc01h)		;5a92
+	ld a,(0dc01h)		;5a92   ; DE = FEET * 256
 	ld e,000h		;5a95
 	ld d,a			;5a97
 	call multiplica_8_8		;5a98   ; HL = FEET por el factor
 L_5A9B:
 	ld a,(0dc03h)		;5a9b   ; y si hay ENV del DCO...
-	or a			;5a9e
+	or a			;5a9e   ; ENV del DCO a cero: sin envolvente
 	jp z,L_5ACA		;5a9f
 	push hl			;5aa2
-	ld c,a			;5aa3
+	ld c,a			;5aa3   ; C = ENV
 	ld a,(0dc28h)		;5aa4   ; ...por el nivel de su envolvente
-	ld e,a			;5aa7
+	ld e,a			;5aa7   ; E = el nivel de la envolvente del DCO
 	ld d,000h		;5aa8
-	call multiplica_16		;5aaa
+	call multiplica_16		;5aaa   ; HL = ENV por el nivel
 	ld a,(0dc18h)		;5aad   ; invertida con el bit 3 de los conmutadores
 	bit 3,a		;5ab0
 	jp z,L_5AC5		;5ab2
-	inc hl			;5ab5
+	inc hl			;5ab5   ; invertida: la mitad...
 	srl h		;5ab6
 	rr l		;5ab8
 	ex de,hl			;5aba
-	ld hl,00100h		;5abb
+	ld hl,00100h		;5abb   ; ...restada de 1.0
 	scf			;5abe
 	ccf			;5abf
 	sbc hl,de		;5ac0
 	jp L_5AC6		;5ac2
 L_5AC5:
-	inc h			;5ac5
+	inc h			;5ac5   ; normal: 1.0 + lo calculado
 L_5AC6:
-	pop de			;5ac6
-	call multiplica_8_8		;5ac7
+	pop de			;5ac6   ; DE = el paso de antes
+	call multiplica_8_8		;5ac7   ; HL = paso por el factor
 L_5ACA:
 	ld de,(0dc31h)		;5aca   ; la fase avanza el paso
-	add hl,de			;5ace
+	add hl,de			;5ace   ; la fase + el paso
 	ld (0dc31h),hl		;5acf
-	pop af			;5ad2
+	pop af			;5ad2   ; A = la muestra
 	ret			;5ad3
 ruido:		; lee la memoria de 0x0000 en adelante (la BIOS) con 0xDC35, girada y acumulada en 0xDC34
 	ld hl,(0dc35h)		;5ad4
-	inc l			;5ad7
+	inc l			;5ad7   ; solo el byte bajo: de 0x0000 a 0x00FF
 	ld (0dc35h),hl		;5ad8
-	ld a,(hl)			;5adb
+	ld a,(hl)			;5adb   ; el byte de la BIOS
 	ld hl,0dc34h		;5adc
-	rlc a		;5adf
-	add a,(hl)			;5ae1
+	rlc a		;5adf   ; girado...
+	add a,(hl)			;5ae1   ; ...y acumulado
 	ld (hl),a			;5ae2
 	ret			;5ae3
 multiplica_16:		; HL = suma de DE >> k por cada bit de C, del 7 al 0
-	ld b,008h		;5ae4
+	ld b,008h		;5ae4   ; 8 bits de C
 	ld hl,00000h		;5ae6
 L_5AE9:
-	rlc c		;5ae9
+	rlc c		;5ae9   ; el bit alto de C
 	jp nc,L_5AEF		;5aeb
-	add hl,de			;5aee
+	add hl,de			;5aee   ; suma DE desplazado
 L_5AEF:
-	srl d		;5aef
+	srl d		;5aef   ; DE a la mitad
 	rr e		;5af1
 	djnz L_5AE9		;5af3
 	ret			;5af5
 multiplica_8_8:		; HL (8.8) por DE: la parte baja contra DE a la derecha, la alta contra DE a la izquierda
 	push de			;5af6
 	push hl			;5af7
-	ld c,l			;5af8
+	ld c,l			;5af8   ; C = la parte baja (fraccion)
 	ld hl,00000h		;5af9
 	ld b,008h		;5afc
 L_5AFE:
-	srl d		;5afe
+	srl d		;5afe   ; DE a la mitad...
 	rr e		;5b00
-	rlc c		;5b02
+	rlc c		;5b02   ; ...por cada bit de la fraccion
 	jp nc,L_5B08		;5b04
 	add hl,de			;5b07
 L_5B08:
 	djnz L_5AFE		;5b08
 	pop de			;5b0a
-	ld c,d			;5b0b
+	ld c,d			;5b0b   ; C = la parte alta (entera)
 	pop de			;5b0c
 	ld b,008h		;5b0d
 L_5B0F:
-	rrc c		;5b0f
+	rrc c		;5b0f   ; del bit bajo...
 	jp nc,L_5B15		;5b11
-	add hl,de			;5b14
+	add hl,de			;5b14   ; ...suma DE...
 L_5B15:
-	sla e		;5b15
+	sla e		;5b15   ; ...que se dobla cada vez
 	rl d		;5b17
 	djnz L_5B0F		;5b19
 	ret			;5b1b
 filtro:		; filtro de dos etapas con resonancia sobre la muestra L; devuelve A
-	ld l,a			;5b1c
+	ld l,a			;5b1c   ; L = la muestra del oscilador
 	ld a,(0dc07h)		;5b1d   ; sin ENV del DCF, el corte es CUT
 	or a			;5b20
 	jp nz,L_5B2A		;5b21
-	ld a,(0dc04h)		;5b24
+	ld a,(0dc04h)		;5b24   ; CUT
 	jp L_5B4B		;5b27
 L_5B2A:
 	ld c,a			;5b2a   ; con ENV: CUT mas o menos ENV por el nivel de su envolvente
-	ld a,(0dc2ch)		;5b2b
-	call multiplica_8		;5b2e
+	ld a,(0dc2ch)		;5b2b   ; el nivel de la envolvente del DCF...
+	call multiplica_8		;5b2e   ; ...por ENV
 	ld b,a			;5b31
 	ld a,(0dc18h)		;5b32   ; bit 2 de los conmutadores: resta
 	bit 2,a		;5b35
 	ld a,(0dc04h)		;5b37
 	jp nz,L_5B46		;5b3a
-	add a,b			;5b3d
+	add a,b			;5b3d   ; suma, como mucho 0xFF
 	jp nc,L_5B4B		;5b3e
 	ld a,0ffh		;5b41
 	jp L_5B4B		;5b43
 L_5B46:
-	sub b			;5b46
+	sub b			;5b46   ; resta, como poco 0
 	jp nc,L_5B4B		;5b47
 	xor a			;5b4a
 L_5B4B:
 	ld h,a			;5b4b   ; y el LFO del DCF lo mueve arriba o abajo
-	ld a,(0dc06h)		;5b4c
+	ld a,(0dc06h)		;5b4c   ; LFO del DCF
 	or a			;5b4f
 	jp nz,L_5B57		;5b50
 	ld a,h			;5b53
 	jp L_5B75		;5b54
 L_5B57:
 	ld c,a			;5b57
-	ld a,(0dc45h)		;5b58
+	ld a,(0dc45h)		;5b58   ; el valor del LFO por LFO del DCF
 	call multiplica_con_signo		;5b5b
-	bit 7,a		;5b5e
+	bit 7,a		;5b5e   ; positivo: suma...
 	jp nz,L_5B6C		;5b60
 	add a,h			;5b63
 	jp nc,L_5B75		;5b64
-	ld a,0ffh		;5b67
+	ld a,0ffh		;5b67   ; ...como mucho 0xFF
 	jp L_5B75		;5b69
 L_5B6C:
-	neg		;5b6c
+	neg		;5b6c   ; negativo: resta...
 	ld b,a			;5b6e
 	ld a,h			;5b6f
 	sub b			;5b70
 	jp nc,L_5B75		;5b71
-	xor a			;5b74
+	xor a			;5b74   ; ...como poco 0
 L_5B75:
 	ld (0dc37h),a		;5b75   ; 0xDC37: el corte
 	ld h,000h		;5b78   ; la muestra con signo a 16 bits
 	bit 7,l		;5b7a
 	jp z,L_5B80		;5b7c
-	dec h			;5b7f
+	dec h			;5b7f   ; extiende el signo
 L_5B80:
 	ld a,(0dc38h)		;5b80   ; con realimentacion...
 	or a			;5b83
 	jp z,L_5B99		;5b84
 	push hl			;5b87
 	ld a,(0dc37h)		;5b88   ; ...mas la salida de la segunda etapa por corte y realimentacion
-	ld hl,(0dc3ch)		;5b8b
-	call por_a_entre_128		;5b8e
+	ld hl,(0dc3ch)		;5b8b   ; la segunda etapa...
+	call por_a_entre_128		;5b8e   ; ...por el corte / 128...
 	ld a,(0dc38h)		;5b91
-	call por_a_bit7_doble		;5b94
+	call por_a_bit7_doble		;5b94   ; ...por la realimentacion
 	pop de			;5b97
-	add hl,de			;5b98
+	add hl,de			;5b98   ; sumada a la entrada
 L_5B99:
 	push hl			;5b99   ; la primera etapa: 0xDC3A += (x - 0xDC3A) * (corte + 1) / 256
 	ld de,(0dc3ah)		;5b9a
 	scf			;5b9e
 	ccf			;5b9f
-	sbc hl,de		;5ba0
+	sbc hl,de		;5ba0   ; x - primera etapa
 	ld a,(0dc37h)		;5ba2
 	inc a			;5ba5   ; con corte 0xFF no multiplica
 	jp z,L_5BAC		;5ba6
-	call por_a_entre_256		;5ba9
+	call por_a_entre_256		;5ba9   ; por (corte + 1) / 256
 L_5BAC:
 	ld de,(0dc3ah)		;5bac
 	add hl,de			;5bb0
-	ld (0dc3ah),hl		;5bb1
+	ld (0dc3ah),hl		;5bb1   ; la primera etapa nueva
 	ex de,hl			;5bb4   ; 0xDC3E: lo que queda, x - 0xDC3A
 	pop hl			;5bb5
 	scf			;5bb6
 	ccf			;5bb7
-	sbc hl,de		;5bb8
+	sbc hl,de		;5bb8   ; x - primera etapa
 	ld (0dc3eh),hl		;5bba
 	ld a,(0dc18h)		;5bbd   ; la segunda etapa solo con el bit 0 o con realimentacion
 	bit 0,a		;5bc0
@@ -3795,15 +3795,15 @@ L_5BCC:
 	ld de,(0dc3ch)		;5bcc   ; 0xDC3C += (0xDC3E - 0xDC3C) * (corte + 1) / 256
 	scf			;5bd0
 	ccf			;5bd1
-	sbc hl,de		;5bd2
+	sbc hl,de		;5bd2   ; 0xDC3E - segunda etapa
 	ld a,(0dc37h)		;5bd4
 	inc a			;5bd7
 	jp z,L_5BDE		;5bd8
-	call por_a_entre_256		;5bdb
+	call por_a_entre_256		;5bdb   ; por (corte + 1) / 256
 L_5BDE:
 	ld de,(0dc3ch)		;5bde
 	add hl,de			;5be2
-	ld (0dc3ch),hl		;5be3
+	ld (0dc3ch),hl		;5be3   ; la segunda etapa nueva
 L_5BE6:
 	ld a,(0dc18h)		;5be6   ; la salida: bit 0, la segunda etapa...
 	bit 0,a		;5be9
@@ -3815,18 +3815,18 @@ L_5BE6:
 	jp z,L_5BFC		;5bf8
 	inc hl			;5bfb
 L_5BFC:
-	sra h		;5bfc
+	sra h		;5bfc   ; la mitad, con signo
 	rr l		;5bfe
 	jp L_5C06		;5c00
 L_5C03:
-	ld hl,(0dc3ah)		;5c03
+	ld hl,(0dc3ah)		;5c03   ; la primera etapa
 L_5C06:
 	ld a,(0dc39h)		;5c06   ; por la ganancia de RES
 	or a			;5c09
 	jp z,L_5C10		;5c0a
 	call por_a_entre_256		;5c0d
 L_5C10:
-	ld a,l			;5c10
+	ld a,l			;5c10   ; el byte bajo
 	ret			;5c11
 
 ; ----------------------------------------------------------------------
@@ -3849,34 +3849,34 @@ DATA_ganancia_por_res:
 
 
 por_a_entre_256:		; HL con signo por A / 256: primero la mitad, luego suma
-	ld b,008h		;5c24
+	ld b,008h		;5c24   ; 8 bits de A
 	ld c,a			;5c26
-	ex de,hl			;5c27
+	ex de,hl			;5c27   ; DE = el valor
 	ld hl,00000h		;5c28
 L_5C2B:
-	bit 7,d		;5c2b
+	bit 7,d		;5c2b   ; negativo: redondea hacia el cero
 	jp z,L_5C31		;5c2d
 	inc de			;5c30
 L_5C31:
-	sra d		;5c31
+	sra d		;5c31   ; DE a la mitad...
 	rr e		;5c33
-	rlc c		;5c35
+	rlc c		;5c35   ; ...y por cada bit de A, del alto...
 	jp nc,L_5C3B		;5c37
-	add hl,de			;5c3a
+	add hl,de			;5c3a   ; ...suma
 L_5C3B:
 	djnz L_5C2B		;5c3b
 	ret			;5c3d
 por_a_entre_128:		; HL con signo por A / 128: suma antes de dividir
-	ld b,008h		;5c3e
+	ld b,008h		;5c3e   ; 8 bits de A
 	ld c,a			;5c40
-	ex de,hl			;5c41
+	ex de,hl			;5c41   ; DE = el valor
 	ld hl,00000h		;5c42
 L_5C45:
-	rlc c		;5c45
+	rlc c		;5c45   ; por cada bit de A, del alto...
 	jp nc,L_5C4B		;5c47
-	add hl,de			;5c4a
+	add hl,de			;5c4a   ; ...suma...
 L_5C4B:
-	bit 7,d		;5c4b
+	bit 7,d		;5c4b   ; ...y luego DE a la mitad
 	jp z,L_5C51		;5c4d
 	inc de			;5c50
 L_5C51:
@@ -3886,23 +3886,23 @@ L_5C51:
 	ret			;5c57
 por_a_bit7_doble:		; como 0x5C3E, con el bit 7 de A valiendo el doble
 	ld c,a			;5c58
-	ex de,hl			;5c59
+	ex de,hl			;5c59   ; DE = el valor
 	ld hl,00000h		;5c5a
-	rlc c		;5c5d
+	rlc c		;5c5d   ; el bit 7...
 	jp nc,L_5C69		;5c5f
 	push de			;5c62
-	sla e		;5c63
+	sla e		;5c63   ; ...vale DE * 2
 	rl d		;5c65
 	add hl,de			;5c67
 	pop de			;5c68
 L_5C69:
-	ld b,007h		;5c69
+	ld b,007h		;5c69   ; los otros siete
 L_5C6B:
-	rlc c		;5c6b
+	rlc c		;5c6b   ; del alto...
 	jp nc,L_5C71		;5c6d
-	add hl,de			;5c70
+	add hl,de			;5c70   ; ...suma...
 L_5C71:
-	bit 7,d		;5c71
+	bit 7,d		;5c71   ; ...y luego DE a la mitad
 	jp z,L_5C77		;5c73
 	inc de			;5c76
 L_5C77:
@@ -3911,52 +3911,52 @@ L_5C77:
 	djnz L_5C6B		;5c7b
 	ret			;5c7d
 amplitud:		; la muestra por el LFO del DCA y por el nivel de la envolvente del DCA
-	push af			;5c7e
+	push af			;5c7e   ; la muestra
 	ld a,(0dc08h)		;5c7f   ; sin LFO del DCA, directo al volumen
 	or a			;5c82
 	jp z,L_5CB1		;5c83
-	ld d,a			;5c86
+	ld d,a			;5c86   ; D y C = LFO del DCA
 	ld c,a			;5c87
 	ld a,(0dc45h)		;5c88   ; el factor: 0x80 - LFO + LFO por la onda del LFO
-	call multiplica_con_signo		;5c8b
+	call multiplica_con_signo		;5c8b   ; el valor del LFO por LFO del DCA
 	ld c,a			;5c8e
 	ld a,080h		;5c8f
 	sub d			;5c91
 	add a,c			;5c92
 	ld c,a			;5c93
 	pop af			;5c94
-	call multiplica_con_signo		;5c95
+	call multiplica_con_signo		;5c95   ; la muestra por el factor
 por_el_dca:		; A = E con signo por el nivel 0xDC30 / 128
-	ld e,a			;5c98
-	ld a,(0dc30h)		;5c99
+	ld e,a			;5c98   ; E = la muestra
+	ld a,(0dc30h)		;5c99   ; C = el nivel del DCA
 	ld c,a			;5c9c
-	ld b,007h		;5c9d
+	ld b,007h		;5c9d   ; 7 bits
 	xor a			;5c9f
 L_5CA0:
-	bit 7,e		;5ca0
+	bit 7,e		;5ca0   ; E a la mitad, redondeando hacia el cero...
 	jp z,L_5CA6		;5ca2
 	inc e			;5ca5
 L_5CA6:
 	sra e		;5ca6
-	rlc c		;5ca8
+	rlc c		;5ca8   ; ...y por cada bit del nivel...
 	jp nc,L_5CAE		;5caa
-	add a,e			;5cad
+	add a,e			;5cad   ; ...suma
 L_5CAE:
 	djnz L_5CA0		;5cae
 	ret			;5cb0
 L_5CB1:
-	pop af			;5cb1
+	pop af			;5cb1   ; sin LFO, la muestra tal cual
 	jp por_el_dca		;5cb2
 multiplica_con_signo:		; A = suma de E >> k (E con signo) por cada bit de C
-	ld e,a			;5cb5
+	ld e,a			;5cb5   ; E = el valor con signo
 	ld b,008h		;5cb6
 	xor a			;5cb8
 L_5CB9:
-	rlc c		;5cb9
+	rlc c		;5cb9   ; por cada bit de C, del alto...
 	jp nc,L_5CBF		;5cbb
-	add a,e			;5cbe
+	add a,e			;5cbe   ; ...suma...
 L_5CBF:
-	bit 7,e		;5cbf
+	bit 7,e		;5cbf   ; ...y E a la mitad con signo
 	jp z,L_5CC5		;5cc1
 	inc e			;5cc4
 L_5CC5:
@@ -3964,35 +3964,35 @@ L_5CC5:
 	djnz L_5CB9		;5cc7
 	ret			;5cc9
 lfo:		; salta por 0xDC40: 0x5CCE o 0x5D39
-	ld hl,(0dc40h)		;5cca
+	ld hl,(0dc40h)		;5cca   ; la rutina del LFO
 	jp (hl)			;5ccd
 lfo_paso:		; cada (retencion + 1) muestras toma el valor de la onda del LFO; la fase avanza FEET * 16
-	ld a,(0dc02h)		;5cce
+	ld a,(0dc02h)		;5cce   ; algun LFO puesto?
 	ld b,a			;5cd1
 	ld a,(0dc06h)		;5cd2
 	or b			;5cd5
 	ld b,a			;5cd6
 	ld a,(0dc08h)		;5cd7
 	or b			;5cda
-	ret z			;5cdb
+	ret z			;5cdb   ; ninguno: nada
 	ld a,(0dc16h)		;5cdc   ; onda 15 o mas: muestreo y retencion
 	cp 00fh		;5cdf
 	jp nc,lfo_ruido		;5ce1
 	ld a,(0dc46h)		;5ce4   ; 0xDC46: la cuenta de la retencion
-	dec a			;5ce7
+	dec a			;5ce7   ; una muestra menos
 	cp 0ffh		;5ce8
 	jp nz,L_5CF7		;5cea
 	ld hl,(0dc43h)		;5ced   ; se acabo la cuenta: el valor nuevo, 0xDC45
-	ld a,(hl)			;5cf0
+	ld a,(hl)			;5cf0   ; el valor de la onda en la fase
 	ld (0dc45h),a		;5cf1
-	ld a,(0dc15h)		;5cf4
+	ld a,(0dc15h)		;5cf4   ; la retencion otra vez
 L_5CF7:
 	ld (0dc46h),a		;5cf7
 	ld hl,(0dc42h)		;5cfa   ; la fase del LFO avanza FEET del LFO * 16
-	ld a,(0dc17h)		;5cfd
+	ld a,(0dc17h)		;5cfd   ; FEET del LFO...
 	ld e,a			;5d00
 	ld d,000h		;5d01
-	sla e		;5d03
+	sla e		;5d03   ; ...por 16
 	rl d		;5d05
 	sla e		;5d07
 	rl d		;5d09
@@ -4000,15 +4000,15 @@ L_5CF7:
 	rl d		;5d0d
 	sla e		;5d0f
 	rl d		;5d11
-	add hl,de			;5d13
+	add hl,de			;5d13   ; a la fase
 	ld (0dc42h),hl		;5d14
 	ret			;5d17
 lfo_ruido:		; muestreo y retencion: el valor nuevo sale del ruido (como 0x5AD4)
-	ld a,(0dc46h)		;5d18
+	ld a,(0dc46h)		;5d18   ; la cuenta
 	dec a			;5d1b
 	cp 0ffh		;5d1c
 	jp nz,L_5D36		;5d1e
-	ld hl,(0dc35h)		;5d21
+	ld hl,(0dc35h)		;5d21   ; el ruido, como en 0x5AD4
 	inc l			;5d24
 	ld (0dc35h),hl		;5d25
 	ld a,(hl)			;5d28
@@ -4016,18 +4016,18 @@ lfo_ruido:		; muestreo y retencion: el valor nuevo sale del ruido (como 0x5AD4)
 	rlc a		;5d2c
 	add a,(hl)			;5d2e
 	ld (hl),a			;5d2f
-	ld (0dc45h),a		;5d30
-	ld a,(0dc15h)		;5d33
+	ld (0dc45h),a		;5d30   ; el valor nuevo
+	ld a,(0dc15h)		;5d33   ; la retencion otra vez
 L_5D36:
 	ld (0dc46h),a		;5d36
 lfo_apagado:		; sin LFO: nada
 	ret			;5d39
 play:		; PLAY: sin pagina de bucle (0xDCFD = 0) las rutinas de 0x6709; con bucle, las de 0x5E8B
 	di			;5d3a
-	ld a,(0dcfdh)		;5d3b
+	ld a,(0dcfdh)		;5d3b   ; pagina de bucle?
 	or a			;5d3e
-	jp z,play_sin_bucle		;5d3f
-	jp play_con_bucle		;5d42
+	jp z,play_sin_bucle		;5d3f   ; no
+	jp play_con_bucle		;5d42   ; si
 busca_tecla:		; recorre las filas 0 a 7 hasta una con alguna tecla pulsada: NZ y A = la fila + 1; Z si no hay ninguna
 	in a,(0aah)		;5d45   ; desde la fila 0
 	and 0f0h		;5d47
@@ -8492,141 +8492,141 @@ DATA_timbres_de_fabrica:
 ; ======================================================================
 
 
-L_A5AA:
-	ld b,008h		;a5aa
-	ld a,(0d803h)		;a5ac
+pantalla_tone_edit:		; TONE EDIT: el cursor parpadea; segun 0xD8FA prepara la pantalla o edita el campo de 0xDB01
+	ld b,008h		;a5aa   ; color 8 del cursor...
+	ld a,(0d803h)		;a5ac   ; ...o 12, cada 16 cuadros
 	and 010h		;a5af
 	jr nz,L_A5B5		;a5b1
 	ld b,00ch		;a5b3
 L_A5B5:
 	ld a,b			;a5b5
-	ld (0d873h),a		;a5b6
-	ld a,(0d8fah)		;a5b9
+	ld (0d873h),a		;a5b6   ; al sprite del cursor
+	ld a,(0d8fah)		;a5b9   ; el estado de la pantalla:
 	dec a			;a5bc
-	jp z,L_ACDA		;a5bd
-	jp m,L_AD5A		;a5c0
+	jp z,tone_edit_estado_1		;a5bd   ; 1: 0xACDA
+	jp m,tone_edit_estado_0		;a5c0   ; 0: la pantalla fija
 	cp 001h		;a5c3
-	jp z,L_AD31		;a5c5
-	ld a,(0d802h)		;a5c8
+	jp z,tone_edit_estado_2		;a5c5   ; 2: 0xAD31
+	ld a,(0d802h)		;a5c8   ; solo con el programa en marcha
 	and 040h		;a5cb
 	ret z			;a5cd
 	ld b,000h		;a5ce
-	ld a,(0d808h)		;a5d0
-	rra			;a5d3
+	ld a,(0d808h)		;a5d0   ; el byte de teclas con repeticion
+	rra			;a5d3   ; arriba: B = 0
 	jr nc,L_A5D9		;a5d4
 	ld a,b			;a5d6
 	jr L_A5EA		;a5d7
 L_A5D9:
 	inc b			;a5d9
-	rra			;a5da
+	rra			;a5da   ; abajo: 1
 	jr c,L_A5E5		;a5db
 	inc b			;a5dd
-	rra			;a5de
+	rra			;a5de   ; izquierda: 2
 	jr c,L_A5E5		;a5df
 	inc b			;a5e1
-	rra			;a5e2
-	jr nc,L_A629		;a5e3
+	rra			;a5e2   ; derecha: 3; ninguna, a editar
+	jr nc,edita_campo		;a5e3
 L_A5E5:
 	xor a			;a5e5
 L_A5E6:
-	add a,01eh		;a5e6
+	add a,01eh		;a5e6   ; 0x1E entradas por direccion
 	djnz L_A5E6		;a5e8
 L_A5EA:
-	ld hl,0db01h		;a5ea
+	ld hl,0db01h		;a5ea   ; mas el campo
 	ld b,(hl)			;a5ed
 	add a,b			;a5ee
-	ld de,0ac26h		;a5ef
+	ld de,0ac26h		;a5ef   ; el campo vecino en 0xAC26
 	call de_mas_a		;a5f2
 	ld a,(de)			;a5f5
-	cp (hl)			;a5f6
-	jr z,L_A629		;a5f7
-	ld (hl),a			;a5f9
-	sla a		;a5fa
+	cp (hl)			;a5f6   ; el mismo: no se mueve
+	jr z,edita_campo		;a5f7
+	ld (hl),a			;a5f9   ; el campo nuevo
+	sla a		;a5fa   ; su sitio para el cursor en 0xAC9E
 	ld de,0ac9eh		;a5fc
 	call de_mas_a		;a5ff
-	ld b,002h		;a602
+	ld b,002h		;a602   ; los dos sprites del cursor
 	ld hl,0d870h		;a604
 L_A607:
-	ld a,(de)			;a607
+	ld a,(de)			;a607   ; Y...
 	ld (hl),a			;a608
 	inc de			;a609
 	inc hl			;a60a
-	ld a,(de)			;a60b
+	ld a,(de)			;a60b   ; ...y X
 	ld (hl),a			;a60c
 	dec de			;a60d
 	inc hl			;a60e
 	inc hl			;a60f
 	inc hl			;a610
 	djnz L_A607		;a611
-	ld a,001h		;a613
-	call L_BEB1		;a615
-	ld hl,0a9b3h		;a618
+	ld a,001h		;a613   ; el efecto 1
+	call efecto		;a615
+	ld hl,0a9b3h		;a618   ; el modo de escritura del campo (0xA9B3)...
 	ld a,(0db01h)		;a61b
 	dec a			;a61e
 	call hl_mas_a		;a61f
 	ld a,(hl)			;a622
-	ld de,0db06h		;a623
+	ld de,0db06h		;a623   ; ...a 0xDB06 y 0xDB07
 	ld (de),a			;a626
 	inc de			;a627
 	ld (de),a			;a628
-L_A629:
-	xor a			;a629
+edita_campo:		; edita el campo 0xDB01 del timbre en curso
+	xor a			;a629   ; los sprites 2, 3 y 4 sin color
 	ld (0d87bh),a		;a62a
 	ld (0d87fh),a		;a62d
 	ld (0d883h),a		;a630
-	call L_ADDB		;a633
-	ld a,(0d808h)		;a636
+	call timbre_en_curso		;a633   ; HL = el timbre en curso
+	ld a,(0d808h)		;a636   ; C = las teclas
 	ld c,a			;a639
 	ld a,(0db01h)		;a63a
-	cp 001h		;a63d
-	jp c,L_A739		;a63f
+	cp 001h		;a63d   ; campo 0: el nombre
+	jp c,campo_nombre		;a63f
 	push af			;a642
-	xor a			;a643
+	xor a			;a643   ; 0xDB03 = 0
 	ld (0db03h),a		;a644
 	pop af			;a647
-	cp 015h		;a648
-	jp c,L_A7D7		;a64a
-	cp 019h		;a64d
-	jp c,L_AA5B		;a64f
-	cp 01bh		;a652
-	jp c,L_AB58		;a654
-	cp 01ch		;a657
-	jr c,L_A6C3		;a659
-	cp 01dh		;a65b
-	jp z,L_AC08		;a65d
-	ld a,017h		;a660
+	cp 015h		;a648   ; campos 1-20: valores
+	jp c,campo_valor		;a64a
+	cp 019h		;a64d   ; 21-24: conmutadores
+	jp c,campo_conmutador		;a64f
+	cp 01bh		;a652   ; 25-26: las ondas
+	jp c,campo_onda		;a654
+	cp 01ch		;a657   ; 27: FEET del DCO
+	jr c,campo_feet_dco		;a659
+	cp 01dh		;a65b   ; 29: 0xAC08
+	jp z,campo_29		;a65d
+	ld a,017h		;a660   ; 28: FEET del LFO, el byte 23
 	call hl_mas_a		;a662
-	ld a,(0db02h)		;a665
+	ld a,(0db02h)		;a665   ; sin escribir cifras...
 	or a			;a668
 	jr nz,L_A693		;a669
 	ld a,(0db08h)		;a66b
 	or a			;a66e
 	jr nz,L_A693		;a66f
-	ld c,001h		;a671
+	ld c,001h		;a671   ; ...el paso es 1...
 	ld a,(0db04h)		;a673
 	or a			;a676
 	jr z,L_A67B		;a677
-	ld c,010h		;a679
+	ld c,010h		;a679   ; ...o 0x10 con 0xDB04
 L_A67B:
-	ld a,(0d8f3h)		;a67b
+	ld a,(0d8f3h)		;a67b   ; INS o DEL
 	cp 044h		;a67e
 	jr z,L_A68D		;a680
 	cp 043h		;a682
 	jr nz,L_A693		;a684
-	ld a,(hl)			;a686
+	ld a,(hl)			;a686   ; INS: suma...
 	add a,c			;a687
-	jr nz,L_A692		;a688
+	jr nz,L_A692		;a688   ; ...sin llegar a 0
 	sub c			;a68a
 	jr L_A692		;a68b
 L_A68D:
-	ld a,(hl)			;a68d
+	ld a,(hl)			;a68d   ; DEL: resta...
 	sub c			;a68e
-	jr nz,L_A692		;a68f
+	jr nz,L_A692		;a68f   ; ...sin llegar a 0
 	add a,c			;a691
 L_A692:
 	ld (hl),a			;a692
 L_A693:
-	ld a,(0db04h)		;a693
+	ld a,(0db04h)		;a693   ; con 0xDB04 solo el nibble alto, al menos 0x10
 	or a			;a696
 	jr z,L_A6A3		;a697
 	ld a,(hl)			;a699
@@ -8639,60 +8639,60 @@ L_A6A0:
 L_A6A3:
 	ld a,(hl)			;a6a3
 L_A6A4:
-	ld c,a			;a6a4
+	ld c,a			;a6a4   ; 1024000 / el valor (0x0FA000)...
 	ld b,000h		;a6a5
 	ld de,0a000h		;a6a7
 	ld a,00fh		;a6aa
-	call L_A6FB		;a6ac
-	ld hl,0393ch		;a6af
+	call pies		;a6ac
+	ld hl,0393ch		;a6af   ; ...dos cifras en 0x393C...
 	ld b,002h		;a6b2
 	ld de,0dbf0h		;a6b4
 	call cifras		;a6b7
-	dec hl			;a6ba
+	dec hl			;a6ba   ; ...y cuatro delante
 	ld b,004h		;a6bb
 	ld de,0dbf1h		;a6bd
 	jp cifras		;a6c0
-L_A6C3:
-	inc hl			;a6c3
+campo_feet_dco:		; FEET del DCO (byte 1): INS lo dobla hasta 0x20, DEL lo parte hasta 1; 64000 / valor en 0x38C5
+	inc hl			;a6c3   ; el byte 1
 	ld a,(0db02h)		;a6c4
 	or a			;a6c7
 	jr nz,L_A6E5		;a6c8
-	ld a,(0d8f3h)		;a6ca
+	ld a,(0d8f3h)		;a6ca   ; INS o DEL
 	cp 044h		;a6cd
 	jr z,L_A6DE		;a6cf
 	cp 043h		;a6d1
 	ret nz			;a6d3
-	ld a,(hl)			;a6d4
+	ld a,(hl)			;a6d4   ; INS: por dos...
 	add a,a			;a6d5
-	cp 040h		;a6d6
+	cp 040h		;a6d6   ; ...como mucho 0x20
 	jr c,L_A6E4		;a6d8
 	ld a,020h		;a6da
 	jr L_A6E4		;a6dc
 L_A6DE:
-	ld a,(hl)			;a6de
+	ld a,(hl)			;a6de   ; DEL: la mitad...
 	rra			;a6df
-	jr nc,L_A6E4		;a6e0
+	jr nc,L_A6E4		;a6e0   ; ...como poco 1
 	ld a,001h		;a6e2
 L_A6E4:
 	ld (hl),a			;a6e4
 L_A6E5:
-	ld a,(hl)			;a6e5
+	ld a,(hl)			;a6e5   ; 64000 / el valor...
 	ld c,a			;a6e6
 	ld b,000h		;a6e7
 	ld de,0fa00h		;a6e9
 	xor a			;a6ec
-	call L_A6FB		;a6ed
-	ld hl,038c5h		;a6f0
+	call pies		;a6ed
+	ld hl,038c5h		;a6f0   ; ...dos cifras en 0x38C5
 	ld b,002h		;a6f3
 	ld de,0dbf1h		;a6f5
 	jp cifras		;a6f8
-L_A6FB:
-	call L_ADC0		;a6fb
+pies:		; 0xDBF0-0xDBF3 = el cociente de A:DE entre BC en BCD, redondeado a la decena y sin la ultima cifra
+	call divide_24		;a6fb   ; la division de 24 bits
 	ld l,e			;a6fe
 	ld h,d			;a6ff
 	ld e,a			;a700
-	call L_AD9C		;a701
-	ld hl,0dbf4h		;a704
+	call a_bcd_24		;a701   ; a BCD
+	ld hl,0dbf4h		;a704   ; los cuatro bytes, el bajo primero
 	ld (hl),000h		;a707
 	dec hl			;a709
 	ld (hl),b			;a70a
@@ -8702,16 +8702,16 @@ L_A6FB:
 	ld (hl),d			;a70e
 	dec hl			;a70f
 	ld (hl),e			;a710
-	ld a,e			;a711
+	ld a,e			;a711   ; la ultima cifra 5 o mas...
 	and 00fh		;a712
 	cp 005h		;a714
 	jr c,L_A72B		;a716
-	ld a,010h		;a718
+	ld a,010h		;a718   ; ...sube una decena...
 	add a,(hl)			;a71a
 	daa			;a71b
 	ld (hl),a			;a71c
 	jr nc,L_A72B		;a71d
-	ld b,003h		;a71f
+	ld b,003h		;a71f   ; ...con el acarreo
 L_A721:
 	inc hl			;a721
 	ld a,001h		;a722
@@ -8721,7 +8721,7 @@ L_A721:
 	jr nc,L_A72B		;a727
 	djnz L_A721		;a729
 L_A72B:
-	ld hl,0dbf0h		;a72b
+	ld hl,0dbf0h		;a72b   ; y se quita la ultima cifra
 	ld b,004h		;a72e
 L_A730:
 	inc hl			;a730
@@ -8731,69 +8731,69 @@ L_A730:
 	inc hl			;a735
 	djnz L_A730		;a736
 	ret			;a738
-L_A739:
+campo_nombre:		; el nombre, siete letras: letras y cifras escriben, ESPACIO pone un espacio, BS vuelve atras
 	ld a,(0db02h)		;a739
 	or a			;a73c
 	ret nz			;a73d
-	ld b,06fh		;a73e
+	ld b,06fh		;a73e   ; el sprite del cursor de letra...
 	jr L_A744		;a740
-L_A742:
+cursor_de_letra_67:		; lo mismo con X base 0x67
 	ld b,067h		;a742
 L_A744:
-	ld de,0db03h		;a744
+	ld de,0db03h		;a744   ; 0xDB03 = la letra en curso
 	ld a,(de)			;a747
-	add a,a			;a748
+	add a,a			;a748   ; X = base + 8 * letra
 	add a,a			;a749
 	add a,a			;a74a
 	add a,b			;a74b
 	ld (0d881h),a		;a74c
-	ld a,(0d870h)		;a74f
+	ld a,(0d870h)		;a74f   ; Y del cursor
 	ld (0d880h),a		;a752
-	ld a,(0db17h)		;a755
+	ld a,(0db17h)		;a755   ; 0xDB17: el nombre del fichero en vez del timbre
 	or a			;a758
 	jr z,L_A766		;a759
 	ld a,05dh		;a75b
 	ld (0d880h),a		;a75d
-	ld hl,0db0fh		;a760
+	ld hl,0db0fh		;a760   ; HL = 0xDB0F
 	ld a,(de)			;a763
 	jr L_A76E		;a764
 L_A766:
-	ld a,008h		;a766
+	ld a,008h		;a766   ; el del timbre: bytes 25-31
 	ld (0d883h),a		;a768
 	ld a,(de)			;a76b
 	add a,019h		;a76c
 L_A76E:
 	call hl_mas_a		;a76e
-	ld a,(0d8f1h)		;a771
+	ld a,(0d8f1h)		;a771   ; la tecla nueva
 	or a			;a774
 	jr z,L_A792		;a775
-	cp 031h		;a777
+	cp 031h		;a777   ; de 0x31 en adelante, no
 	jr nc,L_A792		;a779
-	cp 017h		;a77b
+	cp 017h		;a77b   ; letras (0x17-0x30)...
 	jr nc,L_A788		;a77d
-	cp 00bh		;a77f
+	cp 00bh		;a77f   ; ...cifras (1-10)...
 	jr nc,L_A792		;a781
-	dec a			;a783
+	dec a			;a783   ; ...a los tiles 0x40-0x49
 	add a,040h		;a784
 	jr L_A78C		;a786
 L_A788:
-	sub 017h		;a788
+	sub 017h		;a788   ; las letras a los tiles 0x21-0x3A
 	add a,021h		;a78a
 L_A78C:
-	ld (hl),a			;a78c
-	call L_A7A7		;a78d
+	ld (hl),a			;a78c   ; a la letra en curso...
+	call letra_siguiente		;a78d   ; ...y a la siguiente
 	jr L_A7B8		;a790
 L_A792:
-	ld a,(0d8f3h)		;a792
+	ld a,(0d8f3h)		;a792   ; BS (0x3E): atras
 	cp 03eh		;a795
-	jr z,L_A7B2		;a797
-	ld a,(0d806h)		;a799
+	jr z,letra_anterior		;a797
+	ld a,(0d806h)		;a799   ; ESPACIO...
 	and 010h		;a79c
 	jr z,L_A7B7		;a79e
-	ld (hl),020h		;a7a0
-	call L_A7A7		;a7a2
+	ld (hl),020h		;a7a0   ; ...un espacio
+	call letra_siguiente		;a7a2
 	jr L_A7B8		;a7a5
-L_A7A7:
+letra_siguiente:		; 0xDB03 + 1, de 0 a 6
 	ex de,hl			;a7a7
 	inc (hl)			;a7a8
 	ld a,(hl)			;a7a9
@@ -8803,7 +8803,7 @@ L_A7A7:
 L_A7B0:
 	ex de,hl			;a7b0
 	ret			;a7b1
-L_A7B2:
+letra_anterior:		; 0xDB03 - 1, de 6 a 0
 	ex de,hl			;a7b2
 	dec (hl)			;a7b3
 	ret p			;a7b4
@@ -8811,23 +8811,23 @@ L_A7B2:
 L_A7B7:
 	ret			;a7b7
 L_A7B8:
-	jp L_AD0A		;a7b8
-L_A7BB:
+	jp nombre_del_timbre		;a7b8
+suma_cifra:		; el valor + cifra * E
 	dec a			;a7bb
 	push de			;a7bc
 	push hl			;a7bd
-	call L_A7CB		;a7be
+	call por_e		;a7be
 	pop hl			;a7c1
 	pop de			;a7c2
 	push de			;a7c3
 	push hl			;a7c4
-	call L_A86A		;a7c5
+	call suma_con_maximo		;a7c5
 	pop hl			;a7c8
 	pop de			;a7c9
 	ret			;a7ca
-L_A7CB:
+por_e:		; L = A * E, 0xFF si pasa de un byte
 	ld h,a			;a7cb
-	call L_ADEB		;a7cc
+	call por_8		;a7cc
 	ld a,h			;a7cf
 	or a			;a7d0
 	jr z,L_A7D5		;a7d1
@@ -8835,8 +8835,8 @@ L_A7CB:
 L_A7D5:
 	ld a,l			;a7d5
 	ret			;a7d6
-L_A7D7:
-	inc hl			;a7d7
+campo_valor:		; campos 1-20: la cifra tecleada o INS/DEL, con el maximo de 0xA98B, y el valor en pantalla
+	inc hl			;a7d7   ; HL = el byte 2 + campo - 1
 	inc hl			;a7d8
 	ld a,(0db01h)		;a7d9
 	ld b,a			;a7dc
@@ -8844,86 +8844,86 @@ L_A7D7:
 	call hl_mas_a		;a7de
 	ld c,000h		;a7e1
 	ld a,b			;a7e3
-	call L_A92D		;a7e4
+	call campo_con_off		;a7e4   ; el campo admite OFF? (0xA92D)
 	jr nc,L_A7F0		;a7e7
 	ld a,(0db04h)		;a7e9
 	or a			;a7ec
-	jp nz,L_A8B7		;a7ed
+	jp nz,campo_off		;a7ed
 L_A7F0:
-	ld a,(0db02h)		;a7f0
+	ld a,(0db02h)		;a7f0   ; sin escribir cifras
 	or a			;a7f3
-	jp nz,L_A8C0		;a7f4
-	call L_A94C		;a7f7
-	ld a,(0db01h)		;a7fa
+	jp nz,campo_en_pantalla		;a7f4
+	call cursor_de_valor		;a7f7   ; 0xA94C
+	ld a,(0db01h)		;a7fa   ; el maximo del campo (0xA98B)...
 	dec a			;a7fd
 	ld de,0a98bh		;a7fe
 	call de_mas_a		;a801
 	ld a,(de)			;a804
 	ld c,a			;a805
-	ld (0db1bh),a		;a806
-	ld a,(0d8f1h)		;a809
+	ld (0db1bh),a		;a806   ; ...en 0xDB1B; 0 = 0xFF
+	ld a,(0d8f1h)		;a809   ; una cifra (codigos 1-10)?
 	or a			;a80c
-	jr z,L_A883		;a80d
+	jr z,campo_ins_del		;a80d
 	cp 00bh		;a80f
-	jr nc,L_A883		;a811
-	ld a,(0db06h)		;a813
-	ld (hl),000h		;a816
+	jr nc,campo_ins_del		;a811
+	ld a,(0db06h)		;a813   ; 0xDB06: cuantas cifras faltan
+	ld (hl),000h		;a816   ; la primera borra el valor
 	ld de,0db19h		;a818
 	dec a			;a81b
 	jr z,L_A858		;a81c
 	jp p,L_A864		;a81e
-	ld a,(de)			;a821
+	ld a,(de)			;a821   ; centenas pendientes...
 	or a			;a822
 	jr z,L_A82C		;a823
 	push de			;a825
-	ld e,064h		;a826
-	call L_A7BB		;a828
+	ld e,064h		;a826   ; ...por 100
+	call suma_cifra		;a828
 	pop de			;a82b
 L_A82C:
 	inc de			;a82c
-	ld a,(de)			;a82d
+	ld a,(de)			;a82d   ; decenas pendientes...
 	or a			;a82e
 	jr z,L_A838		;a82f
 	push de			;a831
-	ld e,00ah		;a832
-	call L_A7BB		;a834
+	ld e,00ah		;a832   ; ...por 10
+	call suma_cifra		;a834
 	pop de			;a837
 L_A838:
-	ld a,(0d8f1h)		;a838
+	ld a,(0d8f1h)		;a838   ; y las unidades
 L_A83B:
 	dec a			;a83b
-	call L_A86A		;a83c
-	ld de,0db06h		;a83f
+	call suma_con_maximo		;a83c
+	ld de,0db06h		;a83f   ; una cifra menos
 	ld a,(de)			;a842
 	dec a			;a843
 	jp p,L_A854		;a844
-	ld b,002h		;a847
+	ld b,002h		;a847   ; la ultima: las pendientes a cero...
 	ld hl,0db19h		;a849
 L_A84C:
 	ld (hl),000h		;a84c
 	inc hl			;a84e
 	djnz L_A84C		;a84f
-	inc de			;a851
+	inc de			;a851   ; ...y vuelve a empezar
 	ld a,(de)			;a852
 	dec de			;a853
 L_A854:
 	ld (de),a			;a854
-	jp L_A94C		;a855
+	jp cursor_de_valor		;a855
 L_A858:
-	ld a,(de)			;a858
+	ld a,(de)			;a858   ; decenas pendientes
 	or a			;a859
 	jr z,L_A863		;a85a
 	push de			;a85c
 	ld e,00ah		;a85d
-	call L_A7BB		;a85f
+	call suma_cifra		;a85f
 	pop de			;a862
 L_A863:
 	inc de			;a863
 L_A864:
-	ld a,(0d8f1h)		;a864
+	ld a,(0d8f1h)		;a864   ; apunta la cifra
 	ld (de),a			;a867
 	jr L_A83B		;a868
-L_A86A:
+suma_con_maximo:		; (HL) + A, como mucho el maximo C (o 0xFF)
 	ex af,af'			;a86a
 	ld a,(0db1bh)		;a86b
 	ld c,a			;a86e
@@ -8942,76 +8942,76 @@ L_A87A:
 	ld a,c			;a87f
 L_A880:
 	ld (hl),a			;a880
-	jr L_A8C0		;a881
-L_A883:
+	jr campo_en_pantalla		;a881
+campo_ins_del:		; INS suma 1 hasta el maximo; DEL resta 1 hasta 0
 	ld a,(0db1bh)		;a883
 	ld c,a			;a886
-	ld a,(0d8f3h)		;a887
+	ld a,(0d8f3h)		;a887   ; INS o DEL
 	cp 043h		;a88a
 	jr z,L_A8A6		;a88c
 	cp 044h		;a88e
-	jr nz,L_A8C0		;a890
+	jr nz,campo_en_pantalla		;a890
 	ld a,c			;a892
 	or a			;a893
 	jr z,L_A89D		;a894
-	dec (hl)			;a896
-	jp p,L_A8C0		;a897
+	dec (hl)			;a896   ; DEL con maximo
+	jp p,campo_en_pantalla		;a897
 	inc (hl)			;a89a
-	jr L_A8C0		;a89b
+	jr campo_en_pantalla		;a89b
 L_A89D:
-	dec (hl)			;a89d
+	dec (hl)			;a89d   ; DEL sin maximo
 	ld a,(hl)			;a89e
 	cp 0ffh		;a89f
-	jr nz,L_A8C0		;a8a1
+	jr nz,campo_en_pantalla		;a8a1
 	inc (hl)			;a8a3
-	jr L_A8C0		;a8a4
+	jr campo_en_pantalla		;a8a4
 L_A8A6:
-	ld a,c			;a8a6
+	ld a,c			;a8a6   ; INS con maximo
 	or a			;a8a7
 	jr z,L_A8B1		;a8a8
 	ld a,(hl)			;a8aa
 	cp c			;a8ab
-	jr nc,L_A8C0		;a8ac
+	jr nc,campo_en_pantalla		;a8ac
 	inc (hl)			;a8ae
-	jr L_A8C0		;a8af
+	jr campo_en_pantalla		;a8af
 L_A8B1:
-	inc (hl)			;a8b1
-	jr nz,L_A8C0		;a8b2
+	inc (hl)			;a8b1   ; INS sin maximo
+	jr nz,campo_en_pantalla		;a8b2
 	dec (hl)			;a8b4
-	jr L_A8C0		;a8b5
-L_A8B7:
+	jr campo_en_pantalla		;a8b5
+campo_off:		; con 0xDB04, OFF
 	push hl			;a8b7
 	ld a,(0db04h)		;a8b8
 	or a			;a8bb
-	jr nz,L_A914		;a8bc
+	jr nz,pinta_off		;a8bc
 	jr L_A8C1		;a8be
-L_A8C0:
+campo_en_pantalla:		; el valor en tres cifras (0xA9C7) y su barra (0xA9EF)
 	push hl			;a8c0
 L_A8C1:
-	ld l,(hl)			;a8c1
-	call L_A978		;a8c2
-	ld hl,0dbf0h		;a8c5
+	ld l,(hl)			;a8c1   ; a decimal
+	call a_decimal		;a8c2
+	ld hl,0dbf0h		;a8c5   ; a 0xDBF0
 	push hl			;a8c8
 	ld (hl),e			;a8c9
 	inc hl			;a8ca
 	ld (hl),d			;a8cb
-	ld hl,0a9c7h		;a8cc
-	call L_A96C		;a8cf
+	ld hl,0a9c7h		;a8cc   ; la direccion de las cifras del campo
+	call palabra_del_campo		;a8cf
 	ex de,hl			;a8d2
 	pop de			;a8d3
-	ld b,003h		;a8d4
+	ld b,003h		;a8d4   ; tres cifras
 	call cifras		;a8d6
 L_A8D9:
-	ld hl,0a9efh		;a8d9
-	call L_A96C		;a8dc
-	ld a,(0db01h)		;a8df
+	ld hl,0a9efh		;a8d9   ; la direccion de su barra
+	call palabra_del_campo		;a8dc
+	ld a,(0db01h)		;a8df   ; cuanto se corre el valor (0xA99F)
 	dec a			;a8e2
 	ld hl,0a99fh		;a8e3
 	call hl_mas_a		;a8e6
 	ld b,(hl)			;a8e9
 	ld a,b			;a8ea
 	or a			;a8eb
-	jr nz,L_A8F3		;a8ec
+	jr nz,L_A8F3		;a8ec   ; 0: el valor por dos
 	pop hl			;a8ee
 	ld a,(hl)			;a8ef
 	add a,a			;a8f0
@@ -9022,36 +9022,36 @@ L_A8F3:
 	or a			;a8f5
 	jr z,L_A900		;a8f6
 L_A8F8:
-	srl a		;a8f8
+	srl a		;a8f8   ; el valor corrido B veces
 	djnz L_A8F8		;a8fa
 L_A8FC:
-	or a			;a8fc
+	or a			;a8fc   ; si no es cero, al menos 1
 	jr nz,L_A900		;a8fd
 	inc a			;a8ff
 L_A900:
-	ld hl,0aa17h		;a900
+	ld hl,0aa17h		;a900   ; la barra de cuatro tiles de 0xAA17...
 	ld bc,00004h		;a903
 	or a			;a906
 	jr z,L_A90D		;a907
 L_A909:
-	add hl,bc			;a909
+	add hl,bc			;a909   ; ...la entrada A
 	dec a			;a90a
 	jr nz,L_A909		;a90b
 L_A90D:
-	ex de,hl			;a90d
+	ex de,hl			;a90d   ; a la VRAM
 	ld bc,00004h		;a90e
 	jp copia_a_vram		;a911
-L_A914:
-	ld (hl),000h		;a914
-	ld hl,0a9c7h		;a916
-	call L_A96C		;a919
+pinta_off:		; valor 0 y los tres tiles de OFF (0xA92A) delante de las cifras
+	ld (hl),000h		;a914   ; el valor a cero
+	ld hl,0a9c7h		;a916   ; donde van sus cifras
+	call palabra_del_campo		;a919
 	ex de,hl			;a91c
-	ld de,0a92ah		;a91d
+	ld de,0a92ah		;a91d   ; los tres tiles de OFF...
 	ld bc,00003h		;a920
-	dec hl			;a923
+	dec hl			;a923   ; ...dos tiles antes
 	dec hl			;a924
 	call copia_a_vram		;a925
-	jr L_A8D9		;a928
+	jr L_A8D9		;a928   ; y la barra
 
 ; ----------------------------------------------------------------------
 ; DATOS tiles_flecha: 3 tiles que copia 0xA928
@@ -9064,7 +9064,7 @@ DATA_tiles_flecha:
 ; ======================================================================
 
 
-L_A92D:
+campo_con_off:		; acarreo si el campo A esta en la lista de 0xA947 (los que dicen OFF con 0)
 	push bc			;a92d
 	exx			;a92e
 	pop bc			;a92f
@@ -9073,18 +9073,18 @@ L_A92D:
 	ld hl,0a947h		;a932
 	call hl_mas_a		;a935
 L_A938:
-	ld a,(hl)			;a938
+	ld a,(hl)			;a938   ; la lista, hasta 0xFF
 	inc a			;a939
 	jr z,L_A944		;a93a
 	inc hl			;a93c
 	dec a			;a93d
 	cp b			;a93e
 	jr nz,L_A938		;a93f
-	scf			;a941
+	scf			;a941   ; esta: acarreo
 	exx			;a942
 	ret			;a943
 L_A944:
-	xor a			;a944
+	xor a			;a944   ; no esta
 	exx			;a945
 	ret			;a946
 
@@ -9099,21 +9099,21 @@ DATA_limites_del_cursor:
 ; ======================================================================
 
 
-L_A94C:
-	ld a,(0d870h)		;a94c
+cursor_de_valor:		; los sprites 2 y 3 junto al campo, con color 8
+	ld a,(0d870h)		;a94c   ; Y del cursor - 1
 	dec a			;a94f
 	ld (0d878h),a		;a950
 	ld (0d87ch),a		;a953
-	ld a,(0d871h)		;a956
+	ld a,(0d871h)		;a956   ; X - 0x3A...
 	sub 03ah		;a959
 	ld (0d879h),a		;a95b
-	add a,010h		;a95e
+	add a,010h		;a95e   ; ...y 0x10 mas alla
 	ld (0d87dh),a		;a960
-	ld a,008h		;a963
+	ld a,008h		;a963   ; color 8
 	ld (0d87bh),a		;a965
 	ld (0d87fh),a		;a968
 	ret			;a96b
-L_A96C:
+palabra_del_campo:		; DE = la palabra (0xDB01 - 1) de la tabla HL
 	ld a,(0db01h)		;a96c
 	dec a			;a96f
 	rlca			;a970
@@ -9122,16 +9122,16 @@ L_A96C:
 	inc hl			;a975
 	ld d,(hl)			;a976
 	ret			;a977
-L_A978:
-	ld bc,00800h		;a978
+a_decimal:		; DE = L en BCD
+	ld bc,00800h		;a978   ; 8 bits
 	ld de,00000h		;a97b
 L_A97E:
-	sla l		;a97e
-	ld a,e			;a980
+	sla l		;a97e   ; el bit alto de L...
+	ld a,e			;a980   ; ...entra en E por la derecha, en BCD...
 	adc a,a			;a981
 	daa			;a982
 	ld e,a			;a983
-	ld a,d			;a984
+	ld a,d			;a984   ; ...con el acarreo a D
 	adc a,a			;a985
 	daa			;a986
 	ld d,a			;a987
@@ -9162,21 +9162,21 @@ DATA_tablas_de_tone_edit:
 ; ======================================================================
 
 
-L_AA5B:
-	ld a,018h		;aa5b
+campo_conmutador:		; campos 21-24: los bits del byte 24; INS los apaga, DEL los enciende (el 21 tiene tres posiciones)
+	ld a,018h		;aa5b   ; el byte 24
 	call hl_mas_a		;aa5d
-	ld a,(0db01h)		;aa60
+	ld a,(0db01h)		;aa60   ; conmutador 0-3
 	sub 015h		;aa63
 	ld b,a			;aa65
 	push bc			;aa66
-	ld de,0ab31h		;aa67
+	ld de,0ab31h		;aa67   ; su mascara en 0xAB31
 	call de_mas_a		;aa6a
-	ld a,(0db02h)		;aa6d
+	ld a,(0db02h)		;aa6d   ; solo pintar?
 	or a			;aa70
 	jr nz,L_AAA5		;aa71
 	ld a,(de)			;aa73
 	ld c,a			;aa74
-	ld a,(0d8f3h)		;aa75
+	ld a,(0d8f3h)		;aa75   ; INS o DEL
 	cp 044h		;aa78
 	jr z,L_AA94		;aa7a
 	cp 043h		;aa7c
@@ -9184,40 +9184,40 @@ L_AA5B:
 	pop bc			;aa80
 	ret			;aa81
 L_AA82:
-	ld a,c			;aa82
+	ld a,c			;aa82   ; INS: 0xFF es el de tres posiciones...
 	cp 0ffh		;aa83
 	jr z,L_AA8C		;aa85
-	cpl			;aa87
+	cpl			;aa87   ; ...si no, apaga el bit
 	and (hl)			;aa88
 	ld (hl),a			;aa89
 	jr L_AAA5		;aa8a
 L_AA8C:
-	ld a,(hl)			;aa8c
+	ld a,(hl)			;aa8c   ; el de tres: baja
 	and 003h		;aa8d
 	jr z,L_AAA5		;aa8f
 	dec (hl)			;aa91
 	jr L_AAA5		;aa92
 L_AA94:
-	ld a,c			;aa94
+	ld a,c			;aa94   ; DEL: enciende el bit...
 	cp 0ffh		;aa95
 	jr z,L_AA9D		;aa97
 	or (hl)			;aa99
 	ld (hl),a			;aa9a
 	jr L_AAA5		;aa9b
 L_AA9D:
-	ld a,(hl)			;aa9d
+	ld a,(hl)			;aa9d   ; ...o sube el de tres, hasta 2
 	and 003h		;aa9e
 	cp 002h		;aaa0
 	jr z,L_AAA5		;aaa2
 	inc (hl)			;aaa4
 L_AAA5:
-	ld a,(0db01h)		;aaa5
+	ld a,(0db01h)		;aaa5   ; el campo 24, el bit 7...
 	cp 018h		;aaa8
 	jr nz,L_AACA		;aaaa
 	ld a,(0db04h)		;aaac
 	or a			;aaaf
 	jr z,L_AABC		;aab0
-	bit 7,(hl)		;aab2
+	bit 7,(hl)		;aab2   ; ...cambia 0xDB04...
 	jr z,L_AACA		;aab4
 	xor a			;aab6
 	ld (0db04h),a		;aab7
@@ -9229,10 +9229,10 @@ L_AABC:
 	ld (0db04h),a		;aac2
 L_AAC5:
 	push hl			;aac5
-	call L_AB09		;aac6
+	call repinta_campos		;aac6   ; ...y repinta los campos de 0xAB50
 	pop hl			;aac9
 L_AACA:
-	pop bc			;aaca
+	pop bc			;aaca   ; su entrada de 0xAB35: cuanto se corre y donde va
 	ld a,b			;aacb
 	add a,a			;aacc
 	add a,b			;aacd
@@ -9246,7 +9246,7 @@ L_AACA:
 	ld d,(hl)			;aad9
 	exx			;aada
 	ld b,a			;aadb
-	or a			;aadc
+	or a			;aadc   ; 0: el de tres posiciones (0xAB47)
 	ld a,(hl)			;aadd
 	jr nz,L_AAE8		;aade
 	exx			;aae0
@@ -9254,46 +9254,46 @@ L_AACA:
 	and 003h		;aae4
 	jr L_AAF1		;aae6
 L_AAE8:
-	rrca			;aae8
+	rrca			;aae8   ; el bit (0xAB41)
 	djnz L_AAE8		;aae9
 	exx			;aaeb
 	ld hl,0ab41h		;aaec
 	and 001h		;aaef
 L_AAF1:
-	ld b,a			;aaf1
+	ld b,a			;aaf1   ; tres tiles por posicion
 	add a,a			;aaf2
 	add a,b			;aaf3
 	call hl_mas_a		;aaf4
 	ex de,hl			;aaf7
 	exx			;aaf8
-	ld b,003h		;aaf9
+	ld b,003h		;aaf9   ; tres tiles en vertical
 L_AAFB:
 	exx			;aafb
 	ld a,(de)			;aafc
 	call 0004dh		;aafd   ; BIOS WRTVRM - Writes data in VRAM
 	inc de			;ab00
-	ld bc,00020h		;ab01
+	ld bc,00020h		;ab01   ; una fila mas abajo
 	add hl,bc			;ab04
 	exx			;ab05
 	djnz L_AAFB		;ab06
 	ret			;ab08
-L_AB09:
-	ld a,001h		;ab09
+repinta_campos:		; vuelve a pintar los campos de la lista 0xAB50 y deja el campo como estaba
+	ld a,001h		;ab09   ; repintando
 	ld (0db08h),a		;ab0b
-	ld a,(0db01h)		;ab0e
+	ld a,(0db01h)		;ab0e   ; guarda el campo
 	ld (0db05h),a		;ab11
 	ld hl,0ab50h		;ab14
 	ld a,(hl)			;ab17
 L_AB18:
-	ld (0db01h),a		;ab18
+	ld (0db01h),a		;ab18   ; uno de la lista
 	push hl			;ab1b
-	call L_A629		;ab1c
+	call edita_campo		;ab1c
 	pop hl			;ab1f
 	inc hl			;ab20
 	ld a,(hl)			;ab21
 	cp 0ffh		;ab22
 	jr nz,L_AB18		;ab24
-	ld a,(0db05h)		;ab26
+	ld a,(0db05h)		;ab26   ; el campo de antes
 	ld (0db01h),a		;ab29
 	xor a			;ab2c
 	ld (0db08h),a		;ab2d
@@ -9312,12 +9312,12 @@ DATA_tablas_de_tone_edit_2:
 ; ======================================================================
 
 
-L_AB58:
-	ld de,03905h		;ab58
+campo_onda:		; campos 25-26: la onda del DCO (byte 0, en 0x3905) o la del LFO (byte 22, en 0x3977); INS y DEL dan la vuelta
+	ld de,03905h		;ab58   ; el DCO
 	ld a,(0db01h)		;ab5b
 	cp 019h		;ab5e
 	jr z,L_AB6A		;ab60
-	ld de,03977h		;ab62
+	ld de,03977h		;ab62   ; el LFO, byte 22
 	ld a,016h		;ab65
 	call hl_mas_a		;ab67
 L_AB6A:
@@ -9327,36 +9327,36 @@ L_AB6A:
 	ld a,(0db08h)		;ab70
 	or a			;ab73
 	jr nz,L_AB9E		;ab74
-	ld b,010h		;ab76
+	ld b,010h		;ab76   ; 16 ondas...
 	ld a,(0db04h)		;ab78
 	or a			;ab7b
 	jr z,L_AB80		;ab7c
-	ld b,00fh		;ab7e
+	ld b,00fh		;ab7e   ; ...o 15 con 0xDB04
 L_AB80:
-	ld a,(0d8f1h)		;ab80
+	ld a,(0d8f1h)		;ab80   ; INS o DEL
 	cp 044h		;ab83
 	jr z,L_AB94		;ab85
 	cp 043h		;ab87
 	jr nz,L_AB9E		;ab89
-	ld a,(hl)			;ab8b
+	ld a,(hl)			;ab8b   ; INS: la siguiente...
 	inc a			;ab8c
 	cp b			;ab8d
 	jr c,L_AB91		;ab8e
-	xor a			;ab90
+	xor a			;ab90   ; ...y de la ultima a la 0
 L_AB91:
 	ld (hl),a			;ab91
 	jr L_AB9E		;ab92
 L_AB94:
-	ld a,(hl)			;ab94
+	ld a,(hl)			;ab94   ; DEL: la anterior...
 	dec a			;ab95
 	jp p,L_AB9B		;ab96
-	ld a,b			;ab99
+	ld a,b			;ab99   ; ...y de la 0 a la ultima
 	dec a			;ab9a
 L_AB9B:
 	ld (hl),a			;ab9b
 	jr L_ABAB		;ab9c
 L_AB9E:
-	ld a,(0db04h)		;ab9e
+	ld a,(0db04h)		;ab9e   ; con 0xDB04 la 15 no vale
 	or a			;aba1
 	jr z,L_ABAB		;aba2
 	ld a,(hl)			;aba4
@@ -9365,27 +9365,27 @@ L_AB9E:
 	ld (hl),000h		;aba9
 L_ABAB:
 	ex de,hl			;abab
-	ld a,(de)			;abac
+	ld a,(de)			;abac   ; el numero mas uno
 	inc a			;abad
 	push de			;abae
-	cp 00ah		;abaf
+	cp 00ah		;abaf   ; de 10 en adelante...
 	jr c,L_ABBA		;abb1
 	push hl			;abb3
 	ld l,a			;abb4
-	call L_A978		;abb5
+	call a_decimal		;abb5   ; ...a decimal
 	ld a,e			;abb8
 	pop hl			;abb9
 L_ABBA:
-	ld de,0dbf0h		;abba
+	ld de,0dbf0h		;abba   ; dos cifras
 	ld (de),a			;abbd
 	ld b,002h		;abbe
 	call cifras		;abc0
 	pop de			;abc3
-	inc hl			;abc4
+	inc hl			;abc4   ; cuatro tiles mas alla...
 	inc hl			;abc5
 	inc hl			;abc6
 	inc hl			;abc7
-	ld a,(de)			;abc8
+	ld a,(de)			;abc8   ; ...el dibujo de la onda, tres tiles de 0xABD8
 	ld b,a			;abc9
 	add a,a			;abca
 	add a,b			;abcb
@@ -9408,8 +9408,8 @@ DATA_tiles_de_los_conmutadores:
 ; ======================================================================
 
 
-L_AC08:
-	call L_B1E8		;ac08
+campo_29:		; 0xB1E8; con acarreo, la pantalla se prepara otra vez (0xD8FA = 1)
+	call otra_onda		;ac08
 	ret nc			;ac0b
 	ld a,001h		;ac0c
 	ld (0d8fah),a		;ac0e
@@ -9438,25 +9438,25 @@ DATA_tablas_de_campos:
 ; ======================================================================
 
 
-L_ACDA:
-	call L_ACEA		;acda
-	ld de,0d870h		;acdd
+tone_edit_estado_1:		; la cabecera y los cinco sprites de 0xAC12
+	call cabecera_del_timbre		;acda
+	ld de,0d870h		;acdd   ; los sprites del cursor...
 	ld hl,0ac12h		;ace0
-	ld bc,00014h		;ace3
+	ld bc,00014h		;ace3   ; ...0x14 bytes
 	ldir		;ace6
-	jr L_AD55		;ace8
-L_ACEA:
-	ld a,(0db00h)		;acea
+	jr estado_siguiente		;ace8
+cabecera_del_timbre:		; el numero del timbre (0xDB00 + 1, dos cifras en 0x384B) y su nombre
+	ld a,(0db00h)		;acea   ; el numero, de 1 a 16...
 	inc a			;aced
 	ld l,a			;acee
-	call L_A978		;acef
-	ld a,e			;acf2
+	call a_decimal		;acef   ; ...en decimal
+	ld a,e			;acf2   ; las unidades...
 	and 00fh		;acf3
 	or 040h		;acf5
-	ld hl,0384ch		;acf7
+	ld hl,0384ch		;acf7   ; ...en 0x384C
 	call 0004dh		;acfa   ; BIOS WRTVRM - Writes data in VRAM
 	dec hl			;acfd
-	ld a,e			;acfe
+	ld a,e			;acfe   ; las decenas, delante
 	and 0f0h		;acff
 	rrca			;ad01
 	rrca			;ad02
@@ -9464,18 +9464,18 @@ L_ACEA:
 	rrca			;ad04
 	or 040h		;ad05
 	call 0004dh		;ad07   ; BIOS WRTVRM - Writes data in VRAM
-L_AD0A:
+nombre_del_timbre:		; las siete letras: del timbre en 0x384E, o del fichero (0xDB0F) en 0x398D si 0xDB17
 	ld de,0db0fh		;ad0a
 	ld hl,0398dh		;ad0d
 	ld a,(0db17h)		;ad10
 	or a			;ad13
-	jr nz,L_AD21		;ad14
-	call L_ADDB		;ad16
-	ld de,00019h		;ad19
+	jr nz,siete_letras		;ad14
+	call timbre_en_curso		;ad16   ; el timbre en curso...
+	ld de,00019h		;ad19   ; ...bytes 25-31
 	add hl,de			;ad1c
 	ex de,hl			;ad1d
 	ld hl,0384eh		;ad1e
-L_AD21:
+siete_letras:		; siete tiles de DE en HL; el espacio es el tile 0
 	ld b,007h		;ad21
 L_AD23:
 	ld a,(de)			;ad23
@@ -9488,66 +9488,66 @@ L_AD29:
 	inc de			;ad2d
 	djnz L_AD23		;ad2e
 	ret			;ad30
-L_AD31:
-	ld a,001h		;ad31
+tone_edit_estado_2:		; pinta todos los campos y deja el cursor en el 29
+	ld a,001h		;ad31   ; solo pintar
 	ld (0db02h),a		;ad33
-	ld a,018h		;ad36
+	ld a,018h		;ad36   ; el 24 primero (0xDB04)
 	ld (0db01h),a		;ad38
-	call L_A629		;ad3b
-	xor a			;ad3e
+	call edita_campo		;ad3b
+	xor a			;ad3e   ; y del 0 al 0x20
 	ld (0db01h),a		;ad3f
 L_AD42:
-	call L_A629		;ad42
+	call edita_campo		;ad42
 	ld hl,0db01h		;ad45
 	inc (hl)			;ad48
 	ld a,(hl)			;ad49
 	cp 021h		;ad4a
 	jr c,L_AD42		;ad4c
-	xor a			;ad4e
+	xor a			;ad4e   ; se acabo pintar
 	ld (0db02h),a		;ad4f
-	ld a,01dh		;ad52
+	ld a,01dh		;ad52   ; el cursor en el 29
 	ld (hl),a			;ad54
-L_AD55:
+estado_siguiente:		; 0xD8FA + 1
 	ld hl,0d8fah		;ad55
 	inc (hl)			;ad58
 	ret			;ad59
-L_AD5A:
-	call empieza_cambio		;ad5a
-	call cortina_de_salida		;ad5d
+tone_edit_estado_0:		; la pantalla fija de TONE EDIT tras la cortina
+	call empieza_cambio		;ad5a   ; cambiando de pantalla
+	call cortina_de_salida		;ad5d   ; una columna; P mientras quedan
 	ret p			;ad60
-	xor a			;ad61
+	xor a			;ad61   ; el nombre del timbre, no el del fichero
 	ld (0db17h),a		;ad62
-	call L_B32E		;ad65
-	call L_B335		;ad68
-	ld de,08ac1h		;ad6b
+	call pantalla_apagada		;ad65   ; pantalla apagada
+	call comun_de_trabajo		;ad68   ; lo comun
+	ld de,08ac1h		;ad6b   ; patrones...
 	ld hl,02458h		;ad6e
 	call rle_a_vram_x3		;ad71
-	ld de,08db6h		;ad74
+	ld de,08db6h		;ad74   ; ...colores...
 	ld hl,00458h		;ad77
 	call rle_a_vram_x3		;ad7a
-	ld de,08fcdh		;ad7d
+	ld de,08fcdh		;ad7d   ; ...y nombres
 	call rle_a_vram		;ad80
-	ld hl,00900h		;ad83
+	ld hl,00900h		;ad83   ; 0x30 en los colores de 0x0900
 	ld a,030h		;ad86
 	ld bc,000b8h		;ad88
 	call 00056h		;ad8b   ; BIOS FILVRM - Fills VRAM with value
-	ld de,09087h		;ad8e
+	ld de,09087h		;ad8e   ; los rotulos
 	call rle_a_vram		;ad91
-	call L_B32A		;ad94
+	call pantalla_encendida		;ad94   ; pantalla encendida
 	call fin_de_cambio		;ad97
-	jr L_AD55		;ad9a
-L_AD9C:
+	jr estado_siguiente		;ad9a
+a_bcd_24:		; BCDE = HL:E' de 24 bits en BCD
 	exx			;ad9c
 	ld bc,00000h		;ad9d
 	ld de,00000h		;ada0
-	ld a,018h		;ada3
+	ld a,018h		;ada3   ; 24 bits
 L_ADA5:
 	ex af,af'			;ada5
 	exx			;ada6
-	add hl,hl			;ada7
+	add hl,hl			;ada7   ; el bit alto...
 	rl e		;ada8
 	exx			;adaa
-	ld a,e			;adab
+	ld a,e			;adab   ; ...entra por abajo, en BCD, byte a byte
 	adc a,a			;adac
 	daa			;adad
 	ld e,a			;adae
@@ -9567,28 +9567,28 @@ L_ADA5:
 	dec a			;adbc
 	jr nz,L_ADA5		;adbd
 	ret			;adbf
-L_ADC0:
+divide_24:		; A:DE / BC por restas: el cociente en A:DE
 	ld hl,00000h		;adc0
 	exx			;adc3
-	ld b,018h		;adc4
+	ld b,018h		;adc4   ; 24 bits
 L_ADC6:
 	exx			;adc6
-	sla e		;adc7
+	sla e		;adc7   ; el dividendo a la izquierda...
 	rl d		;adc9
 	rla			;adcb
-	adc hl,hl		;adcc
-	sbc hl,bc		;adce
+	adc hl,hl		;adcc   ; ...al resto
+	sbc hl,bc		;adce   ; cabe el divisor?
 	jr c,L_ADD5		;add0
-	inc e			;add2
+	inc e			;add2   ; si: un 1 en el cociente
 	jr L_ADD6		;add3
 L_ADD5:
-	add hl,bc			;add5
+	add hl,bc			;add5   ; no: deshace
 L_ADD6:
 	exx			;add6
 	djnz L_ADC6		;add7
 	exx			;add9
 	ret			;adda
-L_ADDB:
+timbre_en_curso:		; HL = 0xD000 + 0x20 * (0xDB00)
 	ld hl,0d000h		;addb
 	ld a,(0db00h)		;adde
 	or a			;ade1
@@ -9599,7 +9599,7 @@ L_ADE7:
 	add hl,de			;ade7
 	djnz L_ADE7		;ade8
 	ret			;adea
-L_ADEB:
+por_8:		; HL = H * E
 	ld d,000h		;adeb
 	ld l,d			;aded
 	ld b,008h		;adee
@@ -9610,96 +9610,96 @@ L_ADF0:
 L_ADF4:
 	djnz L_ADF0		;adf4
 	ret			;adf6
-L_ADF7:
-	call L_B1E8		;adf7
+pantalla_wave_edit:		; WAVE EDIT: segun 0xD8FA prepara la pantalla o edita la onda
+	call otra_onda		;adf7   ; un numero de onda tecleado: otra vez la cabecera
 	jr nc,L_AE01		;adfa
 	ld a,001h		;adfc
 	ld (0d8fah),a		;adfe
 L_AE01:
-	ld a,(0d8fah)		;ae01
+	ld a,(0d8fah)		;ae01   ; el estado:
 	dec a			;ae04
-	jp z,L_AFA0		;ae05
-	jp m,L_AFF9		;ae08
+	jp z,wave_edit_estado_1		;ae05   ; 1: 0xAFA0
+	jp m,wave_edit_estado_0		;ae08   ; 0: la pantalla
 	cp 001h		;ae0b
-	jp z,L_AFC7		;ae0d
-	ld a,(0d812h)		;ae10
+	jp z,wave_edit_estado_2		;ae0d   ; 2: 0xAFC7, dibuja la onda
+	ld a,(0d812h)		;ae10   ; con el canal A del PSG sonando, nada
 	or a			;ae13
 	ret nz			;ae14
-	ld a,(0d8f2h)		;ae15
+	ld a,(0d8f2h)		;ae15   ; la tecla tenida
 	or a			;ae18
-	jr z,L_AE26		;ae19
-	cp 031h		;ae1b
-	jr nc,L_AE26		;ae1d
-	ld (0dc47h),a		;ae1f
+	jr z,wave_edit_teclas		;ae19
+	cp 031h		;ae1b   ; una del teclado musical...
+	jr nc,wave_edit_teclas		;ae1d
+	ld (0dc47h),a		;ae1f   ; ...suena la onda con su nota
 	call escucha_onda		;ae22
 	ei			;ae25
-L_AE26:
-	call L_AE88		;ae26
-	call L_B19D		;ae29
-	ld a,(0d8f2h)		;ae2c
+wave_edit_teclas:		; repinta si hace falta y atiende las teclas
+	call repinta_onda		;ae26   ; repinta
+	call muestra_del_cursor		;ae29   ; HL = la muestra del cursor
+	ld a,(0d8f2h)		;ae2c   ; CTRL (0x32)...
 	cp 032h		;ae2f
-	jr nz,L_AE4F		;ae31
-	ld a,008h		;ae33
+	jr nz,wave_edit_cursores		;ae31
+	ld a,008h		;ae33   ; ...y HOME (fila 8, bit 1)...
 	call 00141h		;ae35   ; BIOS SNSMAT - Returns the value of the specified line from the keyboard matrix
 	bit 1,a		;ae38
 	ret nz			;ae3a
-	xor a			;ae3b
+	xor a			;ae3b   ; ...la onda entera a cero
 	ld (0da80h),a		;ae3c
-	call L_B1A0		;ae3f
+	call muestra_a		;ae3f
 	ld b,000h		;ae42
 L_AE44:
 	ld (hl),000h		;ae44
 	inc hl			;ae46
 	djnz L_AE44		;ae47
-	ld a,001h		;ae49
+	ld a,001h		;ae49   ; y se dibuja otra vez
 	ld (0d8fah),a		;ae4b
 	ret			;ae4e
-L_AE4F:
-	ld a,(0d8f1h)		;ae4f
+wave_edit_cursores:		; SELECT cambia el modo; izquierda y derecha mueven el cursor; arriba y abajo cambian la muestra
+	ld a,(0d8f1h)		;ae4f   ; SELECT (0x3F)
 	cp 03fh		;ae52
-	jp z,L_AEB4		;ae54
-	ld a,(0d808h)		;ae57
+	jp z,modo_siguiente		;ae54
+	ld a,(0d808h)		;ae57   ; las teclas con repeticion
 	ld b,a			;ae5a
-	and 00ch		;ae5b
-	jp nz,L_AEE1		;ae5d
-	ld a,b			;ae60
+	and 00ch		;ae5b   ; izquierda o derecha
+	jp nz,mueve_cursor		;ae5d
+	ld a,b			;ae60   ; arriba o abajo
 	and 003h		;ae61
 	ret z			;ae63
 	bit 0,a		;ae64
-	ld a,(hl)			;ae66
+	ld a,(hl)			;ae66   ; la muestra
 	jr z,L_AE73		;ae67
-	bit 7,a		;ae69
+	bit 7,a		;ae69   ; arriba: sube...
 	jr nz,L_AE70		;ae6b
-	cp 07fh		;ae6d
+	cp 07fh		;ae6d   ; ...hasta 0x7F
 	ret nc			;ae6f
 L_AE70:
 	inc (hl)			;ae70
 	jr L_AE7B		;ae71
 L_AE73:
-	bit 7,a		;ae73
+	bit 7,a		;ae73   ; abajo: baja...
 	jr z,L_AE7A		;ae75
-	cp 082h		;ae77
+	cp 082h		;ae77   ; ...hasta 0x82 (-126)
 	ret c			;ae79
 L_AE7A:
 	dec (hl)			;ae7a
 L_AE7B:
-	call L_B21B		;ae7b
+	call cursor_a_la_muestra		;ae7b   ; los puntos de esa muestra
 	ld c,(hl)			;ae7e
-	call L_AF87		;ae7f
-	ld a,001h		;ae82
+	call range		;ae7f   ; RANGE en pantalla
+	ld a,001h		;ae82   ; a repintar
 	ld (0da8dh),a		;ae84
 	ret			;ae87
-L_AE88:
+repinta_onda:		; las columnas del tramo del cursor, de dos en dos muestras
 	ld a,(0da8dh)		;ae88
 	or a			;ae8b
 	ret z			;ae8c
-	call L_B236		;ae8d
+	call relleno_de_tramo		;ae8d   ; 0xB236
 	ld hl,0da8bh		;ae90
 	ld de,0da80h		;ae93
-	ld a,(0da87h)		;ae96
+	ld a,(0da87h)		;ae96   ; el paso...
 	ld c,a			;ae99
 	ld (hl),a			;ae9a
-	ld a,(de)			;ae9b
+	ld a,(de)			;ae9b   ; ...desde el cursor
 	inc (hl)			;ae9c
 	ld a,(de)			;ae9d
 	sub c			;ae9e
@@ -9708,23 +9708,23 @@ L_AE88:
 L_AEA1:
 	push bc			;aea1
 	push hl			;aea2
-	call L_B0AB		;aea3
+	call columna_de_la_onda		;aea3   ; una columna
 	pop hl			;aea6
 	pop bc			;aea7
-	inc (hl)			;aea8
+	inc (hl)			;aea8   ; dos muestras mas alla
 	inc (hl)			;aea9
 	inc hl			;aeaa
 	dec (hl)			;aeab
 	dec hl			;aeac
 	jr nz,L_AEA1		;aead
-	xor a			;aeaf
+	xor a			;aeaf   ; hecho
 	ld (0da8dh),a		;aeb0
 	ret			;aeb3
-L_AEB4:
+modo_siguiente:		; 0xDA86 baja de 3 a 0 y vuelta; el paso 0xDA87 = 2 << modo; MODE en 0x38DC
 	ld a,(0da8dh)		;aeb4
 	or a			;aeb7
 	ret nz			;aeb8
-	ld hl,0da86h		;aeb9
+	ld hl,0da86h		;aeb9   ; la cuenta del modo
 	ld a,(hl)			;aebc
 	dec (hl)			;aebd
 	and 003h		;aebe
@@ -9732,7 +9732,7 @@ L_AEB4:
 	ld a,003h		;aec2
 	dec (hl)			;aec4
 L_AEC5:
-	ld c,a			;aec5
+	ld c,a			;aec5   ; el paso: 2 << modo
 	ld b,a			;aec6
 	ld a,002h		;aec7
 L_AEC9:
@@ -9740,13 +9740,13 @@ L_AEC9:
 	djnz L_AEC9		;aeca
 	inc hl			;aecc
 	ld (hl),a			;aecd
-	ld hl,038dch		;aece
+	ld hl,038dch		;aece   ; MODE en pantalla...
 	push hl			;aed1
 	ld a,c			;aed2
-	ld hl,0aeddh		;aed3
+	ld hl,0aeddh		;aed3   ; ...con el valor de 0xAEDD
 	call hl_mas_a		;aed6
 	ld l,(hl)			;aed9
-	jp L_AF77		;aeda
+	jp tres_cifras		;aeda
 
 ; ----------------------------------------------------------------------
 ; DATOS bits_80_40_20_10: mascaras de bit que lee 0xAED9
@@ -9759,32 +9759,32 @@ DATA_bits_80_40_20_10:
 ; ======================================================================
 
 
-L_AEE1:
+mueve_cursor:		; izquierda o derecha, de paso en paso (0xDA87); el sprite le sigue
 	ld a,(0da8dh)		;aee1
 	or a			;aee4
 	ret nz			;aee5
-	ld a,(0da87h)		;aee6
+	ld a,(0da87h)		;aee6   ; el paso
 	ld c,a			;aee9
 	dec a			;aeea
 	cpl			;aeeb
 	ld b,a			;aeec
-	ld de,0d871h		;aeed
-	ld hl,0da80h		;aef0
+	ld de,0d871h		;aeed   ; X del sprite
+	ld hl,0da80h		;aef0   ; la muestra del cursor
 	ld a,(0d808h)		;aef3
-	bit 3,a		;aef6
+	bit 3,a		;aef6   ; derecha?
 	ld a,(hl)			;aef8
 	jr nz,L_AF25		;aef9
-	or a			;aefb
-	jr z,L_AF60		;aefc
+	or a			;aefb   ; izquierda: en la 0, nada
+	jr z,cursor_en_pantalla		;aefc
 	cp 0ffh		;aefe
 	jr nz,L_AF03		;af00
 	inc a			;af02
 L_AF03:
-	sub c			;af03
+	sub c			;af03   ; atras un paso, alineado
 	and b			;af04
 	ld (hl),a			;af05
 	ex de,hl			;af06
-	ld a,c			;af07
+	ld a,c			;af07   ; el sprite medio paso
 	srl a		;af08
 	ld c,a			;af0a
 	dec a			;af0b
@@ -9793,34 +9793,34 @@ L_AF03:
 	ld a,(hl)			;af0e
 	sub c			;af0f
 	and b			;af10
-	cp 038h		;af11
+	cp 038h		;af11   ; sin bajar de 0x38
 	jr nc,L_AF19		;af13
 	xor a			;af15
 	ld (de),a			;af16
 	ld a,038h		;af17
 L_AF19:
-	ld (hl),a			;af19
+	ld (hl),a			;af19   ; los sprites del cursor
 	ld (0d875h),a		;af1a
 	add a,004h		;af1d
 	ld (0d879h),a		;af1f
 	ex de,hl			;af22
-	jr L_AF60		;af23
+	jr cursor_en_pantalla		;af23
 L_AF25:
-	ld a,(0da87h)		;af25
+	ld a,(0da87h)		;af25   ; derecha: hasta la ultima
 	neg		;af28
 	cp (hl)			;af2a
-	jr z,L_AF60		;af2b
+	jr z,cursor_en_pantalla		;af2b
 	jr nc,L_AF32		;af2d
 	ld (hl),a			;af2f
 	jr L_AF36		;af30
 L_AF32:
-	ld a,(hl)			;af32
+	ld a,(hl)			;af32   ; adelante un paso, alineado
 	add a,c			;af33
 	and b			;af34
 	ld (hl),a			;af35
 L_AF36:
 	ex de,hl			;af36
-	ld a,c			;af37
+	ld a,c			;af37   ; el sprite medio paso
 	srl a		;af38
 	ld c,a			;af3a
 	dec a			;af3b
@@ -9830,7 +9830,7 @@ L_AF36:
 	add a,c			;af3f
 	and b			;af40
 	ld b,a			;af41
-	ld a,(0da87h)		;af42
+	ld a,(0da87h)		;af42   ; sin pasar del final
 	neg		;af45
 	srl a		;af47
 	add a,038h		;af49
@@ -9838,78 +9838,78 @@ L_AF36:
 	jr c,L_AF4F		;af4c
 	ld a,b			;af4e
 L_AF4F:
-	ld (hl),a			;af4f
+	ld (hl),a			;af4f   ; los sprites del cursor
 	ld (0d875h),a		;af50
 	add a,004h		;af53
 	ld (0d879h),a		;af55
 	ex de,hl			;af58
 	ld a,(hl)			;af59
 	or a			;af5a
-	jr nz,L_AF60		;af5b
+	jr nz,cursor_en_pantalla		;af5b
 	ld a,0ffh		;af5d
 	ld (hl),a			;af5f
-L_AF60:
-	call L_B19D		;af60
-	call L_B21B		;af63
-	ld c,(hl)			;af66
-	call L_AF87		;af67
-	ld hl,038c4h		;af6a
+cursor_en_pantalla:		; la muestra del cursor, RANGE y TIME (0xDA80 / 4, en 0x38C4)
+	call muestra_del_cursor		;af60
+	call cursor_a_la_muestra		;af63   ; los puntos de la muestra
+	ld c,(hl)			;af66   ; RANGE
+	call range		;af67
+	ld hl,038c4h		;af6a   ; TIME en 0x38C4...
 	push hl			;af6d
 	ld hl,0da80h		;af6e
-	ld a,(hl)			;af71
+	ld a,(hl)			;af71   ; ...el cursor / 4
 	and 0fch		;af72
 	rrca			;af74
 	rrca			;af75
 	ld l,a			;af76
-L_AF77:
-	call L_A978		;af77
+tres_cifras:		; L en tres cifras decimales en la direccion de la pila
+	call a_decimal		;af77
 	pop hl			;af7a
 	ld (0dbf0h),de		;af7b
 	ld de,0dbf0h		;af7f
 	ld b,003h		;af82
 	jp cifras		;af84
-L_AF87:
-	ld a,04dh		;af87
+range:		; la muestra C con su signo (0x4D +, 0x4C -) en 0x3962 y tres cifras en 0x3965
+	ld a,04dh		;af87   ; el signo +
 	bit 7,c		;af89
 	jr z,L_AF93		;af8b
-	ld a,c			;af8d
+	ld a,c			;af8d   ; negativa: el valor absoluto...
 	neg		;af8e
 	ld c,a			;af90
-	ld a,04ch		;af91
+	ld a,04ch		;af91   ; ...y el signo -
 L_AF93:
 	ld hl,03962h		;af93
 	call 0004dh		;af96   ; BIOS WRTVRM - Writes data in VRAM
 	ld hl,03965h		;af99
 	push hl			;af9c
 	ld l,c			;af9d
-	jr L_AF77		;af9e
-L_AFA0:
-	call L_ACEA		;afa0
-	xor a			;afa3
+	jr tres_cifras		;af9e
+wave_edit_estado_1:		; la cabecera, el cursor en la muestra 0 y el modo 3
+	call cabecera_del_timbre		;afa0
+	xor a			;afa3   ; el cursor a 0
 	ld (0da80h),a		;afa4
-	call L_B19D		;afa7
-	call L_B21B		;afaa
-	ld a,038h		;afad
+	call muestra_del_cursor		;afa7
+	call cursor_a_la_muestra		;afaa
+	ld a,038h		;afad   ; los sprites del cursor en X = 0x38
 	ld (0d871h),a		;afaf
 	ld (0d875h),a		;afb2
 	add a,004h		;afb5
 	ld (0d879h),a		;afb7
-	ld hl,0da86h		;afba
+	ld hl,0da86h		;afba   ; modo 3...
 	ld (hl),003h		;afbd
-	call L_AEB4		;afbf
-L_AFC2:
+	call modo_siguiente		;afbf   ; ...y en pantalla
+estado_siguiente_2:		; 0xD8FA + 1
 	ld hl,0d8fah		;afc2
 	inc (hl)			;afc5
 	ret			;afc6
-L_AFC7:
-	ld a,(0da80h)		;afc7
+wave_edit_estado_2:		; dibuja la onda dos muestras por cuadro, con el cursor detras
+	ld a,(0da80h)		;afc7   ; la columna de esta muestra
 	ld (0da8ah),a		;afca
-	call L_B0AB		;afcd
-	ld hl,0da80h		;afd0
+	call columna_de_la_onda		;afcd
+	ld hl,0da80h		;afd0   ; dos muestras mas alla
 	inc (hl)			;afd3
 	inc (hl)			;afd4
-	jr z,L_AFE6		;afd5
-	ld a,002h		;afd7
+	jr z,onda_dibujada		;afd5   ; la vuelta entera: se acabo
+	ld a,002h		;afd7   ; el cursor avanza con el dibujo
 	ld c,a			;afd9
 	dec a			;afda
 	cpl			;afdb
@@ -9917,40 +9917,40 @@ L_AFC7:
 	ld de,0d871h		;afdd
 	ld hl,0da80h		;afe0
 	jp L_AF36		;afe3
-L_AFE6:
-	call L_AF60		;afe6
-	ld a,002h		;afe9
-	call L_BEB1		;afeb
-	call L_AFA0		;afee
+onda_dibujada:		; el cursor en su sitio, el efecto 2 y a editar
+	call cursor_en_pantalla		;afe6
+	ld a,002h		;afe9   ; el efecto 2
+	call efecto		;afeb
+	call wave_edit_estado_1		;afee
 	ld hl,0da86h		;aff1
 	ld (hl),003h		;aff4
-	jp L_AEB4		;aff6
-L_AFF9:
-	xor a			;aff9
+	jp modo_siguiente		;aff6
+wave_edit_estado_0:		; la pantalla de WAVE EDIT tras la cortina; FEET del timbre en curso a 0xDC01 para escuchar
+	xor a			;aff9   ; el nombre del timbre
 	ld (0db17h),a		;affa
-	call L_ADDB		;affd
+	call timbre_en_curso		;affd   ; el byte 1 del timbre, FEET...
 	inc hl			;b000
 	ld a,(hl)			;b001
-	ld (0dc01h),a		;b002
-	call empieza_cambio		;b005
+	ld (0dc01h),a		;b002   ; ...a 0xDC01
+	call empieza_cambio		;b005   ; la cortina
 	call cortina_de_salida		;b008
 	ret p			;b00b
-	call L_B32E		;b00c
-	call L_B3A6		;b00f
-	xor a			;b012
+	call pantalla_apagada		;b00c   ; pantalla apagada
+	call sprites_a_cero		;b00f
+	xor a			;b012   ; los sprites de 0xB1CD
 	ld (0d870h),a		;b013
 	ld hl,0b1cdh		;b016
 	ld de,0d870h		;b019
 	ld bc,0000ch		;b01c
 	ldir		;b01f
-	call L_B335		;b021
-	ld de,0874dh		;b024
+	call comun_de_trabajo		;b021   ; lo comun
+	ld de,0874dh		;b024   ; los rotulos y el marco
 	call rle_a_vram		;b027
 	ld de,08799h		;b02a
 	call rle_a_vram		;b02d
 	ld de,087a0h		;b030
 	call rle_a_vram		;b033
-	ld hl,02600h		;b036
+	ld hl,02600h		;b036   ; los patrones del grafico a cero
 	ld a,000h		;b039
 	ld bc,00200h		;b03b
 	call rellena_vram_x3		;b03e
@@ -9958,9 +9958,9 @@ L_AFF9:
 	ld a,000h		;b044
 	ld bc,00200h		;b046
 	call 00056h		;b049   ; BIOS FILVRM - Fills VRAM with value
-	ld de,08815h		;b04c
+	ld de,08815h		;b04c   ; 0x8815
 	call rle_a_vram		;b04f
-	ld hl,00600h		;b052
+	ld hl,00600h		;b052   ; los colores del grafico: 0x81
 	ld bc,00200h		;b055
 	ld a,081h		;b058
 	call rellena_vram_x3		;b05a
@@ -9968,7 +9968,7 @@ L_AFF9:
 	ld bc,00200h		;b060
 	ld a,081h		;b063
 	call 00056h		;b065   ; BIOS FILVRM - Fills VRAM with value
-	ld hl,00e00h		;b068
+	ld hl,00e00h		;b068   ; una linea 0x8C en 16 tiles: el eje
 	ld a,08ch		;b06b
 	ld de,00008h		;b06d
 	ld b,010h		;b070
@@ -9979,15 +9979,15 @@ L_B072:
 	add hl,de			;b079
 	pop bc			;b07a
 	djnz L_B072		;b07b
-	ld hl,03888h		;b07d
-	ld de,0b1e4h		;b080
+	ld hl,03888h		;b07d   ; la tabla de nombres del grafico...
+	ld de,0b1e4h		;b080   ; ...por la lista de 0xB1E4
 L_B083:
 	ld a,(de)			;b083
 	cp 0ffh		;b084
 	jr z,L_B0A2		;b086
 	push de			;b088
 L_B089:
-	ld b,010h		;b089
+	ld b,010h		;b089   ; 16 tiles seguidos por fila
 L_B08B:
 	push bc			;b08b
 	ld bc,00001h		;b08c
@@ -9996,7 +9996,7 @@ L_B08B:
 	inc a			;b093
 	pop bc			;b094
 	djnz L_B08B		;b095
-	ld de,00010h		;b097
+	ld de,00010h		;b097   ; la fila siguiente
 	add hl,de			;b09a
 	or a			;b09b
 	jr nz,L_B089		;b09c
@@ -10004,32 +10004,32 @@ L_B08B:
 	inc de			;b09f
 	jr L_B083		;b0a0
 L_B0A2:
-	call L_B32A		;b0a2
+	call pantalla_encendida		;b0a2   ; pantalla encendida
 	call fin_de_cambio		;b0a5
-	jp L_AFC2		;b0a8
-L_B0AB:
-	ld a,(0da8ah)		;b0ab
-	call L_B1A0		;b0ae
+	jp estado_siguiente_2		;b0a8
+columna_de_la_onda:		; repinta la columna de la muestra 0xDA8A: lee sus 16 tiles de la VRAM, borra su bit y pinta los puntos de la mas baja a la mas alta de sus vecinas
+	ld a,(0da8ah)		;b0ab   ; DE = la muestra
+	call muestra_a		;b0ae
 	ex de,hl			;b0b1
-	ld a,(0da8ah)		;b0b2
+	ld a,(0da8ah)		;b0b2   ; x = muestra / 2
 	srl a		;b0b5
 	ld c,a			;b0b7
-	and 007h		;b0b8
+	and 007h		;b0b8   ; el bit de x dentro del tile (0xB1D9)
 	ld hl,0b1d9h		;b0ba
 	call hl_mas_a		;b0bd
 	ld a,(hl)			;b0c0
-	ld hl,0da81h		;b0c1
+	ld hl,0da81h		;b0c1   ; 0xDA81 = el bit, 0xDA82 = 0x40 + x
 	ld (hl),a			;b0c4
 	inc hl			;b0c5
 	ld a,040h		;b0c6
 	add a,c			;b0c8
 	ld (hl),a			;b0c9
-	ld b,003h		;b0ca
+	ld b,003h		;b0ca   ; tres alturas: la siguiente, esta y la anterior
 	inc e			;b0cc
 	inc e			;b0cd
 L_B0CE:
 	ld a,(de)			;b0ce
-	call L_B207		;b0cf
+	call altura		;b0cf   ; a fila del grafico
 	inc hl			;b0d2
 	ld (hl),a			;b0d3
 	dec e			;b0d4
@@ -10040,17 +10040,17 @@ L_B0CE:
 	ld d,(hl)			;b0da
 	dec hl			;b0db
 	ld e,(hl)			;b0dc
-	ld a,(0da8ah)		;b0dd
+	ld a,(0da8ah)		;b0dd   ; en la primera y la ultima muestra...
 	or a			;b0e0
 	jr z,L_B0E9		;b0e1
 	inc a			;b0e3
 	jr nz,L_B0EA		;b0e4
-	ld e,d			;b0e6
+	ld e,d			;b0e6   ; ...falta una vecina
 	jr L_B0EA		;b0e7
 L_B0E9:
 	ld c,d			;b0e9
 L_B0EA:
-	ld a,c			;b0ea
+	ld a,c			;b0ea   ; ordena: la mas baja y la mas alta
 	cp d			;b0eb
 	jr nc,L_B0FE		;b0ec
 	cp e			;b0ee
@@ -10086,7 +10086,7 @@ L_B10E:
 	inc hl			;b10f
 	ld (hl),c			;b110
 L_B111:
-	ld a,(hl)			;b111
+	ld a,(hl)			;b111   ; cuantos puntos: alta - baja
 	dec hl			;b112
 	ld c,(hl)			;b113
 	sub c			;b114
@@ -10094,7 +10094,7 @@ L_B111:
 	ld (hl),a			;b116
 	dec hl			;b117
 	dec hl			;b118
-	ld a,(hl)			;b119
+	ld a,(hl)			;b119   ; el tile de la columna en la tabla de nombres
 	and 0f8h		;b11a
 	rrca			;b11c
 	rrca			;b11d
@@ -10102,40 +10102,40 @@ L_B111:
 	add a,080h		;b11f
 	ld l,a			;b121
 	ld h,038h		;b122
-	call 00050h		;b124   ; BIOS SETRD - Enables VDP to read
-	ld a,h			;b127
+	call 00050h		;b124   ; BIOS SETRD - Enables VDP to read | SETRD
+	ld a,h			;b127   ; el tercio
 	and 003h		;b128
 	ld de,0b1e1h		;b12a
-	call de_mas_a		;b12d
+	call de_mas_a		;b12d   ; la direccion de sus patrones
 	ld a,(de)			;b130
 	ld h,a			;b131
 	ld l,000h		;b132
 	ld d,l			;b134
 	ld a,(00006h)		;b135
 	ld c,a			;b138
-	in e,(c)		;b139
+	in e,(c)		;b139   ; el tile
 	ld b,003h		;b13b
 L_B13D:
-	sla e		;b13d
+	sla e		;b13d   ; por 8
 	rl d		;b13f
 	djnz L_B13D		;b141
 	add hl,de			;b143
 	push hl			;b144
-	ld b,010h		;b145
-	ld de,0da00h		;b147
+	ld b,010h		;b145   ; 16 tiles de alto...
+	ld de,0da00h		;b147   ; ...a 0xDA00
 L_B14A:
 	call 00050h		;b14a   ; BIOS SETRD - Enables VDP to read
 	push bc			;b14d
 	ld b,008h		;b14e
 L_B150:
-	in a,(c)		;b150
+	in a,(c)		;b150   ; sus 8 lineas
 	ld (de),a			;b152
 	inc de			;b153
 	djnz L_B150		;b154
-	call L_B1AE		;b156
+	call tile_de_debajo		;b156   ; el tile de debajo
 	pop bc			;b159
 	djnz L_B14A		;b15a
-	ld hl,0da00h		;b15c
+	ld hl,0da00h		;b15c   ; borra el bit de la columna en las 128 lineas
 	ld de,0da81h		;b15f
 	ld b,080h		;b162
 L_B164:
@@ -10145,7 +10145,7 @@ L_B164:
 	ld (hl),a			;b167
 	inc hl			;b168
 	djnz L_B164		;b169
-	ex de,hl			;b16b
+	ex de,hl			;b16b   ; B = el bit, C = cuantos puntos
 	ld b,(hl)			;b16c
 	inc hl			;b16d
 	inc hl			;b16e
@@ -10154,11 +10154,11 @@ L_B164:
 	dec hl			;b171
 	ld de,0da00h		;b172
 	push de			;b175
-	ld a,(hl)			;b176
+	ld a,(hl)			;b176   ; desde la mas baja
 	sub 020h		;b177
 	call de_mas_a		;b179
 L_B17C:
-	ld a,(de)			;b17c
+	ld a,(de)			;b17c   ; un punto
 	or b			;b17d
 	ld (de),a			;b17e
 	ld a,c			;b17f
@@ -10171,35 +10171,35 @@ L_B17C:
 	inc de			;b188
 	jr L_B17C		;b189
 L_B18B:
-	pop de			;b18b
+	pop de			;b18b   ; y los 16 tiles a la VRAM
 	pop hl			;b18c
 	ld b,010h		;b18d
 L_B18F:
 	push bc			;b18f
 	ld bc,00008h		;b190
 	call copia_a_vram		;b193
-	call L_B1AE		;b196
+	call tile_de_debajo		;b196
 	pop bc			;b199
 	djnz L_B18F		;b19a
 	ret			;b19c
-L_B19D:
+muestra_del_cursor:		; HL = la muestra 0xDA80 de la onda 0xDB00
 	ld a,(0da80h)		;b19d
-L_B1A0:
+muestra_a:		; HL = la muestra A de la onda 0xDB00
 	ld b,a			;b1a0
 	ld a,(0db00h)		;b1a1
-L_B1A4:
+muestra_a_de_onda:		; HL = 0xC000 + 0x100 * onda + B
 	ld hl,0c000h		;b1a4
 	add a,h			;b1a7
 	ld h,a			;b1a8
 	ld a,b			;b1a9
 	call hl_mas_a		;b1aa
 	ret			;b1ad
-L_B1AE:
+tile_de_debajo:		; HL = los patrones del tile de la fila siguiente (0x80 mas, o salta de tercio)
 	push de			;b1ae
-	ld a,l			;b1af
+	ld a,l			;b1af   ; en la mitad de abajo del tile...
 	cp 080h		;b1b0
 	jr c,L_B1C7		;b1b2
-	ld a,h			;b1b4
+	ld a,h			;b1b4   ; ...al final de un tercio salta al siguiente
 	cp 027h		;b1b5
 	jr z,L_B1C2		;b1b7
 	cp 02fh		;b1b9
@@ -10228,22 +10228,22 @@ DATA_tablas_de_wave_edit:
 ; ======================================================================
 
 
-L_B1E8:
-	ld a,(0da8dh)		;b1e8
+otra_onda:		; INS o DEL cambian la onda o el timbre 0xDB00 (0-15); acarreo si cambia
+	ld a,(0da8dh)		;b1e8   ; repintando: nada
 	or a			;b1eb
 	ret nz			;b1ec
 	ld hl,0db00h		;b1ed
-	ld a,(0d8f1h)		;b1f0
+	ld a,(0d8f1h)		;b1f0   ; INS: la siguiente
 	cp 043h		;b1f3
 	jr z,L_B1FE		;b1f5
-	cp 044h		;b1f7
+	cp 044h		;b1f7   ; DEL: la anterior
 	jr nz,L_B205		;b1f9
 	dec (hl)			;b1fb
 	jr L_B1FF		;b1fc
 L_B1FE:
 	inc (hl)			;b1fe
 L_B1FF:
-	ld a,(hl)			;b1ff
+	ld a,(hl)			;b1ff   ; de 0 a 15
 	and 00fh		;b200
 	ld (hl),a			;b202
 	scf			;b203
@@ -10251,27 +10251,27 @@ L_B1FF:
 L_B205:
 	xor a			;b205
 	ret			;b206
-L_B207:
-	or a			;b207
+altura:		; la muestra A a fila del grafico: 0x60 - A / 2 si es positiva, 0x60 + |A| / 2 si es negativa
+	or a			;b207   ; negativa?
 	jp m,L_B214		;b208
-	srl a		;b20b
+	srl a		;b20b   ; 0x60 - A / 2
 	ld c,a			;b20d
 	ld a,040h		;b20e
 	sub c			;b210
 	add a,020h		;b211
 	ret			;b213
 L_B214:
-	neg		;b214
+	neg		;b214   ; 0x60 + |A| / 2
 	srl a		;b216
 	add a,060h		;b218
 	ret			;b21a
-L_B21B:
+cursor_a_la_muestra:		; la Y del sprite del cursor = altura - 4
 	ld a,(hl)			;b21b
-	call L_B207		;b21c
+	call altura		;b21c
 	sub 004h		;b21f
 	ld (0d878h),a		;b221
 	ret			;b224
-L_B225:
+relleno_siguiente:		; el siguiente tramo del relleno
 	ld hl,0da88h		;b225
 	ld a,(0da87h)		;b228
 	add a,(hl)			;b22b
@@ -10281,31 +10281,31 @@ L_B225:
 	jp nz,L_B241		;b22f
 	ei			;b232
 	ret			;b233
-L_B234:
+relleno_cortado:		; vuelve dos niveles: el relleno se corta
 	pop hl			;b234
 	ret			;b235
-L_B236:
-	ld a,002h		;b236
+relleno_de_tramo:		; rellena en linea recta las muestras entre el cursor y un paso atras (el paso, 0xDA87)
+	ld a,002h		;b236   ; dos tramos
 	ld (0da89h),a		;b238
 	ld a,(0da80h)		;b23b
 	ld (0da88h),a		;b23e
 L_B241:
-	ld a,(0da87h)		;b241
+	ld a,(0da87h)		;b241   ; el paso
 	ld (0da8eh),a		;b244
 	inc a			;b247
 	ld (0dbf0h),a		;b248
-L_B24B:
-	call lee_teclas		;b24b
+relleno_bucle:		; muestra a muestra; arriba o abajo cortan
+	call lee_teclas		;b24b   ; las teclas
 	di			;b24e
-	ld a,(0d807h)		;b24f
+	ld a,(0d807h)		;b24f   ; arriba o abajo: se corta
 	and 003h		;b252
-	jr nz,L_B234		;b254
-	ld a,(0da88h)		;b256
-	call L_B1A0		;b259
+	jr nz,relleno_cortado		;b254
+	ld a,(0da88h)		;b256   ; la muestra del tramo
+	call muestra_a		;b259
 	ld de,0dbf0h		;b25c
 	ex de,hl			;b25f
-	dec (hl)			;b260
-	jr z,L_B225		;b261
+	dec (hl)			;b260   ; quedan muestras?
+	jr z,relleno_siguiente		;b261
 	ld a,(hl)			;b263
 	ld b,a			;b264
 	ld a,(0da8eh)		;b265
@@ -10327,7 +10327,7 @@ L_B24B:
 	ld bc,00010h		;b27a
 	ld e,a			;b27d
 	ld d,b			;b27e
-	call L_B308		;b27f
+	call por_16		;b27f   ; diferencia * 16 (0xB308)...
 	ld (0dbf4h),hl		;b282
 	exx			;b285
 	ld a,(hl)			;b286
@@ -10338,12 +10338,12 @@ L_B24B:
 	xor a			;b28b
 	ld b,a			;b28c
 	ld de,(0dbf4h)		;b28d
-	call L_ADC0		;b291
+	call divide_24		;b291   ; ...entre el paso: la pendiente
 	ld (0dbf6h),de		;b294
 	exx			;b298
 	ex de,hl			;b299
 	ld a,(hl)			;b29a
-	call L_B31C		;b29b
+	call sin_signo		;b29b   ; las dos muestras sin signo
 	ld (de),a			;b29e
 	ld a,(0da8eh)		;b29f
 	ld c,a			;b2a2
@@ -10351,10 +10351,10 @@ L_B24B:
 	sub c			;b2a4
 	ld l,a			;b2a5
 	ld a,(hl)			;b2a6
-	call L_B31C		;b2a7
+	call sin_signo		;b2a7
 	ex de,hl			;b2aa
 	ld b,000h		;b2ab
-	cp (hl)			;b2ad
+	cp (hl)			;b2ad   ; la diferencia y su signo (0xDA8C)
 	jr nc,L_B2B5		;b2ae
 	ld c,a			;b2b0
 	ld a,(hl)			;b2b1
@@ -10376,15 +10376,15 @@ L_B2B6:
 	ld de,(0dbf6h)		;b2c2
 	ld b,000h		;b2c6
 	ld c,a			;b2c8
-	call L_B308		;b2c9
+	call por_16		;b2c9   ; por la posicion...
 	ld a,e			;b2cc
 	ex de,hl			;b2cd
 	ld bc,00010h		;b2ce
-	call L_ADC0		;b2d1
+	call divide_24		;b2d1   ; ...entre 16
 	ld a,e			;b2d4
 	exx			;b2d5
 	ld c,a			;b2d6
-	ld a,(0da8ch)		;b2d7
+	ld a,(0da8ch)		;b2d7   ; sube o baja
 	or a			;b2da
 	jr nz,L_B2E1		;b2db
 	ld a,c			;b2dd
@@ -10407,7 +10407,7 @@ L_B2E4:
 	ld l,a			;b2ef
 	ex af,af'			;b2f0
 	ld b,a			;b2f1
-	cp 080h		;b2f2
+	cp 080h		;b2f2   ; otra vez con signo
 	jr nc,L_B2FB		;b2f4
 	ld a,080h		;b2f6
 	sub b			;b2f8
@@ -10416,13 +10416,13 @@ L_B2FB:
 	sub 080h		;b2fb
 	neg		;b2fd
 L_B2FF:
-	cp 080h		;b2ff
+	cp 080h		;b2ff   ; -128 no: -127
 	jr nz,L_B304		;b301
 	inc a			;b303
 L_B304:
-	ld (hl),a			;b304
-	jp L_B24B		;b305
-L_B308:
+	ld (hl),a			;b304   ; la muestra rellenada
+	jp relleno_bucle		;b305
+por_16:		; DE:HL = DE * BC, 16 por 16 bits
 	ld hl,00000h		;b308
 	ld a,010h		;b30b
 L_B30D:
@@ -10438,7 +10438,7 @@ L_B318:
 	dec a			;b318
 	jr nz,L_B30D		;b319
 	ret			;b31b
-L_B31C:
+sin_signo:		; la muestra con signo a 0x80 = cero
 	or a			;b31c
 	jp m,L_B325		;b31d
 	ld c,a			;b320
@@ -10449,33 +10449,33 @@ L_B325:
 	neg		;b325
 	add a,080h		;b327
 	ret			;b329
-L_B32A:
+pantalla_encendida:		; R1 = 0xE2
 	ld b,0e2h		;b32a
 	jr L_B330		;b32c
-L_B32E:
+pantalla_apagada:		; R1 = 0xA2
 	ld b,0a2h		;b32e
 L_B330:
 	ld c,001h		;b330
 	jp 00047h		;b332   ; BIOS WRTVDP - Writes data in the VDP-register
-L_B335:
-	ld de,087dbh		;b335
+comun_de_trabajo:		; lo comun de las pantallas de trabajo: la franja de arriba, la fuente, el menu, las cifras y el marco
+	ld de,087dbh		;b335   ; la franja de arriba
 	call rle_a_vram		;b338
-	call L_B392		;b33b
-L_B33E:
+	call fuente_letras		;b33b   ; la fuente desde la A
+menu_cifras_y_marco:		; el menu de abajo, los diez digitos con su color y el marco
 	call pinta_menu		;b33e
-	ld de,09e37h		;b341
+	ld de,09e37h		;b341   ; los diez digitos
 	ld hl,02080h		;b344
 	ld bc,00050h		;b347
 	call copia_a_vram_x3		;b34a
-	ld b,00ah		;b34d
+	ld b,00ah		;b34d   ; su color, uno por digito...
 	ld hl,00080h		;b34f
 L_B352:
 	push bc			;b352
-	ld de,09e87h		;b353
+	ld de,09e87h		;b353   ; ...0x9E87 en TONE EDIT...
 	ld a,(0d8f4h)		;b356
 	or a			;b359
 	jr z,L_B35F		;b35a
-	ld de,09e8fh		;b35c
+	ld de,09e8fh		;b35c   ; ...0x9E8F en las demas
 L_B35F:
 	ld bc,00008h		;b35f
 	push hl			;b362
@@ -10485,19 +10485,19 @@ L_B35F:
 	add hl,de			;b36a
 	pop bc			;b36b
 	djnz L_B352		;b36c
-	ld hl,02200h		;b36e
+	ld hl,02200h		;b36e   ; el marco: 0x82A5...
 	ld de,082a5h		;b371
 	call rle_a_vram_x3		;b374
-	ld de,084ebh		;b377
+	ld de,084ebh		;b377   ; ...0x84EB...
 	ld hl,00008h		;b37a
 	call rle_a_vram_x3		;b37d
-	ld de,08531h		;b380
+	ld de,08531h		;b380   ; ...0x8531...
 	ld hl,000d8h		;b383
 	call rle_a_vram_x3		;b386
-	ld de,08552h		;b389
+	ld de,08552h		;b389   ; ...y 0x8552
 	ld hl,001d8h		;b38c
 	jp rle_a_vram_x3		;b38f
-L_B392:
+fuente_letras:		; la fuente desde la A (0x446E en 0x2100) y su color 0xF0
 	ld de,0446eh		;b392
 	ld hl,02100h		;b395
 	call rle_a_vram_x3		;b398
@@ -10505,53 +10505,53 @@ L_B392:
 	ld a,0f0h		;b39e
 	ld bc,000b8h		;b3a0
 	jp rellena_vram_x3		;b3a3
-L_B3A6:
+sprites_a_cero:		; la copia de los atributos, 0x20 bytes, a cero
 	ld hl,0d870h		;b3a6
 	ld bc,00020h		;b3a9
 	jp borra_memoria		;b3ac
-L_B3AF:
-	ld b,008h		;b3af
+pantalla_copia:		; la pantalla 5: elige con arriba/abajo un timbre de origen y otro de destino, cada uno con RETURN, y copia timbre y onda
+	ld b,008h		;b3af   ; color 8 del cursor...
 	ld a,(0d803h)		;b3b1
 	and 010h		;b3b4
 	jr nz,L_B3BA		;b3b6
-	ld b,004h		;b3b8
+	ld b,004h		;b3b8   ; ...o 4, cada 16 cuadros
 L_B3BA:
 	ld a,b			;b3ba
 	ld (0d873h),a		;b3bb
-	ld a,(0d8fah)		;b3be
+	ld a,(0d8fah)		;b3be   ; el estado de la pantalla:
 	dec a			;b3c1
-	jp z,L_B509		;b3c2
-	jp m,L_B4D4		;b3c5
+	jp z,lista_de_timbres		;b3c2   ; 1: la lista
+	jp m,lista_estado_0		;b3c5   ; 0: la pantalla
 	cp 001h		;b3c8
-	jp z,L_B4C1		;b3ca
-	ld a,(0d8f1h)		;b3cd
+	jp z,copia_estado_2		;b3ca   ; 2: 0xB4C1
+	ld a,(0d8f1h)		;b3cd   ; RETURN (0x40)?
 	cp 040h		;b3d0
-	jp nz,L_B458		;b3d2
-	ld hl,0d922h		;b3d5
+	jp nz,copia_cursor		;b3d2
+	ld hl,0d922h		;b3d5   ; cuantos elegidos
 	ld de,0d923h		;b3d8
 	push hl			;b3db
 	ld a,(hl)			;b3dc
 	inc de			;b3dd
 	ld hl,0397ch		;b3de
-	or a			;b3e1
+	or a			;b3e1   ; el primero...
 	jr nz,L_B3F0		;b3e2
-	push de			;b3e4
+	push de			;b3e4   ; ...su rotulo de 0xB5C3
 	ld de,0b5c3h		;b3e5
 	call escribe_lista		;b3e8
 	pop de			;b3eb
 	dec de			;b3ec
 	ld hl,03938h		;b3ed
 L_B3F0:
-	ld a,(0d921h)		;b3f0
+	ld a,(0d921h)		;b3f0   ; el numero elegido, a 0xD923 o 0xD924
 	ld (de),a			;b3f3
-	ld a,(0d920h)		;b3f4
-	call L_B53D		;b3f7
+	ld a,(0d920h)		;b3f4   ; y en pantalla
+	call dos_cifras_bcd		;b3f7
 	pop hl			;b3fa
-	inc (hl)			;b3fb
+	inc (hl)			;b3fb   ; uno mas
 	ld a,(hl)			;b3fc
-	cp 002h		;b3fd
+	cp 002h		;b3fd   ; faltan: espera al otro
 	ret nz			;b3ff
-	ld hl,0d000h		;b400
+	ld hl,0d000h		;b400   ; el timbre de origen...
 	dec de			;b403
 	ld a,(de)			;b404
 	or a			;b405
@@ -10566,7 +10566,7 @@ L_B40E:
 	pop de			;b412
 L_B413:
 	push hl			;b413
-	ld hl,0d000h		;b414
+	ld hl,0d000h		;b414   ; ...y el de destino
 	inc de			;b417
 	ld a,(de)			;b418
 	or a			;b419
@@ -10582,76 +10582,76 @@ L_B422:
 L_B427:
 	ex de,hl			;b427
 	pop hl			;b428
-	ld bc,00020h		;b429
+	ld bc,00020h		;b429   ; los 32 bytes
 	ldir		;b42c
-	ld b,000h		;b42e
+	ld b,000h		;b42e   ; y su onda: origen...
 	ld de,0d923h		;b430
 	ld a,(de)			;b433
-	call L_B1A4		;b434
+	call muestra_a_de_onda		;b434
 	push hl			;b437
-	inc de			;b438
+	inc de			;b438   ; ...destino
 	ld a,(de)			;b439
-	call L_B1A4		;b43a
+	call muestra_a_de_onda		;b43a
 	ex de,hl			;b43d
 	pop hl			;b43e
-	ld bc,00100h		;b43f
+	ld bc,00100h		;b43f   ; 256 bytes
 	ldir		;b442
-	ld a,002h		;b444
-	call L_BEB1		;b446
-	ld hl,0d922h		;b449
+	ld a,002h		;b444   ; el efecto 2
+	call efecto		;b446
+	ld hl,0d922h		;b449   ; todo a cero
 	ld b,003h		;b44c
 L_B44E:
 	ld (hl),000h		;b44e
 	inc hl			;b450
 	djnz L_B44E		;b451
-	call L_B509		;b453
+	call lista_de_timbres		;b453   ; la lista otra vez
 	dec (hl)			;b456
 	ret			;b457
-L_B458:
+copia_cursor:		; arriba o abajo cambian el numero (1-16, en BCD y en binario) y el sprite le sigue
 	ld de,0d921h		;b458
-	ld a,(0d808h)		;b45b
+	ld a,(0d808h)		;b45b   ; arriba o abajo
 	and 003h		;b45e
 	ret z			;b460
-	and 001h		;b461
+	and 001h		;b461   ; arriba?
 	jr z,L_B47B		;b463
-	ld b,0f0h		;b465
+	ld b,0f0h		;b465   ; el sprite 0x10 mas arriba
 	ld a,(de)			;b467
 	or a			;b468
-	ret z			;b469
+	ret z			;b469   ; en el 1, nada
 	push af			;b46a
-	ld a,001h		;b46b
-	call L_BEB1		;b46d
+	ld a,001h		;b46b   ; el efecto 1
+	call efecto		;b46d
 	pop af			;b470
-	dec a			;b471
+	dec a			;b471   ; uno menos...
 	ld (de),a			;b472
-	dec de			;b473
+	dec de			;b473   ; ...tambien en BCD
 	ld a,(de)			;b474
 	sub 001h		;b475
 	daa			;b477
 	ld (de),a			;b478
 	jr L_B499		;b479
 L_B47B:
-	ld a,(de)			;b47b
+	ld a,(de)			;b47b   ; abajo: hasta el 16
 	cp 00fh		;b47c
 	ret nc			;b47e
 	push af			;b47f
-	ld a,001h		;b480
-	call L_BEB1		;b482
+	ld a,001h		;b480   ; el efecto 1
+	call efecto		;b482
 	pop af			;b485
-	inc a			;b486
+	inc a			;b486   ; uno mas...
 	ld (de),a			;b487
-	dec de			;b488
+	dec de			;b488   ; ...tambien en BCD
 	ld a,(de)			;b489
 	add a,001h		;b48a
 	daa			;b48c
 	ld (de),a			;b48d
-	ld b,010h		;b48e
-	cp 009h		;b490
+	ld b,010h		;b48e   ; el sprite 0x10 mas abajo
+	cp 009h		;b490   ; del 8 al 9: a la otra columna (0xB565)
 	jr nz,L_B4A8		;b492
 	ld hl,0b565h		;b494
 	jr L_B4A0		;b497
 L_B499:
-	cp 008h		;b499
+	cp 008h		;b499   ; del 9 al 8: a la primera (0xB55D)
 	jr nz,L_B4A8		;b49b
 	ld hl,0b55dh		;b49d
 L_B4A0:
@@ -10659,7 +10659,7 @@ L_B4A0:
 	ld bc,00008h		;b4a3
 	ldir		;b4a6
 L_B4A8:
-	ld hl,0d870h		;b4a8
+	ld hl,0d870h		;b4a8   ; la Y de los dos sprites
 	ld a,b			;b4ab
 	add a,(hl)			;b4ac
 	ld (hl),a			;b4ad
@@ -10669,7 +10669,7 @@ L_B4A8:
 	inc hl			;b4b1
 	ld (hl),a			;b4b2
 	ret			;b4b3
-L_B4B4:
+timbre_a_hl:		; HL = 0xD000 + 0x20 * A
 	ld b,a			;b4b4
 	ld hl,0d000h		;b4b5
 	ld bc,00020h		;b4b8
@@ -10678,18 +10678,18 @@ L_B4BC:
 	adc hl,bc		;b4bc
 	djnz L_B4BC		;b4be
 	ret			;b4c0
-L_B4C1:
+copia_estado_2:		; los sprites de 0xB555 y el rotulo de 0xB5A1
 	ld hl,0b555h		;b4c1
 	ld de,0d870h		;b4c4
 	ld bc,00008h		;b4c7
 	ldir		;b4ca
 	ld de,0b5a1h		;b4cc
 	call escribe_lista		;b4cf
-	jr L_B538		;b4d2
-L_B4D4:
-	call L_B76E		;b4d4
+	jr lista_hecha		;b4d2
+lista_estado_0:		; la pantalla de las pantallas 5 y 6 tras la cortina
+	call file_estado_0		;b4d4   ; la cortina y la pantalla de FILE
 	ret p			;b4d7
-	xor a			;b4d8
+	xor a			;b4d8   ; borra un recuadro de 13 filas de 6 tiles
 	ld b,00dh		;b4d9
 	ld hl,038d8h		;b4db
 L_B4DE:
@@ -10700,14 +10700,14 @@ L_B4DE:
 	add hl,de			;b4e8
 	pop bc			;b4e9
 	djnz L_B4DE		;b4ea
-	ld de,0b587h		;b4ec
+	ld de,0b587h		;b4ec   ; la cabecera: 0xB587 en la 5...
 	ld a,(0d8f4h)		;b4ef
 	cp 006h		;b4f2
 	jr nz,L_B4F9		;b4f4
-	ld de,0b56dh		;b4f6
+	ld de,0b56dh		;b4f6   ; ...0xB56D en la 6
 L_B4F9:
 	call rle_a_vram		;b4f9
-	ld hl,0d920h		;b4fc
+	ld hl,0d920h		;b4fc   ; 0xD920 = 1 y lo demas a cero
 	ld b,004h		;b4ff
 	ld (hl),001h		;b501
 L_B503:
@@ -10715,37 +10715,37 @@ L_B503:
 	ld (hl),000h		;b504
 	djnz L_B503		;b506
 	ret			;b508
-L_B509:
+lista_de_timbres:		; los 16 timbres: numero, punto y nombre, en dos columnas de ocho
 	xor a			;b509
-	inc a			;b50a
-	ld de,0d019h		;b50b
+	inc a			;b50a   ; del 1...
+	ld de,0d019h		;b50b   ; ...con el nombre del timbre 0
 	ld hl,038a2h		;b50e
 L_B511:
 	push af			;b511
-	call L_B53D		;b512
+	call dos_cifras_bcd		;b512   ; el numero
 	inc hl			;b515
-	ld a,096h		;b516
+	ld a,096h		;b516   ; el punto
 	call 0004dh		;b518   ; BIOS WRTVRM - Writes data in VRAM
 	inc hl			;b51b
-	call L_AD21		;b51c
-	ld a,019h		;b51f
+	call siete_letras		;b51c   ; las siete letras
+	ld a,019h		;b51f   ; el timbre siguiente
 	call de_mas_a		;b521
-	ld a,036h		;b524
+	ld a,036h		;b524   ; la fila siguiente
 	call hl_mas_a		;b526
 	pop af			;b529
-	add a,001h		;b52a
+	add a,001h		;b52a   ; en BCD
 	daa			;b52c
-	cp 009h		;b52d
+	cp 009h		;b52d   ; el 9, a la segunda columna
 	jr nz,L_B534		;b52f
 	ld hl,038adh		;b531
 L_B534:
-	cp 017h		;b534
+	cp 017h		;b534   ; hasta el 16
 	jr c,L_B511		;b536
-L_B538:
+lista_hecha:		; 0xD8FA + 1
 	ld hl,0d8fah		;b538
 	inc (hl)			;b53b
 	ret			;b53c
-L_B53D:
+dos_cifras_bcd:		; el BCD A en dos cifras; sin decena, el tile 0
 	ld c,a			;b53d
 	and 0f0h		;b53e
 	jr z,L_B548		;b540
@@ -10781,23 +10781,23 @@ DATA_tablas_de_file:
 ; ======================================================================
 
 
-L_B5C8:
-	ld a,0d0h		;b5c8
+pantalla_lista:		; la pantalla 6: los sprites fuera y la lista de timbres
+	ld a,0d0h		;b5c8   ; sin sprites
 	ld (0d870h),a		;b5ca
 	ld (0d874h),a		;b5cd
 	ld a,(0d8fah)		;b5d0
 	dec a			;b5d3
-	jp z,L_B509		;b5d4
-	jp m,L_B4D4		;b5d7
+	jp z,lista_de_timbres		;b5d4
+	jp m,lista_estado_0		;b5d7
 	ret			;b5da
-L_B5DB:
-	ld b,008h		;b5db
+pantalla_file:		; FILE (pantalla 4): el menu de opciones; RETURN elige; la opcion 9 hace la operacion
+	ld b,008h		;b5db   ; el cursor parpadea...
 	ld a,(0d803h)		;b5dd
 	and 010h		;b5e0
 	jr nz,L_B5E6		;b5e2
 	ld b,000h		;b5e4
 L_B5E6:
-	ld a,(0db16h)		;b5e6
+	ld a,(0db16h)		;b5e6   ; ...en el menu o en el nombre (0xDB16)
 	dec a			;b5e9
 	jr z,L_B5FB		;b5ea
 	ld a,b			;b5ec
@@ -10806,46 +10806,46 @@ L_B5E6:
 	ld (0d877h),a		;b5f2
 	xor a			;b5f5
 	ld (0d883h),a		;b5f6
-	jr L_B606		;b5f9
+	jr file_menu		;b5f9
 L_B5FB:
 	ld a,b			;b5fb
 	ld (0d883h),a		;b5fc
 	xor a			;b5ff
 	ld (0d873h),a		;b600
 	ld (0d877h),a		;b603
-L_B606:
-	ld a,(0d8fah)		;b606
+file_menu:		; arriba y abajo mueven por las opciones; RETURN elige
+	ld a,(0d8fah)		;b606   ; 0: la pantalla
 	dec a			;b609
-	jp m,L_B76E		;b60a
-	ld a,(0d812h)		;b60d
+	jp m,file_estado_0		;b60a
+	ld a,(0d812h)		;b60d   ; con el canal A sonando, nada
 	or a			;b610
 	ret nz			;b611
-	ld a,(0db0bh)		;b612
+	ld a,(0db0bh)		;b612   ; 0xDB0B: una operacion en marcha
 	or a			;b615
-	jp nz,L_B851		;b616
+	jp nz,file_operacion		;b616
 	ld hl,0db0ch		;b619
 	ld a,(hl)			;b61c
-	ld a,(0d806h)		;b61d
+	ld a,(0d806h)		;b61d   ; las teclas recien pulsadas
 	ld b,a			;b620
 	and 003h		;b621
-	jr nz,L_B62D		;b623
-	ld a,(0d8f1h)		;b625
+	jr nz,file_mueve		;b623
+	ld a,(0d8f1h)		;b625   ; RETURN?
 	cp 040h		;b628
-	jr z,L_B68F		;b62a
+	jr z,file_elige		;b62a
 	ret			;b62c
-L_B62D:
-	ld a,001h		;b62d
-	call L_BEB1		;b62f
-	ld a,(0db0eh)		;b632
+file_mueve:		; la opcion siguiente o la anterior, saltando el disco si no hay y las que no tocan
+	ld a,001h		;b62d   ; el efecto 1
+	call efecto		;b62f
+	ld a,(0db0eh)		;b632   ; las opciones elegidas
 	ld c,a			;b635
 	ld a,b			;b636
-	and 002h		;b637
+	and 002h		;b637   ; abajo:
 	jr z,L_B65B		;b639
-	inc (hl)			;b63b
+	inc (hl)			;b63b   ; la siguiente
 	ld a,(hl)			;b63c
 	cp 001h		;b63d
 	jr nz,L_B648		;b63f
-	ld a,(0d9deh)		;b641
+	ld a,(0d9deh)		;b641   ; sin disco, salta la 1
 	or a			;b644
 	jr z,L_B648		;b645
 	inc (hl)			;b647
@@ -10853,24 +10853,24 @@ L_B648:
 	ld a,(hl)			;b648
 	cp 004h		;b649
 	jr nz,L_B653		;b64b
-	bit 0,c		;b64d
+	bit 0,c		;b64d   ; 4 y 5 solo con el bit 0
 	jr nz,L_B653		;b64f
 	ld (hl),006h		;b651
 L_B653:
-	cp 00ah		;b653
+	cp 00ah		;b653   ; de la 9 a la 0
 	jr c,L_B67C		;b655
 	ld (hl),000h		;b657
 	jr L_B67C		;b659
 L_B65B:
-	dec (hl)			;b65b
+	dec (hl)			;b65b   ; arriba: la anterior...
 	jp p,L_B663		;b65c
-	ld (hl),009h		;b65f
+	ld (hl),009h		;b65f   ; ...de la 0 a la 9
 	jr L_B67C		;b661
 L_B663:
 	ld a,(hl)			;b663
 	cp 001h		;b664
 	jr nz,L_B671		;b666
-	ld a,(0d9deh)		;b668
+	ld a,(0d9deh)		;b668   ; sin disco, salta la 1
 	or a			;b66b
 	jr z,L_B671		;b66c
 	dec (hl)			;b66e
@@ -10879,11 +10879,11 @@ L_B671:
 	ld a,(hl)			;b671
 	cp 005h		;b672
 	jr nz,L_B67C		;b674
-	bit 0,c		;b676
+	bit 0,c		;b676   ; 4 y 5 solo con el bit 0
 	jr nz,L_B67C		;b678
 	ld (hl),003h		;b67a
 L_B67C:
-	ld a,(hl)			;b67c
+	ld a,(hl)			;b67c   ; el sprite a la opcion (0xB729)
 	ld b,a			;b67d
 	ld de,0b729h		;b67e
 	call de_mas_a		;b681
@@ -10896,17 +10896,17 @@ L_B67C:
 	inc hl			;b68c
 	ld (hl),a			;b68d
 	ret			;b68e
-L_B68F:
+file_elige:		; RETURN: marca la opcion en 0xDB0E y la pinta; la 9 (o mas) arranca la operacion
 	ld hl,0db0ch		;b68f
 	ld a,(hl)			;b692
 	or a			;b693
-	jr nz,L_B6A0		;b694
-	ld a,002h		;b696
+	jr nz,file_marca		;b694
+	ld a,002h		;b696   ; la 0 tambien pinta la 2
 	ld (hl),a			;b698
-	call L_B6A0		;b699
+	call file_marca		;b699
 	xor a			;b69c
 	ld (0db0ch),a		;b69d
-L_B6A0:
+file_marca:		; 0xDB0E con la mascara y el bit de la opcion (0xB733) y la marca en pantalla
 	ld b,a			;b6a0
 	add a,a			;b6a1
 	ld hl,0b733h		;b6a2
@@ -10920,29 +10920,29 @@ L_B6A0:
 	ld a,b			;b6b0
 	cp 002h		;b6b1
 	jr nc,L_B6CF		;b6b3
-	or a			;b6b5
+	or a			;b6b5   ; la 0: cinta
 	jr nz,L_B6BD		;b6b6
-	call L_B70B		;b6b8
+	call marca_cinta		;b6b8
 	jr L_B6CF		;b6bb
 L_B6BD:
-	ld hl,03979h		;b6bd
+	ld hl,03979h		;b6bd   ; la 1: disco
 	ld de,0b74dh		;b6c0
 	call rle_a_vram_en_hl		;b6c3
 	ld hl,03999h		;b6c6
 	ld de,0b753h		;b6c9
 	call rle_a_vram_en_hl		;b6cc
 L_B6CF:
-	ld c,009h		;b6cf
+	ld c,009h		;b6cf   ; la 9 o mas: la operacion...
 	ld a,(0db0ch)		;b6d1
 	cp c			;b6d4
 	jr c,L_B6E1		;b6d5
-	ld a,001h		;b6d7
+	ld a,001h		;b6d7   ; ...0xDB0B = 1
 	ld (0db0bh),a		;b6d9
 	dec a			;b6dc
 	ld (0db16h),a		;b6dd
 	ret			;b6e0
 L_B6E1:
-	ld bc,00306h		;b6e1
+	ld bc,00306h		;b6e1   ; el grupo de la opcion: 6-8, 2-3 o 0-1
 	cp c			;b6e4
 	jr nc,L_B6F0		;b6e5
 	ld bc,00402h		;b6e7
@@ -10950,25 +10950,25 @@ L_B6E1:
 	jr nc,L_B6F0		;b6eb
 	ld bc,00200h		;b6ed
 L_B6F0:
-	ld a,c			;b6f0
-	call L_B716		;b6f1
+	ld a,c			;b6f0   ; borra las marcas del grupo
+	call sitio_de_opcion		;b6f1
 	ld a,097h		;b6f4
 L_B6F6:
 	call 0004dh		;b6f6   ; BIOS WRTVRM - Writes data in VRAM
 	ld de,00020h		;b6f9
 	add hl,de			;b6fc
 	djnz L_B6F6		;b6fd
-	ld a,(0db0ch)		;b6ff
-	call L_B716		;b702
+	ld a,(0db0ch)		;b6ff   ; y marca la elegida
+	call sitio_de_opcion		;b702
 	ld a,098h		;b705
 	call 0004dh		;b707   ; BIOS WRTVRM - Writes data in VRAM
 	ret			;b70a
-L_B70B:
+marca_cinta:		; las marcas de cinta
 	ld hl,03978h		;b70b
-	call L_B722		;b70e
+	call marca_0xb747		;b70e
 	ld hl,03998h		;b711
-	jr L_B722		;b714
-L_B716:
+	jr marca_0xb747		;b714
+sitio_de_opcion:		; HL = la direccion de pantalla de la opcion A (0xB75A)
 	add a,a			;b716
 	ld hl,0b75ah		;b717
 	call hl_mas_a		;b71a
@@ -10977,7 +10977,7 @@ L_B716:
 	ld d,(hl)			;b71f
 	ex de,hl			;b720
 	ret			;b721
-L_B722:
+marca_0xb747:		; la marca de 0xB747 en HL
 	ld de,0b747h		;b722
 	call rle_a_vram_en_hl		;b725
 	ret			;b728
@@ -10998,29 +10998,29 @@ DATA_tablas_del_menu_file:
 ; ======================================================================
 
 
-L_B76E:
+file_estado_0:		; la pantalla de FILE tras la cortina; el vector de errores del disco a 0x50DE
 	call empieza_cambio		;b76e
 	call cortina_de_salida		;b771
 	ret p			;b774
-	call L_B32E		;b775
-	ld a,(0d8f4h)		;b778
+	call pantalla_apagada		;b775
+	ld a,(0d8f4h)		;b778   ; en las pantallas 5 y 6...
 	cp 005h		;b77b
 	jr z,L_B783		;b77d
 	cp 006h		;b77f
 	jr nz,L_B78D		;b781
 L_B783:
-	ld a,0d0h		;b783
+	ld a,0d0h		;b783   ; ...sin sprites
 	ld (0d870h),a		;b785
 	ld (0d874h),a		;b788
 	jr L_B798		;b78b
 L_B78D:
-	ld hl,0ba6ch		;b78d
+	ld hl,0ba6ch		;b78d   ; en FILE el cursor de 0xBA6C
 	ld de,0d870h		;b790
 	ld bc,00008h		;b793
 	ldir		;b796
 L_B798:
-	call L_B335		;b798
-	ld de,09ac5h		;b79b
+	call comun_de_trabajo		;b798   ; lo comun
+	ld de,09ac5h		;b79b   ; patrones, colores y nombres de FILE
 	ld hl,02458h		;b79e
 	call rle_a_vram_x3		;b7a1
 	ld de,09c63h		;b7a4
@@ -11028,65 +11028,65 @@ L_B798:
 	call rle_a_vram_x3		;b7aa
 	ld de,09d74h		;b7ad
 	call rle_a_vram		;b7b0
-	ld de,0b841h		;b7b3
+	ld de,0b841h		;b7b3   ; la flecha
 	call rle_a_vram		;b7b6
-	call L_B80D		;b7b9
-	ld a,(0d9deh)		;b7bc
+	call file_marcas		;b7b9   ; 0xB80D
+	ld a,(0d9deh)		;b7bc   ; sin disco: las marcas de cinta
 	or a			;b7bf
 	jr z,L_B7CB		;b7c0
-	call L_B70B		;b7c2
+	call marca_cinta		;b7c2
 	ld hl,038f8h		;b7c5
-	call L_B722		;b7c8
+	call marca_0xb747		;b7c8
 L_B7CB:
-	call L_B32A		;b7cb
+	call pantalla_encendida		;b7cb
 	call fin_de_cambio		;b7ce
-	ld hl,0db0fh		;b7d1
+	ld hl,0db0fh		;b7d1   ; el nombre del fichero a espacios
 	ld bc,00006h		;b7d4
 	ld d,h			;b7d7
 	ld e,l			;b7d8
 	inc e			;b7d9
 	ld (hl),020h		;b7da
 	ldir		;b7dc
-	xor a			;b7de
+	xor a			;b7de   ; nada en marcha
 	ld (0db0bh),a		;b7df
 	ld (0db16h),a		;b7e2
 	ld (0db03h),a		;b7e5
-	inc a			;b7e8
+	inc a			;b7e8   ; 0xDB17: se edita el nombre del fichero
 	ld (0db17h),a		;b7e9
-	ld a,009h		;b7ec
+	ld a,009h		;b7ec   ; la opcion 9
 	ld (0db0ch),a		;b7ee
-	ld hl,0b832h		;b7f1
+	ld hl,0b832h		;b7f1   ; el codigo de 0xB832 a 0xD9A6...
 	ld de,0d9a6h		;b7f4
 	ld bc,0000fh		;b7f7
 	ldir		;b7fa
-	ld hl,0d9a6h		;b7fc
+	ld hl,0d9a6h		;b7fc   ; ...y DISKVE (0xF323) apunta ahi
 	ld (0f323h),hl		;b7ff
-	call L_B808		;b802
+	call file_estado_siguiente		;b802
 	xor a			;b805
 	dec a			;b806
 	ret			;b807
-L_B808:
+file_estado_siguiente:		; 0xD8FA + 1
 	ld hl,0d8fah		;b808
 	inc (hl)			;b80b
 	ret			;b80c
-L_B80D:
-	ld a,(0db0eh)		;b80d
+file_marcas:		; pinta las marcas de lo elegido en 0xDB0E: aparato, operacion y tipo
+	ld a,(0db0eh)		;b80d   ; el aparato
 	and 001h		;b810
-	call L_B82B		;b812
-	ld a,(0db0eh)		;b815
+	call marca_opcion		;b812
+	ld a,(0db0eh)		;b815   ; la operacion
 	ld c,002h		;b818
-	call L_B826		;b81a
-	ld c,006h		;b81d
+	call grupo_de_opciones		;b81a
+	ld c,006h		;b81d   ; el tipo
 	ld a,(0db0eh)		;b81f
 	srl a		;b822
 	srl a		;b824
-L_B826:
+grupo_de_opciones:		; la opcion C + bits 1-2 de A
 	srl a		;b826
 	and 003h		;b828
 	add a,c			;b82a
-L_B82B:
+marca_opcion:		; 0xDB0C = A y su marca
 	ld (0db0ch),a		;b82b
-	call L_B6A0		;b82e
+	call file_marca		;b82e
 	ret			;b831
 
 ; ----------------------------------------------------------------------
@@ -11101,13 +11101,13 @@ DATA_dos_bytes_0xB832:
 ; ======================================================================
 
 
-L_B834:
-	ld h,040h		;b834
+error_del_disco:		; DISKVE: el cartucho otra vez en la pagina 1 y el mensaje de 0x50DE
+	ld h,040h		;b834   ; el cartucho en 0x4000...
 	ld a,(0d855h)		;b836
 	push bc			;b839
 	call 00024h		;b83a   ; BIOS ENASLT - Switches to specified slot and page definitively
 	pop bc			;b83d
-	jp error_de_disco		;b83e
+	jp error_de_disco		;b83e   ; ...y el mensaje
 
 ; ----------------------------------------------------------------------
 ; DATOS file_flecha: flujo RLE de 0x4352 (0xB7B6)
@@ -11120,41 +11120,41 @@ DATA_file_flecha:
 ; ======================================================================
 
 
-L_B851:
+file_operacion:		; hace lo elegido en 0xDB0E, paso a paso (0xDB16)
 	ld hl,0db16h		;b851
-	ld a,(0db0eh)		;b854
+	ld a,(0db0eh)		;b854   ; el tipo
 	rrca			;b857
 	rrca			;b858
 	rrca			;b859
 	and 003h		;b85a
 	ld c,a			;b85c
 	dec a			;b85d
-	jr z,L_B868		;b85e
-	jp p,L_B873		;b860
-	ld de,01200h		;b863
+	jr z,L_B868		;b85e   ; LAYOUT: 0xB0 bytes
+	jp p,L_B873		;b860   ; SAMP: la longitud que tiene
+	ld de,01200h		;b863   ; TONE: 0x1200 bytes, las 16 ondas y los 16 timbres
 	jr L_B86B		;b866
 L_B868:
 	ld de,000b0h		;b868
 L_B86B:
-	ld a,e			;b86b
+	ld a,e			;b86b   ; a 0xDCFE
 	ld (0dcfeh),a		;b86c
 	ld a,d			;b86f
 	ld (0dcffh),a		;b870
 L_B873:
-	ld a,(0db0eh)		;b873
+	ld a,(0db0eh)		;b873   ; disco?
 	bit 0,a		;b876
-	jp nz,L_B916		;b878
-	srl a		;b87b
+	jp nz,file_disco		;b878
+	srl a		;b87b   ; cinta: carga o graba
 	bit 0,a		;b87d
-	jr z,L_B8CF		;b87f
-	ld a,(hl)			;b881
+	jr z,graba_cinta_paso		;b87f
+	ld a,(hl)			;b881   ; el paso
 	dec a			;b882
-	jr z,L_B8AD		;b883
-	jp m,L_B8B7		;b885
-	call L_BA66		;b888
-	ld de,0bb47h		;b88b
+	jr z,escribe_nombre		;b883
+	jp m,pide_nombre_carga		;b885
+	call borra_mensajes		;b888   ; carga de cinta: borra la linea de mensajes...
+	ld de,0bb47h		;b88b   ; ...y pone el rotulo de 0xBB47
 	call escribe_lista		;b88e
-	ld b,007h		;b891
+	ld b,007h		;b891   ; sin nombre vale cualquiera
 	ld hl,0db0fh		;b893
 L_B896:
 	ld a,(hl)			;b896
@@ -11164,47 +11164,47 @@ L_B896:
 	djnz L_B896		;b89c
 	jr L_B8A5		;b89e
 L_B8A0:
-	call nombre_valido		;b8a0
-	jr c,L_B8C2		;b8a3
+	call nombre_valido		;b8a0   ; con nombre: que sea valido
+	jr c,nombre_malo		;b8a3
 L_B8A5:
-	call carga_de_cinta		;b8a5
-	jp c,L_BA4E		;b8a8
-	jr L_B8EA		;b8ab
-L_B8AD:
+	call carga_de_cinta		;b8a5   ; a cargar
+	jp c,fallo_de_cinta		;b8a8   ; fallo: 0xBA4E
+	jr operacion_hecha		;b8ab
+escribe_nombre:		; el nombre del fichero letra a letra hasta RETURN
 	ld a,(0d8f1h)		;b8ad
 	cp 040h		;b8b0
-	jr z,L_B911		;b8b2
-	jp L_A742		;b8b4
-L_B8B7:
-	call L_BA10		;b8b7
+	jr z,paso_siguiente		;b8b2
+	jp cursor_de_letra_67		;b8b4
+pide_nombre_carga:		; el rotulo de 0xBAFA
+	call pide_nombre		;b8b7
 	ld de,0bafah		;b8ba
 	call escribe_lista		;b8bd
-	jr L_B911		;b8c0
-L_B8C2:
+	jr paso_siguiente		;b8c0
+nombre_malo:		; el mensaje 0x5183 en 0x3A06
 	ld de,05183h		;b8c2
 	ld hl,03a06h		;b8c5
 	ld c,0ffh		;b8c8
 	call L_433F		;b8ca
-	jr L_B8F8		;b8cd
-L_B8CF:
+	jr file_reposo		;b8cd
+graba_cinta_paso:		; graba en cinta: pide el nombre y graba
 	ld a,(hl)			;b8cf
 	dec a			;b8d0
-	jr z,L_B8AD		;b8d1
-	jp m,L_B908		;b8d3
-	call L_BA66		;b8d6
+	jr z,escribe_nombre		;b8d1
+	jp m,pide_nombre_graba		;b8d3
+	call borra_mensajes		;b8d6   ; el rotulo de 0xBB3B
 	ld de,0bb3bh		;b8d9
 	call escribe_lista		;b8dc
-	call nombre_valido		;b8df
-	jr c,L_B8C2		;b8e2
-	call graba_en_cinta		;b8e4
-	jp c,L_BA4E		;b8e7
-L_B8EA:
-	call L_BA66		;b8ea
+	call nombre_valido		;b8df   ; nombre valido?
+	jr c,nombre_malo		;b8e2
+	call graba_en_cinta		;b8e4   ; a grabar
+	jp c,fallo_de_cinta		;b8e7
+operacion_hecha:		; el rotulo de 0xBB54 y el efecto 2
+	call borra_mensajes		;b8ea
 	ld de,0bb54h		;b8ed
 	call escribe_lista		;b8f0
 	ld a,002h		;b8f3
-	call L_BEB1		;b8f5
-L_B8F8:
+	call efecto		;b8f5
+file_reposo:		; nada en marcha y el cursor en la opcion 9
 	xor a			;b8f8
 	ld (0db0bh),a		;b8f9
 	ld (0db16h),a		;b8fc
@@ -11212,57 +11212,57 @@ L_B8F8:
 	ld a,009h		;b902
 	ld (0db0ch),a		;b904
 	ret			;b907
-L_B908:
-	call L_BA10		;b908
+pide_nombre_graba:		; el rotulo de 0xBB06
+	call pide_nombre		;b908
 	ld de,0bb06h		;b90b
 	call escribe_lista		;b90e
-L_B911:
+paso_siguiente:		; 0xDB16 + 1
 	ld hl,0db16h		;b911
 	inc (hl)			;b914
 	ret			;b915
-L_B916:
+file_disco:		; la operacion en disco
 	rrca			;b916
 	and 003h		;b917
-	cp 001h		;b919
-	jr z,L_B98B		;b91b
-	jp c,L_B9BB		;b91d
-	cp 002h		;b920
-	jp z,L_B9E0		;b922
-	ld a,(hl)			;b925
+	cp 001h		;b919   ; 1: carga
+	jr z,carga_disco_paso		;b91b
+	jp c,graba_disco_paso		;b91d   ; 0: graba
+	cp 002h		;b920   ; 2: borra
+	jp z,borra_disco_paso		;b922
+	ld a,(hl)			;b925   ; 3: el directorio; en el paso 1, las teclas de la lista
 	dec a			;b926
-	jr nz,L_B938		;b927
+	jr nz,directorio_paso_0		;b927
 	call directorio_teclas		;b929
-	jr c,L_B92F		;b92c
+	jr c,L_B92F		;b92c   ; RETURN: fuera
 	ret			;b92e
 L_B92F:
-	call L_BA42		;b92f
-	call L_B976		;b932
-	jp L_B8EA		;b935
-L_B938:
-	ld a,c			;b938
+	call cursor_de_file		;b92f
+	call limpia_recuadro		;b932
+	jp operacion_hecha		;b935
+directorio_paso_0:		; limpia, pone los rotulos y busca los ficheros
+	ld a,c			;b938   ; el tipo
 	add a,021h		;b939
 	ld (0db18h),a		;b93b
-	call L_B976		;b93e
+	call limpia_recuadro		;b93e   ; limpia el recuadro
 	ld de,0ba86h		;b941
 	call borra_lista		;b944
 	ld de,0bb1eh		;b947
 	call borra_lista		;b94a
 	ld de,0bb31h		;b94d
 	call escribe_lista		;b950
-	call L_BA66		;b953
+	call borra_mensajes		;b953
 	ld de,0bae6h		;b956
 	call escribe_lista		;b959
-	call L_BA42		;b95c
-	ld a,0d0h		;b95f
+	call cursor_de_file		;b95c
+	ld a,0d0h		;b95f   ; sin el sprite del nombre
 	ld (0d880h),a		;b961
-	call directorio		;b964
-	jp c,L_B96D		;b967
-	jp L_B911		;b96a
-L_B96D:
+	call directorio		;b964   ; el directorio
+	jp c,directorio_fallo		;b967
+	jp paso_siguiente		;b96a
+directorio_fallo:		; borra el rotulo y el fallo
 	ld de,0bae6h		;b96d
 	call borra_lista		;b970
-	jp L_BA5C		;b973
-L_B976:
+	jp operacion_acabada		;b973
+limpia_recuadro:		; 12 filas de 0x11 tiles a cero desde 0x38E5
 	ld b,00ch		;b976
 	ld hl,038e5h		;b978
 L_B97B:
@@ -11275,73 +11275,73 @@ L_B97B:
 	pop bc			;b987
 	djnz L_B97B		;b988
 	ret			;b98a
-L_B98B:
+carga_disco_paso:		; carga de disco: pide el nombre y carga
 	ld a,(hl)			;b98b
 	dec a			;b98c
-	jr z,L_B9A4		;b98d
-	jp m,L_B9AF		;b98f
-	call L_BA66		;b992
+	jr z,escribe_nombre_disco		;b98d
+	jp m,pide_nombre_disco		;b98f
+	call borra_mensajes		;b992
 	ld de,0bb47h		;b995
 	call escribe_lista		;b998
 	call carga_de_disco		;b99b
-	jp c,L_BA5C		;b99e
-	jp L_B8EA		;b9a1
-L_B9A4:
+	jp c,operacion_acabada		;b99e
+	jp operacion_hecha		;b9a1
+escribe_nombre_disco:		; el nombre letra a letra hasta RETURN
 	ld a,(0d8f1h)		;b9a4
 	cp 040h		;b9a7
-	jp z,L_B911		;b9a9
-	jp L_A742		;b9ac
-L_B9AF:
-	call L_BA10		;b9af
+	jp z,paso_siguiente		;b9a9
+	jp cursor_de_letra_67		;b9ac
+pide_nombre_disco:		; el rotulo de 0xBB12
+	call pide_nombre		;b9af
 	ld de,0bb12h		;b9b2
 	call escribe_lista		;b9b5
-	jp L_B911		;b9b8
-L_B9BB:
+	jp paso_siguiente		;b9b8
+graba_disco_paso:		; graba en disco: pide el nombre y graba
 	ld a,(hl)			;b9bb
 	dec a			;b9bc
-	jr z,L_B9A4		;b9bd
-	jp m,L_B9D4		;b9bf
-	call L_BA66		;b9c2
+	jr z,escribe_nombre_disco		;b9bd
+	jp m,pide_nombre_graba_disco		;b9bf
+	call borra_mensajes		;b9c2
 	ld de,0bb3bh		;b9c5
 	call escribe_lista		;b9c8
 	call graba_en_disco		;b9cb
-	jp c,L_BA5C		;b9ce
-	jp L_B8EA		;b9d1
-L_B9D4:
-	call L_BA10		;b9d4
+	jp c,operacion_acabada		;b9ce
+	jp operacion_hecha		;b9d1
+pide_nombre_graba_disco:		; el rotulo de 0xBB1E
+	call pide_nombre		;b9d4
 	ld de,0bb1eh		;b9d7
 	call escribe_lista		;b9da
-	jp L_B911		;b9dd
-L_B9E0:
+	jp paso_siguiente		;b9dd
+borra_disco_paso:		; borra de disco: pide el nombre y borra
 	ld a,(hl)			;b9e0
 	dec a			;b9e1
-	jr z,L_B9F3		;b9e2
-	jp m,L_B9FE		;b9e4
-	call L_BA66		;b9e7
+	jr z,escribe_nombre_borra		;b9e2
+	jp m,pide_nombre_borra		;b9e4
+	call borra_mensajes		;b9e7
 	call borra_de_disco		;b9ea
-	jp c,L_BA5C		;b9ed
-	jp L_B8EA		;b9f0
-L_B9F3:
+	jp c,operacion_acabada		;b9ed
+	jp operacion_hecha		;b9f0
+escribe_nombre_borra:		; el nombre letra a letra hasta RETURN
 	ld a,(0d8f1h)		;b9f3
 	cp 040h		;b9f6
-	jp z,L_B911		;b9f8
-	jp L_A742		;b9fb
-L_B9FE:
-	call L_BA10		;b9fe
+	jp z,paso_siguiente		;b9f8
+	jp cursor_de_letra_67		;b9fb
+pide_nombre_borra:		; el rotulo de 0xBB2A
+	call pide_nombre		;b9fe
 	ld de,0bb1eh		;ba01
 	call borra_lista		;ba04
 	ld de,0bb2ah		;ba07
 	call escribe_lista		;ba0a
-	jp L_B911		;ba0d
-L_BA10:
+	jp paso_siguiente		;ba0d
+pide_nombre:		; el tipo a 0xDB18, su rotulo (0xBA80) y el de 0xBABB, el nombre, el FCB a cero y el cursor
 	push bc			;ba10
-	ld de,0ba86h		;ba11
+	ld de,0ba86h		;ba11   ; borra el rotulo anterior
 	call borra_lista		;ba14
 	pop bc			;ba17
-	ld a,c			;ba18
+	ld a,c			;ba18   ; el tipo, de 0x21 a 0x23
 	add a,021h		;ba19
 	ld (0db18h),a		;ba1b
-	ld a,c			;ba1e
+	ld a,c			;ba1e   ; su rotulo
 	add a,a			;ba1f
 	ld hl,0ba80h		;ba20
 	call hl_mas_a		;ba23
@@ -11351,34 +11351,34 @@ L_BA10:
 	call escribe_lista		;ba29
 	ld de,0babbh		;ba2c
 	call escribe_lista		;ba2f
-	call L_AD0A		;ba32
-	ld hl,0d980h		;ba35
+	call nombre_del_timbre		;ba32   ; el nombre
+	ld hl,0d980h		;ba35   ; el FCB a cero
 	ld bc,00025h		;ba38
 	ld d,h			;ba3b
 	ld e,l			;ba3c
 	inc e			;ba3d
 	ld (hl),000h		;ba3e
 	ldir		;ba40
-L_BA42:
+cursor_de_file:		; los sprites de 0xBA6C
 	ld de,0d870h		;ba42
 	ld hl,0ba6ch		;ba45
 	ld bc,00014h		;ba48
 	ldir		;ba4b
 	ret			;ba4d
-L_BA4E:
+fallo_de_cinta:		; el rotulo de 0xBB5B y a reposo
 	ld de,0bb5bh		;ba4e
 	push de			;ba51
-	call L_BA66		;ba52
+	call borra_mensajes		;ba52
 	pop de			;ba55
 	call escribe_lista		;ba56
-	call L_B8F8		;ba59
-L_BA5C:
+	call file_reposo		;ba59
+operacion_acabada:		; el efecto 2 y nada en marcha
 	ld a,002h		;ba5c
-	call L_BEB1		;ba5e
+	call efecto		;ba5e
 	xor a			;ba61
 	ld (0db0bh),a		;ba62
 	ret			;ba65
-L_BA66:
+borra_mensajes:		; la linea de mensajes (0xBAD0) en blanco
 	ld de,0bad0h		;ba66
 	jp borra_lista		;ba69
 
@@ -11410,78 +11410,78 @@ DATA_listas_de_file:
 ; ======================================================================
 
 
-L_BB6D:
-	ld b,008h		;bb6d
+pantalla_layout:		; la pantalla 8: izquierda/derecha eligen nota, una tecla la recibe; CTRL + HOME vuelve al de fabrica
+	ld b,008h		;bb6d   ; color 8 del cursor...
 	ld a,(0d803h)		;bb6f
 	and 010h		;bb72
 	jr nz,L_BB78		;bb74
-	ld b,00fh		;bb76
+	ld b,00fh		;bb76   ; ...o 15, cada 16 cuadros
 L_BB78:
 	ld a,b			;bb78
 	ld (0d873h),a		;bb79
-	ld a,(0d8fah)		;bb7c
+	ld a,(0d8fah)		;bb7c   ; 0: la pantalla
 	dec a			;bb7f
-	jp m,L_BD27		;bb80
-	ld a,(0d8f2h)		;bb83
+	jp m,layout_estado_0		;bb80
+	ld a,(0d8f2h)		;bb83   ; CTRL (0x32)...
 	cp 032h		;bb86
-	jr nz,L_BBA4		;bb88
-	ld a,008h		;bb8a
+	jr nz,layout_tecla		;bb88
+	ld a,008h		;bb8a   ; ...y HOME
 	call 00141h		;bb8c   ; BIOS SNSMAT - Returns the value of the specified line from the keyboard matrix
 	bit 1,a		;bb8f
 	ret nz			;bb91
-	call layout_de_fabrica		;bb92
+	call layout_de_fabrica		;bb92   ; el LAYOUT y las teclas de fabrica
 	call teclas_de_fabrica		;bb95
-	call L_BD33		;bb98
+	call layout_pantalla		;bb98   ; el teclado otra vez
 	ld hl,0d8fah		;bb9b
 	dec (hl)			;bb9e
-	ld a,002h		;bb9f
-	jp L_BEB1		;bba1
-L_BBA4:
-	ld a,(0d8f1h)		;bba4
+	ld a,002h		;bb9f   ; el efecto 2
+	jp efecto		;bba1
+layout_tecla:		; una tecla del teclado musical (1-0x30, menos la 0x16) recibe la nota elegida
+	ld a,(0d8f1h)		;bba4   ; la tecla nueva
 	or a			;bba7
-	jp z,L_BC53		;bba8
+	jp z,layout_cursor		;bba8
 	cp 016h		;bbab
-	jp z,L_BC53		;bbad
+	jp z,layout_cursor		;bbad
 	cp 031h		;bbb0
-	jp nc,L_BC53		;bbb2
-	dec a			;bbb5
+	jp nc,layout_cursor		;bbb2
+	dec a			;bbb5   ; su entrada del LAYOUT...
 	ld de,0d200h		;bbb6
 	call de_mas_a		;bbb9
-	ld a,(0d906h)		;bbbc
+	ld a,(0d906h)		;bbbc   ; ...el byte de la nota
 	ld (de),a			;bbbf
-	ld a,(0d8f1h)		;bbc0
+	ld a,(0d8f1h)		;bbc0   ; su entrada de 0xD230
 	dec a			;bbc3
 	sla a		;bbc4
 	ld de,0d230h		;bbc6
 	call de_mas_a		;bbc9
-	ld hl,0bd5dh		;bbcc
+	ld hl,0bd5dh		;bbcc   ; sin nota: 0xBD5D
 	ld a,(0d906h)		;bbcf
 	or a			;bbd2
 	jr z,L_BBE0		;bbd3
-	ld a,(0d905h)		;bbd5
+	ld a,(0d905h)		;bbd5   ; la rutina y el retardo de la nota (0x5E29)
 	sla a		;bbd8
 	ld hl,05e29h		;bbda
 	call hl_mas_a		;bbdd
 L_BBE0:
-	ld bc,00002h		;bbe0
+	ld bc,00002h		;bbe0   ; a 0xD230
 	ldir		;bbe3
-	ld a,002h		;bbe5
-	call L_BEB1		;bbe7
-	ld a,(0d8f1h)		;bbea
-L_BBED:
-	call L_BC3D		;bbed
+	ld a,002h		;bbe5   ; el efecto 2
+	call efecto		;bbe7
+	ld a,(0d8f1h)		;bbea   ; y el nombre en la tecla
+nombre_de_nota:		; escribe en la tecla A el nombre de su nota, o la tapa si no tiene
+	call sitio_de_tecla		;bbed   ; HL = su sitio, DE = su entrada
 	ld a,(de)			;bbf0
 	or a			;bbf1
-	jr nz,L_BC01		;bbf2
-	ld de,0bdd9h		;bbf4
-	call L_BC37		;bbf7
+	jr nz,nombre_de_nota_d905		;bbf2
+	ld de,0bdd9h		;bbf4   ; sin nota: los tiles de 0xBDD9
+	call dos_tiles		;bbf7
 	ld bc,00020h		;bbfa
 	add hl,bc			;bbfd
-	jp L_BC37		;bbfe
-L_BC01:
+	jp dos_tiles		;bbfe
+nombre_de_nota_d905:		; el nombre de la nota 0xD905: la octava (0xBDDD) y la nota dentro de ella
 	ld a,(0d905h)		;bc01
 	ld b,0ffh		;bc04
-	ld de,0bdddh		;bc06
+	ld de,0bdddh		;bc06   ; la octava: cuantos limites de 0xBDDD pasa
 	ex de,hl			;bc09
 L_BC0A:
 	inc b			;bc0a
@@ -11489,7 +11489,7 @@ L_BC0A:
 	inc hl			;bc0c
 	jr nc,L_BC0A		;bc0d
 	ex de,hl			;bc0f
-	ld a,b			;bc10
+	ld a,b			;bc10   ; su tabla de nombres (0xBD5F)
 	add a,a			;bc11
 	push hl			;bc12
 	ld hl,0bd5fh		;bc13
@@ -11498,23 +11498,23 @@ L_BC0A:
 	inc hl			;bc1a
 	ld d,(hl)			;bc1b
 	pop hl			;bc1c
-	ld a,(0d905h)		;bc1d
+	ld a,(0d905h)		;bc1d   ; la nota dentro de la octava...
 L_BC20:
-	cp 00eh		;bc20
+	cp 00eh		;bc20   ; ...de 14 en 14
 	jr c,L_BC28		;bc22
 	sub 00eh		;bc24
 	jr L_BC20		;bc26
 L_BC28:
 	sla a		;bc28
 	call de_mas_a		;bc2a
-	call L_BC37		;bc2d
+	call dos_tiles		;bc2d   ; dos tiles...
 	ld de,00020h		;bc30
 	add hl,de			;bc33
-	ld de,0bdd7h		;bc34
-L_BC37:
+	ld de,0bdd7h		;bc34   ; ...y debajo los de 0xBDD7
+dos_tiles:		; dos bytes de DE a la VRAM de HL
 	ld bc,00002h		;bc37
 	jp copia_a_vram		;bc3a
-L_BC3D:
+sitio_de_tecla:		; HL = la direccion de la tecla A (0xBDE1); DE = su entrada del LAYOUT
 	dec a			;bc3d
 	push af			;bc3e
 	sla a		;bc3f
@@ -11528,40 +11528,40 @@ L_BC3D:
 	ld de,0d200h		;bc4c
 	call de_mas_a		;bc4f
 	ret			;bc52
-L_BC53:
+layout_cursor:		; izquierda o derecha: la nota anterior o la siguiente, y el cursor la sigue
 	ld hl,0d905h		;bc53
-	ld a,(0d808h)		;bc56
+	ld a,(0d808h)		;bc56   ; izquierda o derecha
 	and 00ch		;bc59
 	ret z			;bc5b
-	and 004h		;bc5c
+	and 004h		;bc5c   ; izquierda?
 	jr nz,L_BC82		;bc5e
-	ld a,030h		;bc60
+	ld a,030h		;bc60   ; derecha: hasta la 0x30
 	cp (hl)			;bc62
 	ret z			;bc63
-	ld a,001h		;bc64
-	call L_BEB1		;bc66
+	ld a,001h		;bc64   ; el efecto 1
+	call efecto		;bc66
 	inc (hl)			;bc69
 	ld a,(hl)			;bc6a
-	call L_BCBD		;bc6b
-	ld a,(hl)			;bc6e
+	call byte_de_nota		;bc6b   ; su byte de LAYOUT
+	ld a,(hl)			;bc6e   ; el cursor, distinto en las pares y las impares
 	bit 0,a		;bc6f
 	jr nz,L_BC7B		;bc71
 	ld c,056h		;bc73
 	ld de,0585ch		;bc75
-	jp L_BCFB		;bc78
+	jp cursor_derecha		;bc78
 L_BC7B:
 	ld c,01eh		;bc7b
 	ld de,00004h		;bc7d
 	jr $+123		;bc80
 L_BC82:
-	ld a,(hl)			;bc82
+	ld a,(hl)			;bc82   ; izquierda: hasta la 0
 	or a			;bc83
 	ret z			;bc84
-	ld a,001h		;bc85
-	call L_BEB1		;bc87
+	ld a,001h		;bc85   ; el efecto 1
+	call efecto		;bc87
 	dec (hl)			;bc8a
 	ld a,(hl)			;bc8b
-	call L_BCBD		;bc8c
+	call byte_de_nota		;bc8c   ; su byte de LAYOUT
 	ld a,(hl)			;bc8f
 	bit 0,a		;bc90
 	jr nz,L_BC9B		;bc92
@@ -11572,7 +11572,7 @@ L_BC9B:
 	ld c,01eh		;bc9b
 	ld de,00004h		;bc9d
 	jr $+113		;bca0
-L_BCA2:
+en_lista_bcb6:		; acarreo si A esta en la lista de 0xBCB6
 	push hl			;bca2
 	ld b,a			;bca3
 	ld hl,0bcb6h		;bca4
@@ -11602,7 +11602,7 @@ DATA_lista_0xBCB6:
 ; ======================================================================
 
 
-L_BCBD:
+byte_de_nota:		; 0xD906 = 0xBCCA[A]
 	push hl			;bcbd
 	ld hl,0bccah		;bcbe
 	call hl_mas_a		;bcc1
@@ -11646,7 +11646,7 @@ DATA_notas_del_teclado:
 ; ======================================================================
 
 
-L_BCFB:
+cursor_derecha:		; los dos sprites del cursor 4 puntos a la derecha, con Y = C y patrones D, E
 	ld b,002h		;bcfb
 	push hl			;bcfd
 	ld hl,0d870h		;bcfe
@@ -11665,7 +11665,7 @@ L_BD01:
 	djnz L_BD01		;bd0d
 	pop hl			;bd0f
 	ret			;bd10
-L_BD11:
+cursor_izquierda:		; lo mismo 4 puntos a la izquierda
 	ld b,002h		;bd11
 	push hl			;bd13
 	ld hl,0d870h		;bd14
@@ -11684,22 +11684,22 @@ L_BD17:
 	djnz L_BD17		;bd23
 	pop hl			;bd25
 	ret			;bd26
-L_BD27:
-	ld a,(0d8f6h)		;bd27
+layout_estado_0:		; la cortina y la pantalla del teclado
+	ld a,(0d8f6h)		;bd27   ; con SYN pedido, nada
 	or a			;bd2a
 	ret nz			;bd2b
 	call empieza_cambio		;bd2c
 	call cortina_de_salida		;bd2f
 	ret p			;bd32
-L_BD33:
+layout_pantalla:		; el teclado, la fuente, los sprites de 0xBD55 y la nota 0
 	call pantalla_teclado		;bd33
-	call L_B392		;bd36
+	call fuente_letras		;bd36
 	call fin_de_cambio		;bd39
-	ld hl,0bd55h		;bd3c
+	ld hl,0bd55h		;bd3c   ; el cursor
 	ld de,0d870h		;bd3f
 	ld bc,00008h		;bd42
 	ldir		;bd45
-	xor a			;bd47
+	xor a			;bd47   ; la nota 0, byte 0x13
 	ld (0d905h),a		;bd48
 	ld a,013h		;bd4b
 	ld (0d906h),a		;bd4d
@@ -11732,19 +11732,19 @@ DATA_tablas_del_teclado:
 ; ======================================================================
 
 
-L_BE41:
-	call prepara_el_programa		;be41
-	ld hl,0d80bh		;be44
+empieza_demo:		; la intro ensena una pantalla del programa: prepara el programa y elige la siguiente de 0xBE5E
+	call prepara_el_programa		;be41   ; timbres, ondas y LAYOUT de fabrica
+	ld hl,0d80bh		;be44   ; la demo siguiente...
 	inc (hl)			;be47
 	ld a,(hl)			;be48
 	and 003h		;be49
-	ld de,0be5eh		;be4b
+	ld de,0be5eh		;be4b   ; ...de cuatro (0xBE5E)
 	call de_mas_a		;be4e
 	ld a,(de)			;be51
 	ld (0d8f4h),a		;be52
-	xor a			;be55
+	xor a			;be55   ; estado 0
 	ld (0d8fah),a		;be56
-	inc a			;be59
+	inc a			;be59   ; 0xD863 = 1: demo en marcha
 	ld (0d863h),a		;be5a
 	ret			;be5d
 
@@ -11760,15 +11760,15 @@ DATA_pantalla_inicial:
 ; ======================================================================
 
 
-L_BE62:
-	call fase_programa		;be62
-	ld a,(0d803h)		;be65
+demo:		; cada cuadro de la demo: la pantalla, y 0xD863 = 0 a los 512 cuadros
+	call fase_programa		;be62   ; la pantalla
+	ld a,(0d803h)		;be65   ; cada dos cuadros...
 	bit 0,a		;be68
 	ret z			;be6a
-	ld hl,0d80ch		;be6b
+	ld hl,0d80ch		;be6b   ; ...cuenta hasta 256
 	inc (hl)			;be6e
 	ret nz			;be6f
-	xor a			;be70
+	xor a			;be70   ; se acabo la demo
 	ld (0d863h),a		;be71
 	ret			;be74
 
@@ -11787,21 +11787,21 @@ DATA_rotulo_push_space_key:
 ; ======================================================================
 
 
-L_BEA6:
+efecto_si_en_marcha:		; el efecto A solo con el programa en marcha (bit 6 de 0xD802)
 	di			;bea6
 	push hl			;bea7
 	ld hl,0d802h		;bea8
 	bit 6,(hl)		;beab
 	jr z,L_BEBC		;bead
 	jr L_BEB3		;beaf
-L_BEB1:
+efecto:		; arranca el efecto A en el PSG sin tocar registros
 	di			;beb1
 	push hl			;beb2
 L_BEB3:
 	push de			;beb3
 	push bc			;beb4
 	push af			;beb5
-	call L_BEBF		;beb6
+	call arranca_efecto		;beb6
 	pop af			;beb9
 	pop bc			;beba
 	pop de			;bebb
@@ -11809,33 +11809,33 @@ L_BEBC:
 	pop hl			;bebc
 	ei			;bebd
 	ret			;bebe
-L_BEBF:
-	ld c,a			;bebf
-	ld b,002h		;bec0
+arranca_efecto:		; los efectos 0 y 1 van al canal C; los demas a A y B; uno de numero menor no corta al que suena
+	ld c,a			;bebf   ; C = el efecto
+	ld b,002h		;bec0   ; dos canales desde el A...
 	ld hl,0d812h		;bec2
 	and 03fh		;bec5
-	cp 002h		;bec7
+	cp 002h		;bec7   ; ...los efectos 2 en adelante
 	jr c,L_BECE		;bec9
 	inc b			;becb
 	jr L_BED2		;becc
 L_BECE:
-	dec b			;bece
+	dec b			;bece   ; ...o uno, el C
 	ld hl,0d81ch		;becf
 L_BED2:
-	ld a,(hl)			;bed2
+	ld a,(hl)			;bed2   ; el que suena
 	and 03fh		;bed3
 	ld e,a			;bed5
 	ld a,c			;bed6
 	and 03fh		;bed7
-	cp e			;bed9
+	cp e			;bed9   ; el nuevo es menor: nada
 	ret c			;beda
-	cp 001h		;bedb
+	cp 001h		;bedb   ; el 1 no se corta a si mismo
 	jr nz,L_BEE3		;bedd
 	ld a,e			;bedf
 	cp 001h		;bee0
 	ret z			;bee2
 L_BEE3:
-	ld a,c			;bee3
+	ld a,c			;bee3   ; sus listas en 0xBEFE
 	add a,a			;bee4
 	ld de,0befeh		;bee5
 	add a,e			;bee8
@@ -11843,15 +11843,15 @@ L_BEE3:
 	jr nc,L_BEED		;beea
 	inc d			;beec
 L_BEED:
-	dec hl			;beed
+	dec hl			;beed   ; la cuenta a 1...
 	dec hl			;beee
 L_BEEF:
 	ld (hl),001h		;beef
 	inc hl			;bef1
 	inc hl			;bef2
-	ld (hl),c			;bef3
+	ld (hl),c			;bef3   ; ...el efecto activo...
 	inc hl			;bef4
-	ld a,(de)			;bef5
+	ld a,(de)			;bef5   ; ...y el puntero a su lista
 	ld (hl),a			;bef6
 	inc hl			;bef7
 	inc de			;bef8

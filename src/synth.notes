@@ -2610,3 +2610,1044 @@ C 0x712B relleno: iguala los ciclos
 C 0x712C relleno: iguala los ciclos
 C 0x712E relleno: iguala los ciclos
 C 0x712F hasta acabar la pagina
+
+# ----------------------------------------------------------------------
+# TONE EDIT (tanda 8): 0xDB01 = el campo (0 el nombre, 1-20 los valores de
+# los bytes 2-21, 21-24 los conmutadores, 25-26 las ondas, 27-28 los FEET).
+# Los cursores mueven por la tabla 0xAC26; INS (0x43) suma, DEL (0x44)
+# resta y las cifras 0-9 (codigos 1-10) escriben el valor.
+# ----------------------------------------------------------------------
+L 0xA5AA pantalla_tone_edit  TONE EDIT: el cursor parpadea; segun 0xD8FA prepara la pantalla o edita el campo de 0xDB01
+C 0xA5AA color 8 del cursor...
+C 0xA5AC ...o 12, cada 16 cuadros
+C 0xA5B6 al sprite del cursor
+C 0xA5B9 el estado de la pantalla:
+C 0xA5BD 1: 0xACDA
+C 0xA5C0 0: la pantalla fija
+C 0xA5C5 2: 0xAD31
+C 0xA5C8 solo con el programa en marcha
+C 0xA5D0 el byte de teclas con repeticion
+C 0xA5D3 arriba: B = 0
+C 0xA5DA abajo: 1
+C 0xA5DE izquierda: 2
+C 0xA5E2 derecha: 3; ninguna, a editar
+C 0xA5E6 0x1E entradas por direccion
+C 0xA5EA mas el campo
+C 0xA5EF el campo vecino en 0xAC26
+C 0xA5F6 el mismo: no se mueve
+C 0xA5F9 el campo nuevo
+C 0xA5FA su sitio para el cursor en 0xAC9E
+C 0xA602 los dos sprites del cursor
+C 0xA607 Y...
+C 0xA60B ...y X
+C 0xA613 el efecto 1
+C 0xA618 el modo de escritura del campo (0xA9B3)...
+C 0xA623 ...a 0xDB06 y 0xDB07
+L 0xA629 edita_campo  edita el campo 0xDB01 del timbre en curso
+C 0xA629 los sprites 2, 3 y 4 sin color
+C 0xA633 HL = el timbre en curso
+C 0xA636 C = las teclas
+C 0xA63D campo 0: el nombre
+C 0xA643 0xDB03 = 0
+C 0xA648 campos 1-20: valores
+C 0xA64D 21-24: conmutadores
+C 0xA652 25-26: las ondas
+C 0xA657 27: FEET del DCO
+C 0xA65B 29: 0xAC08
+C 0xA660 28: FEET del LFO, el byte 23
+C 0xA665 sin escribir cifras...
+C 0xA671 ...el paso es 1...
+C 0xA679 ...o 0x10 con 0xDB04
+C 0xA67B INS o DEL
+C 0xA686 INS: suma...
+C 0xA688 ...sin llegar a 0
+C 0xA68D DEL: resta...
+C 0xA68F ...sin llegar a 0
+C 0xA693 con 0xDB04 solo el nibble alto, al menos 0x10
+C 0xA6A4 1024000 / el valor (0x0FA000)...
+C 0xA6AF ...dos cifras en 0x393C...
+C 0xA6BA ...y cuatro delante
+L 0xA6C3 campo_feet_dco  FEET del DCO (byte 1): INS lo dobla hasta 0x20, DEL lo parte hasta 1; 64000 / valor en 0x38C5
+C 0xA6C3 el byte 1
+C 0xA6CA INS o DEL
+C 0xA6D4 INS: por dos...
+C 0xA6D6 ...como mucho 0x20
+C 0xA6DE DEL: la mitad...
+C 0xA6E0 ...como poco 1
+C 0xA6E5 64000 / el valor...
+C 0xA6F0 ...dos cifras en 0x38C5
+L 0xA6FB pies  0xDBF0-0xDBF3 = el cociente de A:DE entre BC en BCD, redondeado a la decena y sin la ultima cifra
+C 0xA6FB la division de 24 bits
+C 0xA701 a BCD
+C 0xA704 los cuatro bytes, el bajo primero
+C 0xA711 la ultima cifra 5 o mas...
+C 0xA718 ...sube una decena...
+C 0xA71F ...con el acarreo
+C 0xA72B y se quita la ultima cifra
+L 0xA739 campo_nombre  el nombre, siete letras: letras y cifras escriben, ESPACIO pone un espacio, BS vuelve atras
+C 0xA73E el sprite del cursor de letra...
+L 0xA742 cursor_de_letra_67  lo mismo con X base 0x67
+C 0xA744 0xDB03 = la letra en curso
+C 0xA748 X = base + 8 * letra
+C 0xA74F Y del cursor
+C 0xA755 0xDB17: el nombre del fichero en vez del timbre
+C 0xA760 HL = 0xDB0F
+C 0xA766 el del timbre: bytes 25-31
+C 0xA771 la tecla nueva
+C 0xA777 de 0x31 en adelante, no
+C 0xA77B letras (0x17-0x30)...
+C 0xA77F ...cifras (1-10)...
+C 0xA783 ...a los tiles 0x40-0x49
+C 0xA788 las letras a los tiles 0x21-0x3A
+C 0xA78C a la letra en curso...
+C 0xA78D ...y a la siguiente
+C 0xA792 BS (0x3E): atras
+C 0xA799 ESPACIO...
+C 0xA7A0 ...un espacio
+L 0xA7A7 letra_siguiente  0xDB03 + 1, de 0 a 6
+L 0xA7B2 letra_anterior  0xDB03 - 1, de 6 a 0
+L 0xA7BB suma_cifra  el valor + cifra * E
+L 0xA7CB por_e  L = A * E, 0xFF si pasa de un byte
+L 0xA7D7 campo_valor  campos 1-20: la cifra tecleada o INS/DEL, con el maximo de 0xA98B, y el valor en pantalla
+C 0xA7D7 HL = el byte 2 + campo - 1
+C 0xA7E4 el campo admite OFF? (0xA92D)
+C 0xA7F0 sin escribir cifras
+C 0xA7F7 0xA94C
+C 0xA7FA el maximo del campo (0xA98B)...
+C 0xA806 ...en 0xDB1B; 0 = 0xFF
+C 0xA809 una cifra (codigos 1-10)?
+C 0xA813 0xDB06: cuantas cifras faltan
+C 0xA816 la primera borra el valor
+C 0xA821 centenas pendientes...
+C 0xA826 ...por 100
+C 0xA82D decenas pendientes...
+C 0xA832 ...por 10
+C 0xA838 y las unidades
+C 0xA83F una cifra menos
+C 0xA847 la ultima: las pendientes a cero...
+C 0xA851 ...y vuelve a empezar
+C 0xA858 decenas pendientes
+C 0xA864 apunta la cifra
+L 0xA86A suma_con_maximo  (HL) + A, como mucho el maximo C (o 0xFF)
+L 0xA883 campo_ins_del  INS suma 1 hasta el maximo; DEL resta 1 hasta 0
+C 0xA887 INS o DEL
+C 0xA896 DEL con maximo
+C 0xA89D DEL sin maximo
+C 0xA8A6 INS con maximo
+C 0xA8B1 INS sin maximo
+L 0xA8B7 campo_off  con 0xDB04, OFF
+L 0xA8C0 campo_en_pantalla  el valor en tres cifras (0xA9C7) y su barra (0xA9EF)
+C 0xA8C1 a decimal
+C 0xA8C5 a 0xDBF0
+C 0xA8CC la direccion de las cifras del campo
+C 0xA8D4 tres cifras
+C 0xA8D9 la direccion de su barra
+C 0xA8DF cuanto se corre el valor (0xA99F)
+C 0xA8EC 0: el valor por dos
+C 0xA8F8 el valor corrido B veces
+C 0xA8FC si no es cero, al menos 1
+
+# TONE EDIT, segunda parte. 0xDB02 = 1: solo pintar (sin teclas);
+# 0xDB04 = 1 con el bit 7 del byte 24 a cero; 0xDB08: repintando campos.
+C 0xA900 la barra de cuatro tiles de 0xAA17...
+C 0xA909 ...la entrada A
+C 0xA90D a la VRAM
+L 0xA914 pinta_off  valor 0 y los tres tiles de OFF (0xA92A) delante de las cifras
+C 0xA914 el valor a cero
+C 0xA916 donde van sus cifras
+C 0xA91D los tres tiles de OFF...
+C 0xA923 ...dos tiles antes
+C 0xA928 y la barra
+L 0xA92D campo_con_off  acarreo si el campo A esta en la lista de 0xA947 (los que dicen OFF con 0)
+C 0xA938 la lista, hasta 0xFF
+C 0xA941 esta: acarreo
+C 0xA944 no esta
+L 0xA94C cursor_de_valor  los sprites 2 y 3 junto al campo, con color 8
+C 0xA94C Y del cursor - 1
+C 0xA956 X - 0x3A...
+C 0xA95E ...y 0x10 mas alla
+C 0xA963 color 8
+L 0xA96C palabra_del_campo  DE = la palabra (0xDB01 - 1) de la tabla HL
+L 0xA978 a_decimal  DE = L en BCD
+C 0xA978 8 bits
+C 0xA97E el bit alto de L...
+C 0xA980 ...entra en E por la derecha, en BCD...
+C 0xA984 ...con el acarreo a D
+L 0xAA5B campo_conmutador  campos 21-24: los bits del byte 24; INS los apaga, DEL los enciende (el 21 tiene tres posiciones)
+C 0xAA5B el byte 24
+C 0xAA60 conmutador 0-3
+C 0xAA67 su mascara en 0xAB31
+C 0xAA6D solo pintar?
+C 0xAA75 INS o DEL
+C 0xAA82 INS: 0xFF es el de tres posiciones...
+C 0xAA87 ...si no, apaga el bit
+C 0xAA8C el de tres: baja
+C 0xAA94 DEL: enciende el bit...
+C 0xAA9D ...o sube el de tres, hasta 2
+C 0xAAA5 el campo 24, el bit 7...
+C 0xAAB2 ...cambia 0xDB04...
+C 0xAAC6 ...y repinta los campos de 0xAB50
+C 0xAACA su entrada de 0xAB35: cuanto se corre y donde va
+C 0xAADC 0: el de tres posiciones (0xAB47)
+C 0xAAE8 el bit (0xAB41)
+C 0xAAF1 tres tiles por posicion
+C 0xAAF9 tres tiles en vertical
+C 0xAB01 una fila mas abajo
+L 0xAB09 repinta_campos  vuelve a pintar los campos de la lista 0xAB50 y deja el campo como estaba
+C 0xAB09 repintando
+C 0xAB0E guarda el campo
+C 0xAB18 uno de la lista
+C 0xAB26 el campo de antes
+L 0xAB58 campo_onda  campos 25-26: la onda del DCO (byte 0, en 0x3905) o la del LFO (byte 22, en 0x3977); INS y DEL dan la vuelta
+C 0xAB58 el DCO
+C 0xAB62 el LFO, byte 22
+C 0xAB76 16 ondas...
+C 0xAB7E ...o 15 con 0xDB04
+C 0xAB80 INS o DEL
+C 0xAB8B INS: la siguiente...
+C 0xAB90 ...y de la ultima a la 0
+C 0xAB94 DEL: la anterior...
+C 0xAB99 ...y de la 0 a la ultima
+C 0xAB9E con 0xDB04 la 15 no vale
+C 0xABAC el numero mas uno
+C 0xABAF de 10 en adelante...
+C 0xABB5 ...a decimal
+C 0xABBA dos cifras
+C 0xABC4 cuatro tiles mas alla...
+C 0xABC8 ...el dibujo de la onda, tres tiles de 0xABD8
+L 0xAC08 campo_29  0xB1E8; con acarreo, la pantalla se prepara otra vez (0xD8FA = 1)
+L 0xACDA tone_edit_estado_1  la cabecera y los cinco sprites de 0xAC12
+C 0xACDD los sprites del cursor...
+C 0xACE3 ...0x14 bytes
+L 0xACEA cabecera_del_timbre  el numero del timbre (0xDB00 + 1, dos cifras en 0x384B) y su nombre
+C 0xACEA el numero, de 1 a 16...
+C 0xACEF ...en decimal
+C 0xACF2 las unidades...
+C 0xACF7 ...en 0x384C
+C 0xACFE las decenas, delante
+L 0xAD0A nombre_del_timbre  las siete letras: del timbre en 0x384E, o del fichero (0xDB0F) en 0x398D si 0xDB17
+C 0xAD16 el timbre en curso...
+C 0xAD19 ...bytes 25-31
+L 0xAD21 siete_letras  siete tiles de DE en HL; el espacio es el tile 0
+L 0xAD31 tone_edit_estado_2  pinta todos los campos y deja el cursor en el 29
+C 0xAD31 solo pintar
+C 0xAD36 el 24 primero (0xDB04)
+C 0xAD3E y del 0 al 0x20
+C 0xAD4E se acabo pintar
+C 0xAD52 el cursor en el 29
+L 0xAD55 estado_siguiente  0xD8FA + 1
+
+# ----------------------------------------------------------------------
+# WAVE EDIT (tanda 10): la onda del usuario 0xDB00 (0xC000 + 0x100 * n).
+# 0xDA80 = la muestra del cursor (TIME = 0xDA80 / 4), 0xDA87 = el paso del
+# cursor (MODE), 0xDA86 = la cuenta del modo, 0xDA8D = hay que repintar.
+# Arriba/abajo cambian la muestra, izquierda/derecha mueven el cursor,
+# SELECT cambia el modo, CTRL + HOME borra la onda, una tecla la escucha.
+# ----------------------------------------------------------------------
+L 0xAD5A tone_edit_estado_0  la pantalla fija de TONE EDIT tras la cortina
+C 0xAD5A cambiando de pantalla
+C 0xAD5D una columna; P mientras quedan
+C 0xAD61 el nombre del timbre, no el del fichero
+C 0xAD65 pantalla apagada
+C 0xAD68 lo comun
+C 0xAD6B patrones...
+C 0xAD74 ...colores...
+C 0xAD7D ...y nombres
+C 0xAD83 0x30 en los colores de 0x0900
+C 0xAD8E los rotulos
+C 0xAD94 pantalla encendida
+L 0xAD9C a_bcd_24  BCDE = HL:E' de 24 bits en BCD
+C 0xADA3 24 bits
+C 0xADA7 el bit alto...
+C 0xADAB ...entra por abajo, en BCD, byte a byte
+L 0xADC0 divide_24  A:DE / BC por restas: el cociente en A:DE
+C 0xADC4 24 bits
+C 0xADC7 el dividendo a la izquierda...
+C 0xADCC ...al resto
+C 0xADCE cabe el divisor?
+C 0xADD2 si: un 1 en el cociente
+C 0xADD5 no: deshace
+L 0xADDB timbre_en_curso  HL = 0xD000 + 0x20 * (0xDB00)
+L 0xADEB por_8  HL = H * E
+L 0xADF7 pantalla_wave_edit  WAVE EDIT: segun 0xD8FA prepara la pantalla o edita la onda
+C 0xADF7 un numero de onda tecleado: otra vez la cabecera
+C 0xAE01 el estado:
+C 0xAE05 1: 0xAFA0
+C 0xAE08 0: la pantalla
+C 0xAE0D 2: 0xAFC7, dibuja la onda
+C 0xAE10 con el canal A del PSG sonando, nada
+C 0xAE15 la tecla tenida
+C 0xAE1B una del teclado musical...
+C 0xAE1F ...suena la onda con su nota
+L 0xAE26 wave_edit_teclas  repinta si hace falta y atiende las teclas
+C 0xAE26 repinta
+C 0xAE29 HL = la muestra del cursor
+C 0xAE2C CTRL (0x32)...
+C 0xAE33 ...y HOME (fila 8, bit 1)...
+C 0xAE3B ...la onda entera a cero
+C 0xAE49 y se dibuja otra vez
+L 0xAE4F wave_edit_cursores  SELECT cambia el modo; izquierda y derecha mueven el cursor; arriba y abajo cambian la muestra
+C 0xAE4F SELECT (0x3F)
+C 0xAE57 las teclas con repeticion
+C 0xAE5B izquierda o derecha
+C 0xAE60 arriba o abajo
+C 0xAE66 la muestra
+C 0xAE69 arriba: sube...
+C 0xAE6D ...hasta 0x7F
+C 0xAE73 abajo: baja...
+C 0xAE77 ...hasta 0x82 (-126)
+C 0xAE7B los puntos de esa muestra
+C 0xAE7F RANGE en pantalla
+C 0xAE82 a repintar
+L 0xAE88 repinta_onda  las columnas del tramo del cursor, de dos en dos muestras
+C 0xAE8D 0xB236
+C 0xAE96 el paso...
+C 0xAE9B ...desde el cursor
+C 0xAEA3 una columna
+C 0xAEA8 dos muestras mas alla
+C 0xAEAF hecho
+L 0xAEB4 modo_siguiente  0xDA86 baja de 3 a 0 y vuelta; el paso 0xDA87 = 2 << modo; MODE en 0x38DC
+C 0xAEB9 la cuenta del modo
+C 0xAEC5 el paso: 2 << modo
+C 0xAECE MODE en pantalla...
+C 0xAED3 ...con el valor de 0xAEDD
+L 0xAEE1 mueve_cursor  izquierda o derecha, de paso en paso (0xDA87); el sprite le sigue
+C 0xAEE6 el paso
+C 0xAEED X del sprite
+C 0xAEF0 la muestra del cursor
+C 0xAEF6 derecha?
+C 0xAEFB izquierda: en la 0, nada
+C 0xAF03 atras un paso, alineado
+C 0xAF07 el sprite medio paso
+C 0xAF11 sin bajar de 0x38
+C 0xAF19 los sprites del cursor
+C 0xAF25 derecha: hasta la ultima
+C 0xAF32 adelante un paso, alineado
+C 0xAF37 el sprite medio paso
+C 0xAF42 sin pasar del final
+C 0xAF4F los sprites del cursor
+L 0xAF60 cursor_en_pantalla  la muestra del cursor, RANGE y TIME (0xDA80 / 4, en 0x38C4)
+C 0xAF63 los puntos de la muestra
+C 0xAF66 RANGE
+C 0xAF6A TIME en 0x38C4...
+C 0xAF71 ...el cursor / 4
+L 0xAF77 tres_cifras  L en tres cifras decimales en la direccion de la pila
+L 0xAF87 range  la muestra C con su signo (0x4D +, 0x4C -) en 0x3962 y tres cifras en 0x3965
+C 0xAF87 el signo +
+C 0xAF8D negativa: el valor absoluto...
+C 0xAF91 ...y el signo -
+L 0xAFA0 wave_edit_estado_1  la cabecera, el cursor en la muestra 0 y el modo 3
+C 0xAFA3 el cursor a 0
+C 0xAFAD los sprites del cursor en X = 0x38
+C 0xAFBA modo 3...
+C 0xAFBF ...y en pantalla
+L 0xAFC2 estado_siguiente_2  0xD8FA + 1
+L 0xAFC7 wave_edit_estado_2  dibuja la onda dos muestras por cuadro, con el cursor detras
+C 0xAFC7 la columna de esta muestra
+C 0xAFD0 dos muestras mas alla
+C 0xAFD5 la vuelta entera: se acabo
+C 0xAFD7 el cursor avanza con el dibujo
+L 0xAFE6 onda_dibujada  el cursor en su sitio, el efecto 2 y a editar
+C 0xAFE9 el efecto 2
+L 0xAFF9 wave_edit_estado_0  la pantalla de WAVE EDIT tras la cortina; FEET del timbre en curso a 0xDC01 para escuchar
+C 0xAFF9 el nombre del timbre
+C 0xAFFD el byte 1 del timbre, FEET...
+C 0xB002 ...a 0xDC01
+C 0xB005 la cortina
+C 0xB00C pantalla apagada
+C 0xB012 los sprites de 0xB1CD
+C 0xB021 lo comun
+C 0xB024 los rotulos y el marco
+C 0xB036 los patrones del grafico a cero
+C 0xB04C 0x8815
+C 0xB052 los colores del grafico: 0x81
+C 0xB068 una linea 0x8C en 16 tiles: el eje
+C 0xB07D la tabla de nombres del grafico...
+C 0xB080 ...por la lista de 0xB1E4
+C 0xB089 16 tiles seguidos por fila
+C 0xB097 la fila siguiente
+C 0xB0A2 pantalla encendida
+
+# WAVE EDIT, segunda parte: el grafico de la onda (columna x = muestra / 2,
+# altura de 0x20 a 0xA0) y el relleno entre muestras.
+L 0xB0AB columna_de_la_onda  repinta la columna de la muestra 0xDA8A: lee sus 16 tiles de la VRAM, borra su bit y pinta los puntos de la mas baja a la mas alta de sus vecinas
+C 0xB0AB DE = la muestra
+C 0xB0B2 x = muestra / 2
+C 0xB0B8 el bit de x dentro del tile (0xB1D9)
+C 0xB0C1 0xDA81 = el bit, 0xDA82 = 0x40 + x
+C 0xB0CA tres alturas: la siguiente, esta y la anterior
+C 0xB0CF a fila del grafico
+C 0xB0DD en la primera y la ultima muestra...
+C 0xB0E6 ...falta una vecina
+C 0xB0EA ordena: la mas baja y la mas alta
+C 0xB111 cuantos puntos: alta - baja
+C 0xB119 el tile de la columna en la tabla de nombres
+C 0xB124 SETRD
+C 0xB127 el tercio
+C 0xB12D la direccion de sus patrones
+C 0xB139 el tile
+C 0xB13D por 8
+C 0xB145 16 tiles de alto...
+C 0xB147 ...a 0xDA00
+C 0xB150 sus 8 lineas
+C 0xB156 el tile de debajo
+C 0xB15C borra el bit de la columna en las 128 lineas
+C 0xB16B B = el bit, C = cuantos puntos
+C 0xB176 desde la mas baja
+C 0xB17C un punto
+C 0xB18B y los 16 tiles a la VRAM
+L 0xB19D muestra_del_cursor  HL = la muestra 0xDA80 de la onda 0xDB00
+L 0xB1A0 muestra_a  HL = la muestra A de la onda 0xDB00
+L 0xB1A4 muestra_a_de_onda  HL = 0xC000 + 0x100 * onda + B
+L 0xB1AE tile_de_debajo  HL = los patrones del tile de la fila siguiente (0x80 mas, o salta de tercio)
+C 0xB1AF en la mitad de abajo del tile...
+C 0xB1B4 ...al final de un tercio salta al siguiente
+L 0xB1E8 otra_onda  INS o DEL cambian la onda o el timbre 0xDB00 (0-15); acarreo si cambia
+C 0xB1E8 repintando: nada
+C 0xB1F0 INS: la siguiente
+C 0xB1F7 DEL: la anterior
+C 0xB1FF de 0 a 15
+L 0xB207 altura  la muestra A a fila del grafico: 0x60 - A / 2 si es positiva, 0x60 + |A| / 2 si es negativa
+C 0xB207 negativa?
+C 0xB20B 0x60 - A / 2
+C 0xB214 0x60 + |A| / 2
+L 0xB21B cursor_a_la_muestra  la Y del sprite del cursor = altura - 4
+L 0xB225 relleno_siguiente  el siguiente tramo del relleno
+L 0xB234 relleno_cortado  vuelve dos niveles: el relleno se corta
+L 0xB236 relleno_de_tramo  rellena en linea recta las muestras entre el cursor y un paso atras (el paso, 0xDA87)
+C 0xB236 dos tramos
+C 0xB241 el paso
+L 0xB24B relleno_bucle  muestra a muestra; arriba o abajo cortan
+C 0xB24B las teclas
+C 0xB24F arriba o abajo: se corta
+C 0xB256 la muestra del tramo
+C 0xB260 quedan muestras?
+C 0xB27F diferencia * 16 (0xB308)...
+C 0xB291 ...entre el paso: la pendiente
+C 0xB29B las dos muestras sin signo
+C 0xB2AD la diferencia y su signo (0xDA8C)
+C 0xB2C9 por la posicion...
+C 0xB2D1 ...entre 16
+C 0xB2D7 sube o baja
+C 0xB2F2 otra vez con signo
+C 0xB2FF -128 no: -127
+C 0xB304 la muestra rellenada
+L 0xB308 por_16  DE:HL = DE * BC, 16 por 16 bits
+L 0xB31C sin_signo  la muestra con signo a 0x80 = cero
+L 0xB32A pantalla_encendida  R1 = 0xE2
+L 0xB32E pantalla_apagada  R1 = 0xA2
+L 0xB335 comun_de_trabajo  lo comun de las pantallas de trabajo: la franja de arriba, la fuente, el menu, las cifras y el marco
+C 0xB335 la franja de arriba
+C 0xB33B la fuente desde la A
+L 0xB33E menu_cifras_y_marco  el menu de abajo, los diez digitos con su color y el marco
+C 0xB341 los diez digitos
+C 0xB34D su color, uno por digito...
+C 0xB353 ...0x9E87 en TONE EDIT...
+C 0xB35C ...0x9E8F en las demas
+C 0xB36E el marco: 0x82A5...
+C 0xB377 ...0x84EB...
+C 0xB380 ...0x8531...
+C 0xB389 ...y 0x8552
+L 0xB392 fuente_letras  la fuente desde la A (0x446E en 0x2100) y su color 0xF0
+L 0xB3A6 sprites_a_cero  la copia de los atributos, 0x20 bytes, a cero
+
+# ----------------------------------------------------------------------
+# LAS PANTALLAS 4, 5 Y 6 (tanda 12)
+# 5: copia un timbre y su onda en otro (0xD920 el numero en BCD, 0xD921 de
+#    0 a 15, 0xD923 origen, 0xD924 destino, 0xD922 cuantos van elegidos).
+# 6: la lista de los 16 timbres.
+# 4: FILE, el menu de opciones (0xDB0C) y la operacion (0xDB0B).
+# ----------------------------------------------------------------------
+L 0xB3AF pantalla_copia  la pantalla 5: elige con arriba/abajo un timbre de origen y otro de destino, cada uno con RETURN, y copia timbre y onda
+C 0xB3AF color 8 del cursor...
+C 0xB3B8 ...o 4, cada 16 cuadros
+C 0xB3BE el estado de la pantalla:
+C 0xB3C2 1: la lista
+C 0xB3C5 0: la pantalla
+C 0xB3CA 2: 0xB4C1
+C 0xB3CD RETURN (0x40)?
+C 0xB3D5 cuantos elegidos
+C 0xB3E1 el primero...
+C 0xB3E4 ...su rotulo de 0xB5C3
+C 0xB3F0 el numero elegido, a 0xD923 o 0xD924
+C 0xB3F4 y en pantalla
+C 0xB3FB uno mas
+C 0xB3FD faltan: espera al otro
+C 0xB400 el timbre de origen...
+C 0xB414 ...y el de destino
+C 0xB429 los 32 bytes
+C 0xB42E y su onda: origen...
+C 0xB438 ...destino
+C 0xB43F 256 bytes
+C 0xB444 el efecto 2
+C 0xB449 todo a cero
+C 0xB453 la lista otra vez
+L 0xB458 copia_cursor  arriba o abajo cambian el numero (1-16, en BCD y en binario) y el sprite le sigue
+C 0xB45B arriba o abajo
+C 0xB461 arriba?
+C 0xB465 el sprite 0x10 mas arriba
+C 0xB469 en el 1, nada
+C 0xB46B el efecto 1
+C 0xB471 uno menos...
+C 0xB473 ...tambien en BCD
+C 0xB47B abajo: hasta el 16
+C 0xB480 el efecto 1
+C 0xB486 uno mas...
+C 0xB488 ...tambien en BCD
+C 0xB48E el sprite 0x10 mas abajo
+C 0xB490 del 8 al 9: a la otra columna (0xB565)
+C 0xB499 del 9 al 8: a la primera (0xB55D)
+C 0xB4A8 la Y de los dos sprites
+L 0xB4B4 timbre_a_hl  HL = 0xD000 + 0x20 * A
+L 0xB4C1 copia_estado_2  los sprites de 0xB555 y el rotulo de 0xB5A1
+L 0xB4D4 lista_estado_0  la pantalla de las pantallas 5 y 6 tras la cortina
+C 0xB4D4 la cortina y la pantalla de FILE
+C 0xB4D8 borra un recuadro de 13 filas de 6 tiles
+C 0xB4EC la cabecera: 0xB587 en la 5...
+C 0xB4F6 ...0xB56D en la 6
+C 0xB4FC 0xD920 = 1 y lo demas a cero
+L 0xB509 lista_de_timbres  los 16 timbres: numero, punto y nombre, en dos columnas de ocho
+C 0xB50A del 1...
+C 0xB50B ...con el nombre del timbre 0
+C 0xB512 el numero
+C 0xB516 el punto
+C 0xB51C las siete letras
+C 0xB51F el timbre siguiente
+C 0xB524 la fila siguiente
+C 0xB52A en BCD
+C 0xB52D el 9, a la segunda columna
+C 0xB534 hasta el 16
+L 0xB538 lista_hecha  0xD8FA + 1
+L 0xB53D dos_cifras_bcd  el BCD A en dos cifras; sin decena, el tile 0
+L 0xB5C8 pantalla_lista  la pantalla 6: los sprites fuera y la lista de timbres
+C 0xB5C8 sin sprites
+L 0xB5DB pantalla_file  FILE (pantalla 4): el menu de opciones; RETURN elige; la opcion 9 hace la operacion
+C 0xB5DB el cursor parpadea...
+C 0xB5E6 ...en el menu o en el nombre (0xDB16)
+L 0xB606 file_menu  arriba y abajo mueven por las opciones; RETURN elige
+C 0xB606 0: la pantalla
+C 0xB60D con el canal A sonando, nada
+C 0xB612 0xDB0B: una operacion en marcha
+C 0xB61D las teclas recien pulsadas
+C 0xB625 RETURN?
+L 0xB62D file_mueve  la opcion siguiente o la anterior, saltando el disco si no hay y las que no tocan
+C 0xB62D el efecto 1
+C 0xB632 las opciones elegidas
+C 0xB637 abajo:
+C 0xB63B la siguiente
+C 0xB641 sin disco, salta la 1
+C 0xB64D 4 y 5 solo con el bit 0
+C 0xB653 de la 9 a la 0
+C 0xB65B arriba: la anterior...
+C 0xB65F ...de la 0 a la 9
+C 0xB668 sin disco, salta la 1
+C 0xB676 4 y 5 solo con el bit 0
+C 0xB67C el sprite a la opcion (0xB729)
+L 0xB68F file_elige  RETURN: marca la opcion en 0xDB0E y la pinta; la 9 (o mas) arranca la operacion
+C 0xB696 la 0 tambien pinta la 2
+L 0xB6A0 file_marca  0xDB0E con la mascara y el bit de la opcion (0xB733) y la marca en pantalla
+C 0xB6B5 la 0: cinta
+C 0xB6BD la 1: disco
+C 0xB6CF la 9 o mas: la operacion...
+C 0xB6D7 ...0xDB0B = 1
+C 0xB6E1 el grupo de la opcion: 6-8, 2-3 o 0-1
+C 0xB6F0 borra las marcas del grupo
+C 0xB6FF y marca la elegida
+L 0xB70B marca_cinta  las marcas de cinta
+L 0xB716 sitio_de_opcion  HL = la direccion de pantalla de la opcion A (0xB75A)
+L 0xB722 marca_0xb747  la marca de 0xB747 en HL
+L 0xB76E file_estado_0  la pantalla de FILE tras la cortina; el vector de errores del disco a 0x50DE
+C 0xB778 en las pantallas 5 y 6...
+C 0xB783 ...sin sprites
+C 0xB78D en FILE el cursor de 0xBA6C
+C 0xB798 lo comun
+C 0xB79B patrones, colores y nombres de FILE
+C 0xB7B3 la flecha
+C 0xB7B9 0xB80D
+C 0xB7BC sin disco: las marcas de cinta
+C 0xB7D1 el nombre del fichero a espacios
+C 0xB7DE nada en marcha
+C 0xB7E8 0xDB17: se edita el nombre del fichero
+C 0xB7EC la opcion 9
+C 0xB7F1 el codigo de 0xB832 a 0xD9A6...
+C 0xB7FC ...y DISKVE (0xF323) apunta ahi
+
+# FILE, la operacion. 0xDB0E: bit 0 el aparato (0 cinta, 1 disco); bits 1-2
+# lo que se hace (cinta: bit 1 carga; disco: 0 graba, 1 carga, 2 borra,
+# 3 directorio); bits 3-4 el tipo (0 TONE, 1 LAYOUT, 2 SAMP). 0xDB16: el paso
+# (0 pide el nombre, 1 se escribe, 2 se hace).
+L 0xB808 file_estado_siguiente  0xD8FA + 1
+L 0xB80D file_marcas  pinta las marcas de lo elegido en 0xDB0E: aparato, operacion y tipo
+C 0xB80D el aparato
+C 0xB815 la operacion
+C 0xB81D el tipo
+L 0xB826 grupo_de_opciones  la opcion C + bits 1-2 de A
+L 0xB82B marca_opcion  0xDB0C = A y su marca
+L 0xB834 error_del_disco  DISKVE: el cartucho otra vez en la pagina 1 y el mensaje de 0x50DE
+C 0xB834 el cartucho en 0x4000...
+C 0xB83E ...y el mensaje
+L 0xB851 file_operacion  hace lo elegido en 0xDB0E, paso a paso (0xDB16)
+C 0xB854 el tipo
+C 0xB85E LAYOUT: 0xB0 bytes
+C 0xB860 SAMP: la longitud que tiene
+C 0xB863 TONE: 0x1200 bytes, las 16 ondas y los 16 timbres
+C 0xB86B a 0xDCFE
+C 0xB873 disco?
+C 0xB87B cinta: carga o graba
+C 0xB881 el paso
+C 0xB888 carga de cinta: borra la linea de mensajes...
+C 0xB88B ...y pone el rotulo de 0xBB47
+C 0xB891 sin nombre vale cualquiera
+C 0xB8A0 con nombre: que sea valido
+C 0xB8A5 a cargar
+C 0xB8A8 fallo: 0xBA4E
+L 0xB8AD escribe_nombre  el nombre del fichero letra a letra hasta RETURN
+L 0xB8B7 pide_nombre_carga  el rotulo de 0xBAFA
+L 0xB8C2 nombre_malo  el mensaje 0x5183 en 0x3A06
+L 0xB8CF graba_cinta_paso  graba en cinta: pide el nombre y graba
+C 0xB8D6 el rotulo de 0xBB3B
+C 0xB8DF nombre valido?
+C 0xB8E4 a grabar
+L 0xB8EA operacion_hecha  el rotulo de 0xBB54 y el efecto 2
+L 0xB8F8 file_reposo  nada en marcha y el cursor en la opcion 9
+L 0xB908 pide_nombre_graba  el rotulo de 0xBB06
+L 0xB911 paso_siguiente  0xDB16 + 1
+L 0xB916 file_disco  la operacion en disco
+C 0xB919 1: carga
+C 0xB91D 0: graba
+C 0xB920 2: borra
+C 0xB925 3: el directorio; en el paso 1, las teclas de la lista
+C 0xB92C RETURN: fuera
+L 0xB938 directorio_paso_0  limpia, pone los rotulos y busca los ficheros
+C 0xB938 el tipo
+C 0xB93E limpia el recuadro
+C 0xB95F sin el sprite del nombre
+C 0xB964 el directorio
+L 0xB96D directorio_fallo  borra el rotulo y el fallo
+L 0xB976 limpia_recuadro  12 filas de 0x11 tiles a cero desde 0x38E5
+L 0xB98B carga_disco_paso  carga de disco: pide el nombre y carga
+L 0xB9A4 escribe_nombre_disco  el nombre letra a letra hasta RETURN
+L 0xB9AF pide_nombre_disco  el rotulo de 0xBB12
+L 0xB9BB graba_disco_paso  graba en disco: pide el nombre y graba
+L 0xB9D4 pide_nombre_graba_disco  el rotulo de 0xBB1E
+L 0xB9E0 borra_disco_paso  borra de disco: pide el nombre y borra
+L 0xB9F3 escribe_nombre_borra  el nombre letra a letra hasta RETURN
+L 0xB9FE pide_nombre_borra  el rotulo de 0xBB2A
+L 0xBA10 pide_nombre  el tipo a 0xDB18, su rotulo (0xBA80) y el de 0xBABB, el nombre, el FCB a cero y el cursor
+C 0xBA11 borra el rotulo anterior
+C 0xBA18 el tipo, de 0x21 a 0x23
+C 0xBA1E su rotulo
+C 0xBA32 el nombre
+C 0xBA35 el FCB a cero
+L 0xBA42 cursor_de_file  los sprites de 0xBA6C
+L 0xBA4E fallo_de_cinta  el rotulo de 0xBB5B y a reposo
+L 0xBA5C operacion_acabada  el efecto 2 y nada en marcha
+L 0xBA66 borra_mensajes  la linea de mensajes (0xBAD0) en blanco
+
+# ----------------------------------------------------------------------
+# LAYOUT (pantalla 8), LA DEMO DE LA INTRO Y LOS EFECTOS (tanda 14)
+# LAYOUT da a cada tecla una nota: 0xD905 = la nota elegida (0-0x30),
+# 0xD906 = su byte de LAYOUT (0xBCCA); al pulsar una tecla, 0xD200 recibe ese
+# byte y 0xD230 la rutina y el retardo de la nota (0x5E29).
+# ----------------------------------------------------------------------
+L 0xBB6D pantalla_layout  la pantalla 8: izquierda/derecha eligen nota, una tecla la recibe; CTRL + HOME vuelve al de fabrica
+C 0xBB6D color 8 del cursor...
+C 0xBB76 ...o 15, cada 16 cuadros
+C 0xBB7C 0: la pantalla
+C 0xBB83 CTRL (0x32)...
+C 0xBB8A ...y HOME
+C 0xBB92 el LAYOUT y las teclas de fabrica
+C 0xBB98 el teclado otra vez
+C 0xBB9F el efecto 2
+L 0xBBA4 layout_tecla  una tecla del teclado musical (1-0x30, menos la 0x16) recibe la nota elegida
+C 0xBBA4 la tecla nueva
+C 0xBBB5 su entrada del LAYOUT...
+C 0xBBBC ...el byte de la nota
+C 0xBBC0 su entrada de 0xD230
+C 0xBBCC sin nota: 0xBD5D
+C 0xBBD5 la rutina y el retardo de la nota (0x5E29)
+C 0xBBE0 a 0xD230
+C 0xBBE5 el efecto 2
+C 0xBBEA y el nombre en la tecla
+L 0xBBED nombre_de_nota  escribe en la tecla A el nombre de su nota, o la tapa si no tiene
+C 0xBBED HL = su sitio, DE = su entrada
+C 0xBBF4 sin nota: los tiles de 0xBDD9
+L 0xBC01 nombre_de_nota_d905  el nombre de la nota 0xD905: la octava (0xBDDD) y la nota dentro de ella
+C 0xBC06 la octava: cuantos limites de 0xBDDD pasa
+C 0xBC10 su tabla de nombres (0xBD5F)
+C 0xBC1D la nota dentro de la octava...
+C 0xBC20 ...de 14 en 14
+C 0xBC2D dos tiles...
+C 0xBC34 ...y debajo los de 0xBDD7
+L 0xBC37 dos_tiles  dos bytes de DE a la VRAM de HL
+L 0xBC3D sitio_de_tecla  HL = la direccion de la tecla A (0xBDE1); DE = su entrada del LAYOUT
+L 0xBC53 layout_cursor  izquierda o derecha: la nota anterior o la siguiente, y el cursor la sigue
+C 0xBC56 izquierda o derecha
+C 0xBC5C izquierda?
+C 0xBC60 derecha: hasta la 0x30
+C 0xBC64 el efecto 1
+C 0xBC6B su byte de LAYOUT
+C 0xBC6E el cursor, distinto en las pares y las impares
+C 0xBC82 izquierda: hasta la 0
+C 0xBC85 el efecto 1
+C 0xBC8C su byte de LAYOUT
+L 0xBCA2 en_lista_bcb6  acarreo si A esta en la lista de 0xBCB6
+L 0xBCBD byte_de_nota  0xD906 = 0xBCCA[A]
+L 0xBCFB cursor_derecha  los dos sprites del cursor 4 puntos a la derecha, con Y = C y patrones D, E
+L 0xBD11 cursor_izquierda  lo mismo 4 puntos a la izquierda
+L 0xBD27 layout_estado_0  la cortina y la pantalla del teclado
+C 0xBD27 con SYN pedido, nada
+L 0xBD33 layout_pantalla  el teclado, la fuente, los sprites de 0xBD55 y la nota 0
+C 0xBD3C el cursor
+C 0xBD47 la nota 0, byte 0x13
+L 0xBE41 empieza_demo  la intro ensena una pantalla del programa: prepara el programa y elige la siguiente de 0xBE5E
+C 0xBE41 timbres, ondas y LAYOUT de fabrica
+C 0xBE44 la demo siguiente...
+C 0xBE4B ...de cuatro (0xBE5E)
+C 0xBE55 estado 0
+C 0xBE59 0xD863 = 1: demo en marcha
+L 0xBE62 demo  cada cuadro de la demo: la pantalla, y 0xD863 = 0 a los 512 cuadros
+C 0xBE62 la pantalla
+C 0xBE65 cada dos cuadros...
+C 0xBE6B ...cuenta hasta 256
+C 0xBE70 se acabo la demo
+L 0xBEA6 efecto_si_en_marcha  el efecto A solo con el programa en marcha (bit 6 de 0xD802)
+L 0xBEB1 efecto  arranca el efecto A en el PSG sin tocar registros
+L 0xBEBF arranca_efecto  los efectos 0 y 1 van al canal C; los demas a A y B; uno de numero menor no corta al que suena
+C 0xBEBF C = el efecto
+C 0xBEC0 dos canales desde el A...
+C 0xBEC7 ...los efectos 2 en adelante
+C 0xBECE ...o uno, el C
+C 0xBED2 el que suena
+C 0xBED9 el nuevo es menor: nada
+C 0xBEDB el 1 no se corta a si mismo
+C 0xBEE3 sus listas en 0xBEFE
+C 0xBEED la cuenta a 1...
+C 0xBEF3 ...el efecto activo...
+C 0xBEF5 ...y el puntero a su lista
+C 0x5812 HL = 0
+C 0x5815 D = 0: DE = E
+C 0x5816 8 bits de C
+C 0x5818 el bit bajo de C
+C 0x581D suma E desplazado
+C 0x581E E por dos
+C 0x5825 la fase en curso
+C 0x58D1 la fase en curso
+C 0x5828 a ella
+C 0x58D4 a ella
+C 0x582D con ENV, la envolvente
+C 0x58D9 con ENV, la envolvente
+C 0x5838 y se acaba
+C 0x58E4 y se acaba
+C 0x583B A, el ataque
+C 0x58E7 A, el ataque
+C 0x583F A = 0:
+C 0x58EB A = 0:
+C 0x5842 nivel 0xFF de golpe
+C 0x58EE nivel 0xFF de golpe
+C 0x5846 a la caida
+C 0x58F2 a la caida
+C 0x584C la cuenta
+C 0x58F8 la cuenta
+C 0x584F una muestra menos
+C 0x58FB una muestra menos
+C 0x5851 se acabo: A otra vez
+C 0x58FD se acabo: A otra vez
+C 0x5855 el nivel
+C 0x5901 el nivel
+C 0x5856 sube uno
+C 0x5902 sube uno
+C 0x5857 hasta 0xFF
+C 0x5903 hasta 0xFF
+C 0x585B la fase siguiente, la caida
+C 0x5907 la fase siguiente, la caida
+C 0x5862 D, la caida
+C 0x590E D, la caida
+C 0x5866 S, el sostenido
+C 0x5912 S, el sostenido
+C 0x5869 D = 0: S de golpe
+C 0x5915 D = 0: S de golpe
+C 0x586C S = 0xFF: tambien
+C 0x5918 S = 0xFF: tambien
+C 0x5871 el nivel = S
+C 0x591D el nivel = S
+C 0x5877 la fase pasa a la caida paso a paso
+C 0x5923 la fase pasa a la caida paso a paso
+C 0x587D la cuenta
+C 0x5929 la cuenta
+C 0x5880 una muestra menos
+C 0x592C una muestra menos
+C 0x5882 se acabo: D otra vez
+C 0x592E se acabo: D otra vez
+C 0x5886 el nivel
+C 0x5932 el nivel
+C 0x5887 baja uno
+C 0x5933 baja uno
+C 0x5888 hasta S
+C 0x5934 hasta S
+C 0x588D bit 0 de 0xDC1B: el DCO en su sostenido
+C 0x5939 bit 1 de 0xDC1B: el DCF en su sostenido
+C 0x5895 S = 0:
+C 0x5941 S = 0:
+C 0x5899 se acaba
+C 0x5945 se acaba
+C 0x589C la fase siguiente, el sostenido
+C 0x5948 la fase siguiente, el sostenido
+C 0x58A3 las tres en su sostenido?
+C 0x594F las tres en su sostenido?
+C 0x58A9 R, la relajacion
+C 0x5955 R, la relajacion
+C 0x58AD R distinto de 0: paso a paso
+C 0x5959 R distinto de 0: paso a paso
+C 0x58B0 R = 0: el nivel a 0 de golpe
+C 0x595C R = 0: el nivel a 0 de golpe
+C 0x58B6 la fase siguiente, la relajacion
+C 0x5962 la fase siguiente, la relajacion
+C 0x58BC la cuenta
+C 0x5968 la cuenta
+C 0x58BF una muestra menos
+C 0x596B una muestra menos
+C 0x58C1 se acabo: R otra vez
+C 0x596D se acabo: R otra vez
+C 0x58C5 el nivel
+C 0x5971 el nivel
+C 0x58C6 baja uno
+C 0x5972 baja uno
+C 0x58C7 hasta 0
+C 0x5973 hasta 0
+C 0x58CA la fase, un `ret`
+C 0x5976 la fase, un `ret`
+C 0x5981 A, el ataque del DCA
+C 0x5985 A = 0:
+C 0x5988 nivel 0xFF de golpe
+C 0x598C a la caida
+C 0x5992 la cuenta
+C 0x5995 una muestra menos
+C 0x5997 se acabo: A otra vez
+C 0x599B el nivel
+C 0x599C sube uno
+C 0x599D hasta 0xFF
+C 0x59A1 la fase siguiente, la caida
+C 0x59A8 D, la caida
+C 0x59AC S, el sostenido
+C 0x59AF D = 0: S de golpe
+C 0x59B2 S = 0xFF: tambien
+C 0x59B7 el nivel = S
+C 0x59BD la fase pasa a la caida paso a paso
+C 0x59C3 la cuenta
+C 0x59C6 una muestra menos
+C 0x59C8 se acabo: D otra vez
+C 0x59CC el nivel
+C 0x59CD baja uno
+C 0x59CE hasta S
+C 0x59D3 la fase pasa al sostenido
+C 0x59F7 la fase siguiente: espera a principio de pagina
+C 0x5A12 R, la relajacion
+C 0x5A16 R distinto de 0: paso a paso
+C 0x5A19 R = 0: el nivel a 0 de golpe
+C 0x5A1F la fase pasa a la relajacion
+C 0x5A25 la cuenta
+C 0x5A28 una muestra menos
+C 0x5A2A se acabo: R otra vez
+C 0x5A2E el nivel
+C 0x5A2F baja uno
+C 0x5A30 hasta 0
+C 0x5A33 bit 7: el sample se acaba
+C 0x5A3C E = el multiplicando
+C 0x5A3D 8 bits de C
+C 0x5A40 el bit alto de C
+C 0x5A45 suma E desplazado
+C 0x5A46 E a la mitad
+
+C 0x5A57 la muestra, guardada para el final
+C 0x5A5F FEET...
+C 0x5A62 ...por 256
+C 0x5A69 el valor del LFO...
+C 0x5A71 ...en valor absoluto
+C 0x5A76 HL = LFO del DCO por |LFO|
+C 0x5A79 el signo otra vez
+C 0x5A82 la mitad...
+C 0x5A87 ...restada de 1.0 (0x100)
+C 0x5A91 positivo: 1.0 + lo calculado
+C 0x5A92 DE = FEET * 256
+C 0x5A9E ENV del DCO a cero: sin envolvente
+C 0x5AA3 C = ENV
+C 0x5AA7 E = el nivel de la envolvente del DCO
+C 0x5AAA HL = ENV por el nivel
+C 0x5AB5 invertida: la mitad...
+C 0x5ABB ...restada de 1.0
+C 0x5AC5 normal: 1.0 + lo calculado
+C 0x5AC6 DE = el paso de antes
+C 0x5AC7 HL = paso por el factor
+C 0x5ACE la fase + el paso
+C 0x5AD2 A = la muestra
+C 0x5AD7 solo el byte bajo: de 0x0000 a 0x00FF
+C 0x5ADB el byte de la BIOS
+C 0x5ADF girado...
+C 0x5AE1 ...y acumulado
+C 0x5AE4 8 bits de C
+C 0x5AE9 el bit alto de C
+C 0x5AEE suma DE desplazado
+C 0x5AEF DE a la mitad
+C 0x5AF8 C = la parte baja (fraccion)
+C 0x5AFE DE a la mitad...
+C 0x5B02 ...por cada bit de la fraccion
+C 0x5B0B C = la parte alta (entera)
+C 0x5B0F del bit bajo...
+C 0x5B14 ...suma DE...
+C 0x5B15 ...que se dobla cada vez
+C 0x5B1C L = la muestra del oscilador
+C 0x5B24 CUT
+C 0x5B2B el nivel de la envolvente del DCF...
+C 0x5B2E ...por ENV
+C 0x5B3D suma, como mucho 0xFF
+C 0x5B46 resta, como poco 0
+C 0x5B4C LFO del DCF
+C 0x5B58 el valor del LFO por LFO del DCF
+C 0x5B5E positivo: suma...
+C 0x5B67 ...como mucho 0xFF
+C 0x5B6C negativo: resta...
+C 0x5B74 ...como poco 0
+C 0x5B7F extiende el signo
+C 0x5B8B la segunda etapa...
+C 0x5B8E ...por el corte / 128...
+C 0x5B94 ...por la realimentacion
+C 0x5B98 sumada a la entrada
+C 0x5BA0 x - primera etapa
+C 0x5BA9 por (corte + 1) / 256
+C 0x5BB1 la primera etapa nueva
+C 0x5BB8 x - primera etapa
+C 0x5BD2 0xDC3E - segunda etapa
+C 0x5BDB por (corte + 1) / 256
+C 0x5BE3 la segunda etapa nueva
+C 0x5BFC la mitad, con signo
+C 0x5C03 la primera etapa
+C 0x5C10 el byte bajo
+C 0x5C24 8 bits de A
+C 0x5C27 DE = el valor
+C 0x5C2B negativo: redondea hacia el cero
+C 0x5C31 DE a la mitad...
+C 0x5C35 ...y por cada bit de A, del alto...
+C 0x5C3A ...suma
+C 0x5C3E 8 bits de A
+C 0x5C41 DE = el valor
+C 0x5C45 por cada bit de A, del alto...
+C 0x5C4A ...suma...
+C 0x5C4B ...y luego DE a la mitad
+C 0x5C59 DE = el valor
+C 0x5C5D el bit 7...
+C 0x5C63 ...vale DE * 2
+C 0x5C69 los otros siete
+C 0x5C6B del alto...
+C 0x5C70 ...suma...
+C 0x5C71 ...y luego DE a la mitad
+C 0x5C7E la muestra
+C 0x5C86 D y C = LFO del DCA
+C 0x5C8B el valor del LFO por LFO del DCA
+C 0x5C95 la muestra por el factor
+C 0x5C98 E = la muestra
+C 0x5C99 C = el nivel del DCA
+C 0x5C9D 7 bits
+C 0x5CA0 E a la mitad, redondeando hacia el cero...
+C 0x5CA8 ...y por cada bit del nivel...
+C 0x5CAD ...suma
+C 0x5CB1 sin LFO, la muestra tal cual
+C 0x5CB5 E = el valor con signo
+C 0x5CB9 por cada bit de C, del alto...
+C 0x5CBE ...suma...
+C 0x5CBF ...y E a la mitad con signo
+C 0x5CCA la rutina del LFO
+C 0x5CCE algun LFO puesto?
+C 0x5CDB ninguno: nada
+C 0x5CE7 una muestra menos
+C 0x5CF0 el valor de la onda en la fase
+C 0x5CF4 la retencion otra vez
+C 0x5CFD FEET del LFO...
+C 0x5D03 ...por 16
+C 0x5D13 a la fase
+C 0x5D18 la cuenta
+C 0x5D21 el ruido, como en 0x5AD4
+C 0x5D30 el valor nuevo
+C 0x5D33 la retencion otra vez
+C 0x5D3B pagina de bucle?
+C 0x5D3F no
+C 0x5D42 si
+
+C 0x55E8 el tic (0x4BD9)
+C 0x55EB y 0xDC24 + 1
+C 0x55F0 sin interrupciones durante la sintesis
+C 0x55FF HL = 0 muestras
+C 0x5609 C = D
+C 0x560D A = S
+C 0x5616 la parte alta
+C 0x5623 HL = 0 muestras
+C 0x562D C = D
+C 0x5631 A = S
+C 0x5634 HL = muestras de ataque y caida
+C 0x563B 16 KB o mas: no se calcula
+C 0x5644 C = D
+C 0x5648 A = S
+C 0x564B HL = muestras de ataque y caida
+C 0x5652 16 KB o mas: no se calcula
+C 0x565D DCA - DCF
+C 0x5662 el DCA es mayor
+C 0x566A el DCO...
+C 0x566D ...contra la mayor de las otras
+C 0x5672 el DCO es mayor
+C 0x5677 + 0x1FF...
+C 0x567B ...y la pagina entera
+C 0x5681 E = S del DCA
+C 0x5682 C = R del DCA
+C 0x5686 HL = S * R
+C 0x568A mas lo anterior
+C 0x568F 16 KB o mas?
+C 0x5697 0xDC22 = 0x80
+C 0x569C HL * 2: la parte alta es HL / 128
+C 0x569F 0xDC22: cada cuantas muestras un tic
+C 0x56AC 0x80...
+C 0x56B0 ...hasta 0xC000
+C 0x56B8 0xDC19 = 0x8000
+C 0x56BC 0xDC1B = 0
+C 0x56C2 la fase del DCO: el ataque
+C 0x56C5 su cuenta = 1...
+C 0x56CB ...y su nivel = 0
+C 0x56CD la fase del DCF: el ataque
+C 0x56D3 su cuenta = 1...
+C 0x56D9 ...y su nivel = 0
+C 0x56DB la fase del DCA: el ataque
+C 0x56E1 su cuenta = 1...
+C 0x56E7 ...y su nivel = 0
+C 0x56F2 la 14?
+C 0x56FA 0xC0 + onda del usuario
+C 0x5707 0xDC35 = 0
+C 0x5710 0x5C12[RES]
+C 0x5718 0x5C1B[RES]
+C 0x5723 primera etapa = 0
+C 0x5726 segunda etapa = 0
+C 0x5732 la 14?
+C 0x5737 la del usuario...
+C 0x573A ...en 0xC0 + onda
+C 0x573F las de la ROM: 0x72 + onda
+C 0x5744 0xDC46 = 0
+C 0x574C LFO del DCF...
+C 0x5751 ...LFO del DCA...
+C 0x5755 ...ninguno: 0x5D39
+C 0x5769 la fila 6 en el PPI
+C 0x5772 F1 y F2 (bits 5 y 6)
+C 0x5779 la fila 7
+C 0x577F F4 y F5 (bits 0 y 1)
+C 0x5789 una muestra menos
+C 0x578D el tic
+C 0x5790 y la cuenta otra vez
+C 0x57AD el puntero de escritura
+C 0x57B1 la siguiente
+C 0x57C6 desde 0x8000
+C 0x57D0 F4
+C 0x57D2 0xDC47 = la tecla
+C 0x57D5 el cartucho en la pagina 2
+C 0x57D9 F1 (bit 5) pulsada?
+C 0x57DE F1
+C 0x57E3 F2
+C 0x57E8 F4 (bit 0) pulsada?
+C 0x57ED F4
+C 0x57F2 F5
