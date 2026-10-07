@@ -144,8 +144,8 @@ D 0x54F6 0x5516 tramas_de_impresora  32 bytes de tramado que se mandan a la impr
 # ======================================================================
 # EL MOTOR DE SONIDO
 # ======================================================================
-D 0x5C12 0x5C1B pasos_del_lfo  9 valores por (0xDC05) que 0x5710 copia a 0xDC38
-D 0x5C1B 0x5C24 pasos_del_lfo_2  9 valores por (0xDC05) que 0x5718 copia a 0xDC39
+D 0x5C12 0x5C1B realimentacion_por_res  la realimentacion del filtro por RES (0xDC05, de 0 a 8): 0x5710 la copia a 0xDC38
+D 0x5C1B 0x5C24 ganancia_por_res  la ganancia de salida del filtro por RES (0xDC05): 0x5718 la copia a 0xDC39
 D 0x5DA9 0x5E29 teclas_de_fabrica  0x80 bytes que 0x55DC copia a 0xD230: por tecla de la matriz (fila * 8 + bit + 1, 0x5D5D), la rutina y el retardo D de su nota; 0xFFFF sin nota
 F 0x5DA9 2
 D 0x5E29 0x5E8B rutina_y_retardo_por_nota  las 49 posiciones de 0xBCCA, de FA1 a SI4: rutina (0-12) y retardo D; la muestra dura c(rutina) + 16 * D ciclos. 0xBBDA la copia a la tecla al cambiar la disposicion; 0xFFFF en los huecos sin negra
@@ -256,3 +256,165 @@ D 0xBD55 0xBE41 tablas_del_teclado  lo que leen 0xBC0B-0xBC49
 D 0xBE5E 0xBE62 pantalla_inicial  0, 1, 3 y 6: la pantalla con que se arranca, por (0xD80B) & 3
 D 0xBE75 0xBEA6 rotulo_push_space_key  lista de 0x4337 hacia 0x3A29: "PUSH SPACE KEY" y "(C)KONAMI 1986"; 0xBE84 es la segunda linea, que parpadea
 D 0xBF00 0xC000 tablas_del_final  punteros y datos que leen 0x4793-0x47AC y 0xBEF5-0xBEF9
+
+# ----------------------------------------------------------------------
+# SYN: EL MOTOR QUE FABRICA LA ONDA (tanda 2 de comentarios; tools/motor.py
+# lo reproduce byte a byte en los 16 timbres)
+# El timbre en 0xDC00-0xDC18: 0 onda, 1 FEET del DCO, 2 LFO del DCO, 3 ENV del
+# DCO, 4 CUT, 5 RES, 6 LFO del DCF, 7 ENV del DCF, 8 LFO del DCA, 9-12 ADSR
+# del DCO, 13-16 ADSR del DCF, 17-20 ADSR del DCA, 21 retencion del LFO,
+# 22 onda del LFO, 23 FEET del LFO, 24 conmutadores.
+# 0xDC1B: bit 0 DCO en su sostenido, bit 1 DCF, bit 2 DCA, bit 7 se acabo.
+# ----------------------------------------------------------------------
+B 0x55E8 =====  SYN: la sintesis del timbre en la RAM de 0x8000  =====
+L 0x55E8 tic_de_sintesis  cada 0xDC22 muestras: 0x4BD9 y 0xDC24 + 1
+L 0x55F0 syn  SYN: fabrica el timbre de 0xDC00 muestra a muestra en 0x8000-0xBFFF, la RAM del ordenador
+C 0x55F2 0xDC24 = 0
+C 0x55F5 la RAM en 0x8000
+C 0x55F8 ENV del DCO a cero: su envolvente no cuenta
+C 0x5605 B, C, A = ataque, caida y sostenido del DCO
+C 0x5610 HL = muestras de ataque y caida
+C 0x5613 0xDC1C: las del DCO
+C 0x5617 16 KB o mas: no se calcula
+C 0x561C ENV del DCF a cero: no cuenta
+C 0x5629 ataque, caida y sostenido del DCF
+C 0x5637 0xDC1E: las del DCF
+C 0x5640 ataque, caida y sostenido del DCA
+C 0x564E 0xDC20: las del DCA
+C 0x5657 la mayor de las tres...
+C 0x5676 ...redondeada a pagina entera
+C 0x567E mas la relajacion del DCA: sostenido x R
+C 0x568B mas 0x40
+C 0x5695 si pasa de 16 KB, 0x80
+C 0x569A 0xDC22 = la duracion calculada / 128
+C 0x56A2 0xDC23: cuenta atras hasta el siguiente tic
+C 0x56A6 0xDCFD: sin pagina de bucle
+C 0x56A9 el sample entero a 0x80, el silencio
+C 0x56B5 0xDC19: el puntero de escritura, desde 0x8000
+C 0x56BB 0xDC1B: ninguna envolvente en su sostenido
+C 0x56BF las tres envolventes empiezan por el ataque: rutina, cuenta 1 y nivel 0
+C 0x56E9 0xDC31: la fase del oscilador
+C 0x56EF la onda 14 es la del usuario...
+C 0x56F7 ...en 0xC000 + 0x100 * (0xDB00)
+C 0x56FF las de la ROM, en la pagina 0x72 + onda
+C 0x5701 0xDC33: la pagina de la onda
+C 0x5704 0xDC35: el puntero del ruido, de 0x0000 en adelante
+C 0x570A RES...
+C 0x5715 ...da la realimentacion (0xDC38)...
+C 0x571D ...y la ganancia (0xDC39)
+C 0x5720 los estados del filtro a cero
+C 0x5729 0xDC42: la fase del LFO
+C 0x572F la onda del LFO, igual que la del DCO
+C 0x5741 0xDC44
+C 0x5745 0xDC46: la cuenta de la retencion
+C 0x5748 si algun LFO esta puesto (DCO, DCF o DCA)...
+C 0x5758 ...0xDC40 = 0x5CCE
+C 0x5761 si no, 0x5D39 (un `ret`)
+L 0x5767 bucle_de_sintesis  una muestra por vuelta, hasta 0xC000 o el fin de la envolvente del DCA
+C 0x5767 fila 6 del teclado
+C 0x5770 F1 o F2 cortan la sintesis
+C 0x577B fila 7
+C 0x577D F4 o F5 tambien
+C 0x5786 0xDC23: el tic, cada 0xDC22 muestras
+C 0x5796 el LFO
+C 0x5799 la envolvente del DCO
+C 0x579C la del DCF
+C 0x579F la del DCA
+C 0x57A2 el oscilador: la muestra
+C 0x57A5 el filtro
+C 0x57A8 la amplitud
+C 0x57AB con signo a 0x80 = cero...
+C 0x57B0 ...a la RAM
+C 0x57B6 la memoria llena: se acabo
+C 0x57BB la envolvente del DCA ha acabado (bit 7)?
+L 0x57C3 fin_de_sintesis  0xDCFE = bytes escritos; 0xDC47 = 0x39, el codigo de F4; vuelve el cartucho
+C 0x57CD 0xDCFE: la longitud del sample
+L 0x57D9 syn_cortado_fila_6  F1 (0x36) o F2 (0x37) a 0xDC47
+L 0x57E8 syn_cortado_fila_7  F4 (0x39) o F5 (0x3A) a 0xDC47
+L 0x57F7 muestras_ataque_y_caida  HL = B * 255 + C * (255 - A): ataque B, caida C, sostenido A
+L 0x5812 multiplica_c_por_e  HL = C * E
+L 0x5825 envolvente_dco  salta a la fase en curso (0xDC25); cuenta en 0xDC27, nivel en 0xDC28
+L 0x5829 dco_ataque  sube el nivel de 1 en 1 cada A muestras hasta 0xFF; con A = 0, de golpe
+C 0x5829 sin ENV del DCO no hay envolvente:
+C 0x5830 marca el sostenido y acaba
+C 0x5849 carga 0x584C en HL y no lo guarda: la fase sigue en 0x5829, que vuelve aqui cada muestra
+L 0x5862 dco_caida  baja el nivel cada D muestras hasta S; con D = 0 o S = 0xFF, de golpe
+L 0x588D dco_llega_al_sostenido  bit 0 de 0xDC1B; con S = 0 la envolvente acaba
+L 0x58A3 dco_sostenido  espera a que las tres envolventes esten en su sostenido (0xDC1B = 7)
+L 0x58BC dco_relajacion  baja el nivel cada R muestras hasta 0
+L 0x58CA dco_fin  la fase pasa a un `ret`
+L 0x58D1 envolvente_dcf  la misma maquina para el DCF: fase en 0xDC29, cuenta 0xDC2B, nivel 0xDC2C
+L 0x58D5 dcf_ataque  como 0x5829, con ENV del DCF y bit 1
+C 0x58F5 como en 0x5849: HL sin guardar
+L 0x590E dcf_caida  como 0x5862
+L 0x5939 dcf_llega_al_sostenido  bit 1 de 0xDC1B
+L 0x594F dcf_sostenido  como 0x58A3
+L 0x5968 dcf_relajacion  como 0x58BC
+L 0x5976 dcf_fin  la fase pasa a un `ret`
+L 0x597D envolvente_dca  la del volumen: fase en 0xDC2D, cuenta 0xDC2F, nivel 0xDC30
+L 0x5981 dca_ataque  como 0x5829, sin poder apagarse
+C 0x598F como en 0x5849: HL sin guardar
+L 0x59A8 dca_caida  como 0x5862
+L 0x59D3 dca_llega_al_sostenido  pasa a 0x59D9
+L 0x59D9 dca_sostenido  con el DCO y el DCF en su sostenido y el puntero a principio de pagina, apunta esa pagina en 0xDCFD
+C 0x59D9 DCO y DCF en su sostenido?
+C 0x59DF el puntero a principio de pagina?
+C 0x59E4 EG TYP (bit 7 de los conmutadores): sin bucle
+C 0x59EC ni en la ultima pagina
+C 0x59F4 0xDCFD: la pagina que PLAY repite mientras se tiene la tecla
+L 0x59FE dca_espera_pagina  en el siguiente principio de pagina empieza la relajacion
+C 0x5A03 bit 2: el DCA en su sostenido
+C 0x5A0B S = 0: acaba ya
+L 0x5A25 dca_relajacion  como 0x58BC
+L 0x5A33 dca_fin  bit 7 de 0xDC1B: la sintesis acaba
+L 0x5A3C multiplica_8  A = suma de E >> k por cada bit de C, del 7 al 0
+L 0x5A4B oscilador  devuelve en A la muestra de la onda en la fase 0xDC31 y avanza la fase
+C 0x5A4B la onda 15 o mas: ruido
+C 0x5A53 la muestra en la fase
+C 0x5A58 sin LFO del DCO, el paso es FEET * 256
+C 0x5A68 con LFO: el paso, FEET por 1 + LFO
+C 0x5A6C el LFO negativo...
+C 0x5A81 ...resta: 1 - LFO / 2
+C 0x5A98 HL = FEET por el factor
+C 0x5A9B y si hay ENV del DCO...
+C 0x5AA4 ...por el nivel de su envolvente
+C 0x5AAD invertida con el bit 3 de los conmutadores
+C 0x5ACA la fase avanza el paso
+L 0x5AD4 ruido  lee la memoria de 0x0000 en adelante (la BIOS) con 0xDC35, girada y acumulada en 0xDC34
+L 0x5AE4 multiplica_16  HL = suma de DE >> k por cada bit de C, del 7 al 0
+L 0x5AF6 multiplica_8_8  HL (8.8) por DE: la parte baja contra DE a la derecha, la alta contra DE a la izquierda
+L 0x5B1C filtro  filtro de dos etapas con resonancia sobre la muestra L; devuelve A
+C 0x5B1D sin ENV del DCF, el corte es CUT
+C 0x5B2A con ENV: CUT mas o menos ENV por el nivel de su envolvente
+C 0x5B32 bit 2 de los conmutadores: resta
+C 0x5B4B y el LFO del DCF lo mueve arriba o abajo
+C 0x5B75 0xDC37: el corte
+C 0x5B78 la muestra con signo a 16 bits
+C 0x5B80 con realimentacion...
+C 0x5B88 ...mas la salida de la segunda etapa por corte y realimentacion
+C 0x5B99 la primera etapa: 0xDC3A += (x - 0xDC3A) * (corte + 1) / 256
+C 0x5BA5 con corte 0xFF no multiplica
+C 0x5BB4 0xDC3E: lo que queda, x - 0xDC3A
+C 0x5BBD la segunda etapa solo con el bit 0 o con realimentacion
+C 0x5BCC 0xDC3C += (0xDC3E - 0xDC3C) * (corte + 1) / 256
+C 0x5BE6 la salida: bit 0, la segunda etapa...
+C 0x5BEE ...bit 1, la primera...
+C 0x5BF3 ...y si no, 0xDC3E / 2
+C 0x5C06 por la ganancia de RES
+L 0x5C24 por_a_entre_256  HL con signo por A / 256: primero la mitad, luego suma
+L 0x5C3E por_a_entre_128  HL con signo por A / 128: suma antes de dividir
+L 0x5C58 por_a_bit7_doble  como 0x5C3E, con el bit 7 de A valiendo el doble
+L 0x5C7E amplitud  la muestra por el LFO del DCA y por el nivel de la envolvente del DCA
+C 0x5C7F sin LFO del DCA, directo al volumen
+C 0x5C88 el factor: 0x80 - LFO + LFO por la onda del LFO
+L 0x5C98 por_el_dca  A = E con signo por el nivel 0xDC30 / 128
+L 0x5CB5 multiplica_con_signo  A = suma de E >> k (E con signo) por cada bit de C
+L 0x5CCA lfo  salta por 0xDC40: 0x5CCE o 0x5D39
+L 0x5CCE lfo_paso  cada (retencion + 1) muestras toma el valor de la onda del LFO; la fase avanza FEET * 16
+C 0x5CDC onda 15 o mas: muestreo y retencion
+C 0x5CE4 0xDC46: la cuenta de la retencion
+C 0x5CED se acabo la cuenta: el valor nuevo, 0xDC45
+C 0x5CFA la fase del LFO avanza FEET del LFO * 16
+L 0x5D18 lfo_ruido  muestreo y retencion: el valor nuevo sale del ruido (como 0x5AD4)
+L 0x5D39 lfo_apagado  sin LFO: nada
+L 0x5D3A play  PLAY: sin pagina de bucle (0xDCFD = 0) las rutinas de 0x6709; con bucle, las de 0x5E8B

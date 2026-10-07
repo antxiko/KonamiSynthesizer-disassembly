@@ -17,16 +17,12 @@
 ; ----------------------------------------------------------------------
 l584ch:	equ 0x0584c
 l587dh:	equ 0x0587d
-l58bch:	equ 0x058bc
 l58d0h:	equ 0x058d0
 l58f8h:	equ 0x058f8
 l5929h:	equ 0x05929
-l5968h:	equ 0x05968
 l597ch:	equ 0x0597c
 l5992h:	equ 0x05992
 l59c3h:	equ 0x059c3
-l59d9h:	equ 0x059d9
-l5a25h:	equ 0x05a25
 
 ; ----------------------------------------------------------------------
 ; DATOS cabecera_del_cartucho: "AB" y la direccion de INIT (0x4054);
@@ -1145,7 +1141,7 @@ L_490B:
 	ld a,(0d802h)		;4912
 	and 040h		;4915
 	ret z			;4917
-	jp L_5D3A		;4918
+	jp play		;4918
 L_491B:
 	call L_4936		;491b
 	ret p			;491e
@@ -1508,7 +1504,7 @@ L_4BA1:
 	ld de,0dc00h		;4baf
 	ld bc,00019h		;4bb2
 	ldir		;4bb5
-	call L_55F0		;4bb7
+	call syn		;4bb7
 	xor a			;4bba
 	ld hl,03ac0h		;4bbb
 	ld bc,00040h		;4bbe
@@ -2976,61 +2972,65 @@ L_55DC:
 	ld bc,00080h		;55e2
 	ldir		;55e5
 	ret			;55e7
-L_55E8:
+
+; ----------------------------------------------------------------------
+; =====  SYN: la sintesis del timbre en la RAM de 0x8000  =====
+; ----------------------------------------------------------------------
+tic_de_sintesis:		; cada 0xDC22 muestras: 0x4BD9 y 0xDC24 + 1
 	call L_4BD9		;55e8
 	ld hl,0dc24h		;55eb
 	inc (hl)			;55ee
 	ret			;55ef
-L_55F0:
+syn:		; SYN: fabrica el timbre de 0xDC00 muestra a muestra en 0x8000-0xBFFF, la RAM del ordenador
 	di			;55f0
 	xor a			;55f1
-	ld (0dc24h),a		;55f2
-	call ram_en_la_pagina_2		;55f5
-	ld a,(0dc03h)		;55f8
+	ld (0dc24h),a		;55f2   ; 0xDC24 = 0
+	call ram_en_la_pagina_2		;55f5   ; la RAM en 0x8000
+	ld a,(0dc03h)		;55f8   ; ENV del DCO a cero: su envolvente no cuenta
 	or a			;55fb
 	jp nz,L_5605		;55fc
 	ld hl,00000h		;55ff
 	jp L_5613		;5602
 L_5605:
-	ld a,(0dc09h)		;5605
+	ld a,(0dc09h)		;5605   ; B, C, A = ataque, caida y sostenido del DCO
 	ld b,a			;5608
 	ld a,(0dc0ah)		;5609
 	ld c,a			;560c
 	ld a,(0dc0bh)		;560d
-	call L_57F7		;5610
+	call muestras_ataque_y_caida		;5610   ; HL = muestras de ataque y caida
 L_5613:
-	ld (0dc1ch),hl		;5613
+	ld (0dc1ch),hl		;5613   ; 0xDC1C: las del DCO
 	ld a,h			;5616
-	cp 040h		;5617
+	cp 040h		;5617   ; 16 KB o mas: no se calcula
 	jp nc,L_5695		;5619
-	ld a,(0dc07h)		;561c
+	ld a,(0dc07h)		;561c   ; ENV del DCF a cero: no cuenta
 	or a			;561f
 	jp nz,L_5629		;5620
 	ld hl,00000h		;5623
 	jp L_5637		;5626
 L_5629:
-	ld a,(0dc0dh)		;5629
+	ld a,(0dc0dh)		;5629   ; ataque, caida y sostenido del DCF
 	ld b,a			;562c
 	ld a,(0dc0eh)		;562d
 	ld c,a			;5630
 	ld a,(0dc0fh)		;5631
-	call L_57F7		;5634
+	call muestras_ataque_y_caida		;5634
 L_5637:
-	ld (0dc1eh),hl		;5637
+	ld (0dc1eh),hl		;5637   ; 0xDC1E: las del DCF
 	ld a,h			;563a
 	cp 040h		;563b
 	jp nc,L_5695		;563d
-	ld a,(0dc11h)		;5640
+	ld a,(0dc11h)		;5640   ; ataque, caida y sostenido del DCA
 	ld b,a			;5643
 	ld a,(0dc12h)		;5644
 	ld c,a			;5647
 	ld a,(0dc13h)		;5648
-	call L_57F7		;564b
-	ld (0dc20h),hl		;564e
+	call muestras_ataque_y_caida		;564b
+	ld (0dc20h),hl		;564e   ; 0xDC20: las del DCA
 	ld a,h			;5651
 	cp 040h		;5652
 	jp nc,L_5695		;5654
-	ld de,(0dc1eh)		;5657
+	ld de,(0dc1eh)		;5657   ; la mayor de las tres...
 	scf			;565b
 	ccf			;565c
 	sbc hl,de		;565d
@@ -3045,95 +3045,95 @@ L_566A:
 	jp c,L_5676		;566f
 	ld de,(0dc1ch)		;5672
 L_5676:
-	ex de,hl			;5676
+	ex de,hl			;5676   ; ...redondeada a pagina entera
 	ld de,001ffh		;5677
 	add hl,de			;567a
 	ld l,000h		;567b
 	push hl			;567d
-	ld a,(0dc13h)		;567e
+	ld a,(0dc13h)		;567e   ; mas la relajacion del DCA: sostenido x R
 	ld e,a			;5681
 	ld a,(0dc14h)		;5682
 	ld c,a			;5685
-	call L_5812		;5686
+	call multiplica_c_por_e		;5686
 	pop de			;5689
 	add hl,de			;568a
-	ld de,00040h		;568b
+	ld de,00040h		;568b   ; mas 0x40
 	add hl,de			;568e
 	ld a,h			;568f
 	cp 040h		;5690
 	jp c,L_569A		;5692
 L_5695:
-	ld a,080h		;5695
+	ld a,080h		;5695   ; si pasa de 16 KB, 0x80
 	jp L_569F		;5697
 L_569A:
-	sla l		;569a
+	sla l		;569a   ; 0xDC22 = la duracion calculada / 128
 	rl h		;569c
 	ld a,h			;569e
 L_569F:
 	ld (0dc22h),a		;569f
-	ld (0dc23h),a		;56a2
+	ld (0dc23h),a		;56a2   ; 0xDC23: cuenta atras hasta el siguiente tic
 	xor a			;56a5
-	ld (0dcfdh),a		;56a6
-	ld hl,08000h		;56a9
+	ld (0dcfdh),a		;56a6   ; 0xDCFD: sin pagina de bucle
+	ld hl,08000h		;56a9   ; el sample entero a 0x80, el silencio
 L_56AC:
 	ld (hl),080h		;56ac
 	inc hl			;56ae
 	ld a,h			;56af
 	cp 0c0h		;56b0
 	jp nz,L_56AC		;56b2
-	ld hl,08000h		;56b5
+	ld hl,08000h		;56b5   ; 0xDC19: el puntero de escritura, desde 0x8000
 	ld (0dc19h),hl		;56b8
-	xor a			;56bb
+	xor a			;56bb   ; 0xDC1B: ninguna envolvente en su sostenido
 	ld (0dc1bh),a		;56bc
-	ld hl,L_5829		;56bf
+	ld hl,dco_ataque		;56bf   ; las tres envolventes empiezan por el ataque: rutina, cuenta 1 y nivel 0
 	ld (0dc25h),hl		;56c2
 	ld hl,0dc27h		;56c5
 	ld (hl),001h		;56c8
 	inc hl			;56ca
 	ld (hl),000h		;56cb
-	ld hl,L_58D5		;56cd
+	ld hl,dcf_ataque		;56cd
 	ld (0dc29h),hl		;56d0
 	ld hl,0dc2bh		;56d3
 	ld (hl),001h		;56d6
 	inc hl			;56d8
 	ld (hl),000h		;56d9
-	ld hl,L_5981		;56db
+	ld hl,dca_ataque		;56db
 	ld (0dc2dh),hl		;56de
 	ld hl,0dc2fh		;56e1
 	ld (hl),001h		;56e4
 	inc hl			;56e6
 	ld (hl),000h		;56e7
-	ld hl,00000h		;56e9
+	ld hl,00000h		;56e9   ; 0xDC31: la fase del oscilador
 	ld (0dc31h),hl		;56ec
-	ld a,(0dc00h)		;56ef
+	ld a,(0dc00h)		;56ef   ; la onda 14 es la del usuario...
 	cp 00eh		;56f2
 	jp nz,L_56FF		;56f4
-	ld a,(0db00h)		;56f7
+	ld a,(0db00h)		;56f7   ; ...en 0xC000 + 0x100 * (0xDB00)
 	add a,0c0h		;56fa
 	jp L_5701		;56fc
 L_56FF:
-	add a,072h		;56ff
+	add a,072h		;56ff   ; las de la ROM, en la pagina 0x72 + onda
 L_5701:
-	ld (0dc33h),a		;5701
-	ld hl,00000h		;5704
+	ld (0dc33h),a		;5701   ; 0xDC33: la pagina de la onda
+	ld hl,00000h		;5704   ; 0xDC35: el puntero del ruido, de 0x0000 en adelante
 	ld (0dc35h),hl		;5707
-	ld a,(0dc05h)		;570a
+	ld a,(0dc05h)		;570a   ; RES...
 	ld e,a			;570d
 	ld d,000h		;570e
 	ld hl,05c12h		;5710
 	add hl,de			;5713
 	ld a,(hl)			;5714
-	ld (0dc38h),a		;5715
+	ld (0dc38h),a		;5715   ; ...da la realimentacion (0xDC38)...
 	ld hl,05c1bh		;5718
 	add hl,de			;571b
 	ld a,(hl)			;571c
-	ld (0dc39h),a		;571d
-	ld hl,00000h		;5720
+	ld (0dc39h),a		;571d   ; ...y la ganancia (0xDC39)
+	ld hl,00000h		;5720   ; los estados del filtro a cero
 	ld (0dc3ah),hl		;5723
 	ld (0dc3ch),hl		;5726
-	ld hl,00000h		;5729
+	ld hl,00000h		;5729   ; 0xDC42: la fase del LFO
 	ld (0dc42h),hl		;572c
-	ld a,(0dc16h)		;572f
+	ld a,(0dc16h)		;572f   ; la onda del LFO, igual que la del DCO
 	cp 00eh		;5732
 	jp nz,L_573F		;5734
 	ld a,(0db00h)		;5737
@@ -3142,10 +3142,10 @@ L_5701:
 L_573F:
 	add a,072h		;573f
 L_5741:
-	ld (0dc44h),a		;5741
+	ld (0dc44h),a		;5741   ; 0xDC44
 	xor a			;5744
-	ld (0dc46h),a		;5745
-	ld a,(0dc02h)		;5748
+	ld (0dc46h),a		;5745   ; 0xDC46: la cuenta de la retencion
+	ld a,(0dc02h)		;5748   ; si algun LFO esta puesto (DCO, DCF o DCA)...
 	ld b,a			;574b
 	ld a,(0dc06h)		;574c
 	or b			;574f
@@ -3153,67 +3153,67 @@ L_5741:
 	ld a,(0dc08h)		;5751
 	or b			;5754
 	jp z,L_5761		;5755
-	ld hl,05cceh		;5758
+	ld hl,05cceh		;5758   ; ...0xDC40 = 0x5CCE
 	ld (0dc40h),hl		;575b
-	jp L_5767		;575e
+	jp bucle_de_sintesis		;575e
 L_5761:
-	ld hl,05d39h		;5761
+	ld hl,05d39h		;5761   ; si no, 0x5D39 (un `ret`)
 	ld (0dc40h),hl		;5764
-L_5767:
-	in a,(0aah)		;5767
+bucle_de_sintesis:		; una muestra por vuelta, hasta 0xC000 o el fin de la envolvente del DCA
+	in a,(0aah)		;5767   ; fila 6 del teclado
 	and 0f0h		;5769
 	or 006h		;576b
 	out (0aah),a		;576d
 	ld c,a			;576f
-	in a,(0a9h)		;5770
+	in a,(0a9h)		;5770   ; F1 o F2 cortan la sintesis
 	or 09fh		;5772
 	cp 0ffh		;5774
-	jp nz,L_57D9		;5776
+	jp nz,syn_cortado_fila_6		;5776
 	inc c			;5779
 	ld a,c			;577a
-	out (0aah),a		;577b
-	in a,(0a9h)		;577d
+	out (0aah),a		;577b   ; fila 7
+	in a,(0a9h)		;577d   ; F4 o F5 tambien
 	or 0fch		;577f
 	cp 0ffh		;5781
-	jp nz,L_57E8		;5783
-	ld hl,0dc23h		;5786
+	jp nz,syn_cortado_fila_7		;5783
+	ld hl,0dc23h		;5786   ; 0xDC23: el tic, cada 0xDC22 muestras
 	dec (hl)			;5789
 	jp nz,L_5796		;578a
-	call L_55E8		;578d
+	call tic_de_sintesis		;578d
 	ld a,(0dc22h)		;5790
 	ld (0dc23h),a		;5793
 L_5796:
-	call L_5CCA		;5796
-	call L_5825		;5799
-	call L_58D1		;579c
-	call L_597D		;579f
-	call L_5A4B		;57a2
-	call L_5B1C		;57a5
-	call L_5C7E		;57a8
-	add a,080h		;57ab
+	call lfo		;5796   ; el LFO
+	call envolvente_dco		;5799   ; la envolvente del DCO
+	call envolvente_dcf		;579c   ; la del DCF
+	call envolvente_dca		;579f   ; la del DCA
+	call oscilador		;57a2   ; el oscilador: la muestra
+	call filtro		;57a5   ; el filtro
+	call amplitud		;57a8   ; la amplitud
+	add a,080h		;57ab   ; con signo a 0x80 = cero...
 	ld hl,(0dc19h)		;57ad
-	ld (hl),a			;57b0
+	ld (hl),a			;57b0   ; ...a la RAM
 	inc hl			;57b1
 	ld (0dc19h),hl		;57b2
 	ld a,h			;57b5
-	cp 0c0h		;57b6
-	jp z,L_57C3		;57b8
-	ld a,(0dc1bh)		;57bb
+	cp 0c0h		;57b6   ; la memoria llena: se acabo
+	jp z,fin_de_sintesis		;57b8
+	ld a,(0dc1bh)		;57bb   ; la envolvente del DCA ha acabado (bit 7)?
 	bit 7,a		;57be
-	jp z,L_5767		;57c0
-L_57C3:
+	jp z,bucle_de_sintesis		;57c0
+fin_de_sintesis:		; 0xDCFE = bytes escritos; 0xDC47 = 0x39, el codigo de F4; vuelve el cartucho
 	ld hl,(0dc19h)		;57c3
 	ld de,08000h		;57c6
 	scf			;57c9
 	ccf			;57ca
 	sbc hl,de		;57cb
-	ld (0dcfeh),hl		;57cd
+	ld (0dcfeh),hl		;57cd   ; 0xDCFE: la longitud del sample
 	ld a,039h		;57d0
 L_57D2:
 	ld (0dc47h),a		;57d2
 	call cartucho_en_la_pagina_2		;57d5
 	ret			;57d8
-L_57D9:
+syn_cortado_fila_6:		; F1 (0x36) o F2 (0x37) a 0xDC47
 	bit 5,a		;57d9
 	jp nz,L_57E3		;57db
 	ld a,036h		;57de
@@ -3221,7 +3221,7 @@ L_57D9:
 L_57E3:
 	ld a,037h		;57e3
 	jp L_57D2		;57e5
-L_57E8:
+syn_cortado_fila_7:		; F4 (0x39) o F5 (0x3A) a 0xDC47
 	bit 0,a		;57e8
 	jp nz,L_57F2		;57ea
 	ld a,039h		;57ed
@@ -3229,12 +3229,12 @@ L_57E8:
 L_57F2:
 	ld a,03ah		;57f2
 	jp L_57D2		;57f4
-L_57F7:
+muestras_ataque_y_caida:		; HL = B * 255 + C * (255 - A): ataque B, caida C, sostenido A
 	neg		;57f7
 	dec a			;57f9
 	ld e,a			;57fa
 	ld a,b			;57fb
-	call L_5812		;57fc
+	call multiplica_c_por_e		;57fc
 	ex de,hl			;57ff
 	ld h,a			;5800
 	ld l,000h		;5801
@@ -3249,7 +3249,7 @@ L_580B:
 L_5810:
 	add hl,de			;5810
 	ret			;5811
-L_5812:
+multiplica_c_por_e:		; HL = C * E
 	ld hl,00000h		;5812
 	ld d,h			;5815
 	ld b,008h		;5816
@@ -3262,17 +3262,17 @@ L_581E:
 	rl d		;5820
 	djnz L_5818		;5822
 	ret			;5824
-L_5825:
+envolvente_dco:		; salta a la fase en curso (0xDC25); cuenta en 0xDC27, nivel en 0xDC28
 	ld hl,(0dc25h)		;5825
 	jp (hl)			;5828
-L_5829:
-	ld a,(0dc03h)		;5829
+dco_ataque:		; sube el nivel de 1 en 1 cada A muestras hasta 0xFF; con A = 0, de golpe
+	ld a,(0dc03h)		;5829   ; sin ENV del DCO no hay envolvente:
 	or a			;582c
 	jp nz,L_583B		;582d
-	ld a,(0dc1bh)		;5830
+	ld a,(0dc1bh)		;5830   ; marca el sostenido y acaba
 	set 0,a		;5833
 	ld (0dc1bh),a		;5835
-	jp L_58CA		;5838
+	jp dco_fin		;5838
 L_583B:
 	ld a,(0dc09h)		;583b
 	or a			;583e
@@ -3281,7 +3281,7 @@ L_583B:
 	ld (0dc28h),a		;5843
 	jp L_585B		;5846
 L_5849:
-	ld hl,l584ch		;5849
+	ld hl,l584ch		;5849   ; carga 0x584C en HL y no lo guarda: la fase sigue en 0x5829, que vuelve aqui cada muestra
 L_584C:
 	ld hl,0dc27h		;584c
 	dec (hl)			;584f
@@ -3294,10 +3294,10 @@ L_584C:
 	cp (hl)			;5859
 	ret nz			;585a
 L_585B:
-	ld hl,L_5862		;585b
+	ld hl,dco_caida		;585b
 	ld (0dc25h),hl		;585e
 	ret			;5861
-L_5862:
+dco_caida:		; baja el nivel cada D muestras hasta S; con D = 0 o S = 0xFF, de golpe
 	ld a,(0dc0ah)		;5862
 	or a			;5865
 	ld a,(0dc0bh)		;5866
@@ -3306,7 +3306,7 @@ L_5862:
 	jp nz,L_5877		;586e
 L_5871:
 	ld (0dc28h),a		;5871
-	jp L_588D		;5874
+	jp dco_llega_al_sostenido		;5874
 L_5877:
 	ld hl,l587dh		;5877
 	ld (0dc25h),hl		;587a
@@ -3321,17 +3321,17 @@ L_587D:
 	ld a,(0dc0bh)		;5888
 	cp (hl)			;588b
 	ret nz			;588c
-L_588D:
+dco_llega_al_sostenido:		; bit 0 de 0xDC1B; con S = 0 la envolvente acaba
 	ld a,(0dc1bh)		;588d
 	set 0,a		;5890
 	ld (0dc1bh),a		;5892
 	ld a,(0dc0bh)		;5895
 	or a			;5898
-	jp z,L_58CA		;5899
-	ld hl,L_58A3		;589c
+	jp z,dco_fin		;5899
+	ld hl,dco_sostenido		;589c
 	ld (0dc25h),hl		;589f
 	ret			;58a2
-L_58A3:
+dco_sostenido:		; espera a que las tres envolventes esten en su sostenido (0xDC1B = 7)
 	ld a,(0dc1bh)		;58a3
 	cp 007h		;58a6
 	ret nz			;58a8
@@ -3339,11 +3339,11 @@ L_58A3:
 	or a			;58ac
 	jp nz,L_58B6		;58ad
 	ld (0dc28h),a		;58b0
-	jp L_58CA		;58b3
+	jp dco_fin		;58b3
 L_58B6:
-	ld hl,l58bch		;58b6
+	ld hl,dco_relajacion		;58b6
 	ld (0dc25h),hl		;58b9
-L_58BC:
+dco_relajacion:		; baja el nivel cada R muestras hasta 0
 	ld hl,0dc27h		;58bc
 	dec (hl)			;58bf
 	ret nz			;58c0
@@ -3354,22 +3354,22 @@ L_58BC:
 	xor a			;58c7
 	cp (hl)			;58c8
 	ret nz			;58c9
-L_58CA:
+dco_fin:		; la fase pasa a un `ret`
 	ld hl,l58d0h		;58ca
 	ld (0dc25h),hl		;58cd
 L_58D0:
 	ret			;58d0
-L_58D1:
+envolvente_dcf:		; la misma maquina para el DCF: fase en 0xDC29, cuenta 0xDC2B, nivel 0xDC2C
 	ld hl,(0dc29h)		;58d1
 	jp (hl)			;58d4
-L_58D5:
+dcf_ataque:		; como 0x5829, con ENV del DCF y bit 1
 	ld a,(0dc07h)		;58d5
 	or a			;58d8
 	jp nz,L_58E7		;58d9
 	ld a,(0dc1bh)		;58dc
 	set 1,a		;58df
 	ld (0dc1bh),a		;58e1
-	jp L_5976		;58e4
+	jp dcf_fin		;58e4
 L_58E7:
 	ld a,(0dc0dh)		;58e7
 	or a			;58ea
@@ -3378,7 +3378,7 @@ L_58E7:
 	ld (0dc2ch),a		;58ef
 	jp L_5907		;58f2
 L_58F5:
-	ld hl,l58f8h		;58f5
+	ld hl,l58f8h		;58f5   ; como en 0x5849: HL sin guardar
 L_58F8:
 	ld hl,0dc2bh		;58f8
 	dec (hl)			;58fb
@@ -3391,10 +3391,10 @@ L_58F8:
 	cp (hl)			;5905
 	ret nz			;5906
 L_5907:
-	ld hl,L_590E		;5907
+	ld hl,dcf_caida		;5907
 	ld (0dc29h),hl		;590a
 	ret			;590d
-L_590E:
+dcf_caida:		; como 0x5862
 	ld a,(0dc0eh)		;590e
 	or a			;5911
 	ld a,(0dc0fh)		;5912
@@ -3403,7 +3403,7 @@ L_590E:
 	jp nz,L_5923		;591a
 L_591D:
 	ld (0dc2ch),a		;591d
-	jp L_5939		;5920
+	jp dcf_llega_al_sostenido		;5920
 L_5923:
 	ld hl,l5929h		;5923
 	ld (0dc29h),hl		;5926
@@ -3418,17 +3418,17 @@ L_5929:
 	ld a,(0dc0fh)		;5934
 	cp (hl)			;5937
 	ret nz			;5938
-L_5939:
+dcf_llega_al_sostenido:		; bit 1 de 0xDC1B
 	ld a,(0dc1bh)		;5939
 	set 1,a		;593c
 	ld (0dc1bh),a		;593e
 	ld a,(0dc0fh)		;5941
 	or a			;5944
-	jp z,L_5976		;5945
-	ld hl,L_594F		;5948
+	jp z,dcf_fin		;5945
+	ld hl,dcf_sostenido		;5948
 	ld (0dc29h),hl		;594b
 	ret			;594e
-L_594F:
+dcf_sostenido:		; como 0x58A3
 	ld a,(0dc1bh)		;594f
 	cp 007h		;5952
 	ret nz			;5954
@@ -3436,11 +3436,11 @@ L_594F:
 	or a			;5958
 	jp nz,L_5962		;5959
 	ld (0dc2ch),a		;595c
-	jp L_5976		;595f
+	jp dcf_fin		;595f
 L_5962:
-	ld hl,l5968h		;5962
+	ld hl,dcf_relajacion		;5962
 	ld (0dc29h),hl		;5965
-L_5968:
+dcf_relajacion:		; como 0x58BC
 	ld hl,0dc2bh		;5968
 	dec (hl)			;596b
 	ret nz			;596c
@@ -3451,15 +3451,15 @@ L_5968:
 	xor a			;5973
 	cp (hl)			;5974
 	ret nz			;5975
-L_5976:
+dcf_fin:		; la fase pasa a un `ret`
 	ld hl,l597ch		;5976
 	ld (0dc29h),hl		;5979
 L_597C:
 	ret			;597c
-L_597D:
+envolvente_dca:		; la del volumen: fase en 0xDC2D, cuenta 0xDC2F, nivel 0xDC30
 	ld hl,(0dc2dh)		;597d
 	jp (hl)			;5980
-L_5981:
+dca_ataque:		; como 0x5829, sin poder apagarse
 	ld a,(0dc11h)		;5981
 	or a			;5984
 	jp nz,L_598F		;5985
@@ -3467,7 +3467,7 @@ L_5981:
 	ld (0dc30h),a		;5989
 	jp L_59A1		;598c
 L_598F:
-	ld hl,l5992h		;598f
+	ld hl,l5992h		;598f   ; como en 0x5849: HL sin guardar
 L_5992:
 	ld hl,0dc2fh		;5992
 	dec (hl)			;5995
@@ -3480,10 +3480,10 @@ L_5992:
 	cp (hl)			;599f
 	ret nz			;59a0
 L_59A1:
-	ld hl,L_59A8		;59a1
+	ld hl,dca_caida		;59a1
 	ld (0dc2dh),hl		;59a4
 	ret			;59a7
-L_59A8:
+dca_caida:		; como 0x5862
 	ld a,(0dc12h)		;59a8
 	or a			;59ab
 	ld a,(0dc13h)		;59ac
@@ -3492,7 +3492,7 @@ L_59A8:
 	jp nz,L_59BD		;59b4
 L_59B7:
 	ld (0dc30h),a		;59b7
-	jp L_59D3		;59ba
+	jp dca_llega_al_sostenido		;59ba
 L_59BD:
 	ld hl,l59c3h		;59bd
 	ld (0dc2dh),hl		;59c0
@@ -3507,46 +3507,46 @@ L_59C3:
 	ld a,(0dc13h)		;59ce
 	cp (hl)			;59d1
 	ret nz			;59d2
-L_59D3:
-	ld hl,l59d9h		;59d3
+dca_llega_al_sostenido:		; pasa a 0x59D9
+	ld hl,dca_sostenido		;59d3
 	ld (0dc2dh),hl		;59d6
-L_59D9:
-	ld a,(0dc1bh)		;59d9
+dca_sostenido:		; con el DCO y el DCF en su sostenido y el puntero a principio de pagina, apunta esa pagina en 0xDCFD
+	ld a,(0dc1bh)		;59d9   ; DCO y DCF en su sostenido?
 	cp 003h		;59dc
 	ret nz			;59de
-	ld a,(0dc19h)		;59df
+	ld a,(0dc19h)		;59df   ; el puntero a principio de pagina?
 	or a			;59e2
 	ret nz			;59e3
-	ld a,(0dc18h)		;59e4
+	ld a,(0dc18h)		;59e4   ; EG TYP (bit 7 de los conmutadores): sin bucle
 	bit 7,a		;59e7
 	jp nz,L_59F7		;59e9
-	ld a,(0dc1ah)		;59ec
+	ld a,(0dc1ah)		;59ec   ; ni en la ultima pagina
 	cp 0bfh		;59ef
 	jp z,L_59F7		;59f1
-	ld (0dcfdh),a		;59f4
+	ld (0dcfdh),a		;59f4   ; 0xDCFD: la pagina que PLAY repite mientras se tiene la tecla
 L_59F7:
-	ld hl,L_59FE		;59f7
+	ld hl,dca_espera_pagina		;59f7
 	ld (0dc2dh),hl		;59fa
 	ret			;59fd
-L_59FE:
+dca_espera_pagina:		; en el siguiente principio de pagina empieza la relajacion
 	ld a,(0dc19h)		;59fe
 	or a			;5a01
 	ret nz			;5a02
-	ld a,(0dc1bh)		;5a03
+	ld a,(0dc1bh)		;5a03   ; bit 2: el DCA en su sostenido
 	set 2,a		;5a06
 	ld (0dc1bh),a		;5a08
-	ld a,(0dc13h)		;5a0b
+	ld a,(0dc13h)		;5a0b   ; S = 0: acaba ya
 	or a			;5a0e
-	jp z,L_5A33		;5a0f
+	jp z,dca_fin		;5a0f
 	ld a,(0dc14h)		;5a12
 	or a			;5a15
 	jp nz,L_5A1F		;5a16
 	ld (0dc30h),a		;5a19
-	jp L_5A33		;5a1c
+	jp dca_fin		;5a1c
 L_5A1F:
-	ld hl,l5a25h		;5a1f
+	ld hl,dca_relajacion		;5a1f
 	ld (0dc2dh),hl		;5a22
-L_5A25:
+dca_relajacion:		; como 0x58BC
 	ld hl,0dc2fh		;5a25
 	dec (hl)			;5a28
 	ret nz			;5a29
@@ -3557,12 +3557,12 @@ L_5A25:
 	xor a			;5a30
 	cp (hl)			;5a31
 	ret nz			;5a32
-L_5A33:
+dca_fin:		; bit 7 de 0xDC1B: la sintesis acaba
 	ld a,(0dc1bh)		;5a33
 	set 7,a		;5a36
 	ld (0dc1bh),a		;5a38
 	ret			;5a3b
-L_5A3C:
+multiplica_8:		; A = suma de E >> k por cada bit de C, del 7 al 0
 	ld e,a			;5a3c
 	ld b,008h		;5a3d
 	xor a			;5a3f
@@ -3574,14 +3574,14 @@ L_5A46:
 	srl e		;5a46
 	djnz L_5A40		;5a48
 	ret			;5a4a
-L_5A4B:
-	ld a,(0dc00h)		;5a4b
+oscilador:		; devuelve en A la muestra de la onda en la fase 0xDC31 y avanza la fase
+	ld a,(0dc00h)		;5a4b   ; la onda 15 o mas: ruido
 	cp 00fh		;5a4e
-	jp nc,L_5AD4		;5a50
-	ld hl,(0dc32h)		;5a53
+	jp nc,ruido		;5a50
+	ld hl,(0dc32h)		;5a53   ; la muestra en la fase
 	ld a,(hl)			;5a56
 	push af			;5a57
-	ld a,(0dc02h)		;5a58
+	ld a,(0dc02h)		;5a58   ; sin LFO del DCO, el paso es FEET * 256
 	or a			;5a5b
 	jp nz,L_5A68		;5a5c
 	ld a,(0dc01h)		;5a5f
@@ -3589,19 +3589,19 @@ L_5A4B:
 	ld l,000h		;5a63
 	jp L_5A9B		;5a65
 L_5A68:
-	ld c,a			;5a68
+	ld c,a			;5a68   ; con LFO: el paso, FEET por 1 + LFO
 	ld a,(0dc45h)		;5a69
-	bit 7,a		;5a6c
+	bit 7,a		;5a6c   ; el LFO negativo...
 	jp z,L_5A73		;5a6e
 	neg		;5a71
 L_5A73:
 	ld e,a			;5a73
 	ld d,000h		;5a74
-	call L_5AE4		;5a76
+	call multiplica_16		;5a76
 	ld a,(0dc45h)		;5a79
 	bit 7,a		;5a7c
 	jp z,L_5A91		;5a7e
-	inc hl			;5a81
+	inc hl			;5a81   ; ...resta: 1 - LFO / 2
 	srl h		;5a82
 	rr l		;5a84
 	ex de,hl			;5a86
@@ -3616,18 +3616,18 @@ L_5A92:
 	ld a,(0dc01h)		;5a92
 	ld e,000h		;5a95
 	ld d,a			;5a97
-	call L_5AF6		;5a98
+	call multiplica_8_8		;5a98   ; HL = FEET por el factor
 L_5A9B:
-	ld a,(0dc03h)		;5a9b
+	ld a,(0dc03h)		;5a9b   ; y si hay ENV del DCO...
 	or a			;5a9e
 	jp z,L_5ACA		;5a9f
 	push hl			;5aa2
 	ld c,a			;5aa3
-	ld a,(0dc28h)		;5aa4
+	ld a,(0dc28h)		;5aa4   ; ...por el nivel de su envolvente
 	ld e,a			;5aa7
 	ld d,000h		;5aa8
-	call L_5AE4		;5aaa
-	ld a,(0dc18h)		;5aad
+	call multiplica_16		;5aaa
+	ld a,(0dc18h)		;5aad   ; invertida con el bit 3 de los conmutadores
 	bit 3,a		;5ab0
 	jp z,L_5AC5		;5ab2
 	inc hl			;5ab5
@@ -3643,14 +3643,14 @@ L_5AC5:
 	inc h			;5ac5
 L_5AC6:
 	pop de			;5ac6
-	call L_5AF6		;5ac7
+	call multiplica_8_8		;5ac7
 L_5ACA:
-	ld de,(0dc31h)		;5aca
+	ld de,(0dc31h)		;5aca   ; la fase avanza el paso
 	add hl,de			;5ace
 	ld (0dc31h),hl		;5acf
 	pop af			;5ad2
 	ret			;5ad3
-L_5AD4:
+ruido:		; lee la memoria de 0x0000 en adelante (la BIOS) con 0xDC35, girada y acumulada en 0xDC34
 	ld hl,(0dc35h)		;5ad4
 	inc l			;5ad7
 	ld (0dc35h),hl		;5ad8
@@ -3660,7 +3660,7 @@ L_5AD4:
 	add a,(hl)			;5ae1
 	ld (hl),a			;5ae2
 	ret			;5ae3
-L_5AE4:
+multiplica_16:		; HL = suma de DE >> k por cada bit de C, del 7 al 0
 	ld b,008h		;5ae4
 	ld hl,00000h		;5ae6
 L_5AE9:
@@ -3672,7 +3672,7 @@ L_5AEF:
 	rr e		;5af1
 	djnz L_5AE9		;5af3
 	ret			;5af5
-L_5AF6:
+multiplica_8_8:		; HL (8.8) por DE: la parte baja contra DE a la derecha, la alta contra DE a la izquierda
 	push de			;5af6
 	push hl			;5af7
 	ld c,l			;5af8
@@ -3699,19 +3699,19 @@ L_5B15:
 	rl d		;5b17
 	djnz L_5B0F		;5b19
 	ret			;5b1b
-L_5B1C:
+filtro:		; filtro de dos etapas con resonancia sobre la muestra L; devuelve A
 	ld l,a			;5b1c
-	ld a,(0dc07h)		;5b1d
+	ld a,(0dc07h)		;5b1d   ; sin ENV del DCF, el corte es CUT
 	or a			;5b20
 	jp nz,L_5B2A		;5b21
 	ld a,(0dc04h)		;5b24
 	jp L_5B4B		;5b27
 L_5B2A:
-	ld c,a			;5b2a
+	ld c,a			;5b2a   ; con ENV: CUT mas o menos ENV por el nivel de su envolvente
 	ld a,(0dc2ch)		;5b2b
-	call L_5A3C		;5b2e
+	call multiplica_8		;5b2e
 	ld b,a			;5b31
-	ld a,(0dc18h)		;5b32
+	ld a,(0dc18h)		;5b32   ; bit 2 de los conmutadores: resta
 	bit 2,a		;5b35
 	ld a,(0dc04h)		;5b37
 	jp nz,L_5B46		;5b3a
@@ -3724,7 +3724,7 @@ L_5B46:
 	jp nc,L_5B4B		;5b47
 	xor a			;5b4a
 L_5B4B:
-	ld h,a			;5b4b
+	ld h,a			;5b4b   ; y el LFO del DCF lo mueve arriba o abajo
 	ld a,(0dc06h)		;5b4c
 	or a			;5b4f
 	jp nz,L_5B57		;5b50
@@ -3733,7 +3733,7 @@ L_5B4B:
 L_5B57:
 	ld c,a			;5b57
 	ld a,(0dc45h)		;5b58
-	call L_5CB5		;5b5b
+	call multiplica_con_signo		;5b5b
 	bit 7,a		;5b5e
 	jp nz,L_5B6C		;5b60
 	add a,h			;5b63
@@ -3748,69 +3748,69 @@ L_5B6C:
 	jp nc,L_5B75		;5b71
 	xor a			;5b74
 L_5B75:
-	ld (0dc37h),a		;5b75
-	ld h,000h		;5b78
+	ld (0dc37h),a		;5b75   ; 0xDC37: el corte
+	ld h,000h		;5b78   ; la muestra con signo a 16 bits
 	bit 7,l		;5b7a
 	jp z,L_5B80		;5b7c
 	dec h			;5b7f
 L_5B80:
-	ld a,(0dc38h)		;5b80
+	ld a,(0dc38h)		;5b80   ; con realimentacion...
 	or a			;5b83
 	jp z,L_5B99		;5b84
 	push hl			;5b87
-	ld a,(0dc37h)		;5b88
+	ld a,(0dc37h)		;5b88   ; ...mas la salida de la segunda etapa por corte y realimentacion
 	ld hl,(0dc3ch)		;5b8b
-	call L_5C3E		;5b8e
+	call por_a_entre_128		;5b8e
 	ld a,(0dc38h)		;5b91
-	call L_5C58		;5b94
+	call por_a_bit7_doble		;5b94
 	pop de			;5b97
 	add hl,de			;5b98
 L_5B99:
-	push hl			;5b99
+	push hl			;5b99   ; la primera etapa: 0xDC3A += (x - 0xDC3A) * (corte + 1) / 256
 	ld de,(0dc3ah)		;5b9a
 	scf			;5b9e
 	ccf			;5b9f
 	sbc hl,de		;5ba0
 	ld a,(0dc37h)		;5ba2
-	inc a			;5ba5
+	inc a			;5ba5   ; con corte 0xFF no multiplica
 	jp z,L_5BAC		;5ba6
-	call L_5C24		;5ba9
+	call por_a_entre_256		;5ba9
 L_5BAC:
 	ld de,(0dc3ah)		;5bac
 	add hl,de			;5bb0
 	ld (0dc3ah),hl		;5bb1
-	ex de,hl			;5bb4
+	ex de,hl			;5bb4   ; 0xDC3E: lo que queda, x - 0xDC3A
 	pop hl			;5bb5
 	scf			;5bb6
 	ccf			;5bb7
 	sbc hl,de		;5bb8
 	ld (0dc3eh),hl		;5bba
-	ld a,(0dc18h)		;5bbd
+	ld a,(0dc18h)		;5bbd   ; la segunda etapa solo con el bit 0 o con realimentacion
 	bit 0,a		;5bc0
 	jp nz,L_5BCC		;5bc2
 	ld a,(0dc38h)		;5bc5
 	or a			;5bc8
 	jp z,L_5BE6		;5bc9
 L_5BCC:
-	ld de,(0dc3ch)		;5bcc
+	ld de,(0dc3ch)		;5bcc   ; 0xDC3C += (0xDC3E - 0xDC3C) * (corte + 1) / 256
 	scf			;5bd0
 	ccf			;5bd1
 	sbc hl,de		;5bd2
 	ld a,(0dc37h)		;5bd4
 	inc a			;5bd7
 	jp z,L_5BDE		;5bd8
-	call L_5C24		;5bdb
+	call por_a_entre_256		;5bdb
 L_5BDE:
 	ld de,(0dc3ch)		;5bde
 	add hl,de			;5be2
 	ld (0dc3ch),hl		;5be3
 L_5BE6:
-	ld a,(0dc18h)		;5be6
+	ld a,(0dc18h)		;5be6   ; la salida: bit 0, la segunda etapa...
 	bit 0,a		;5be9
 	jp nz,L_5C06		;5beb
-	bit 1,a		;5bee
+	bit 1,a		;5bee   ; ...bit 1, la primera...
 	jp nz,L_5C03		;5bf0
-	ld hl,(0dc3eh)		;5bf3
+	ld hl,(0dc3eh)		;5bf3   ; ...y si no, 0xDC3E / 2
 	bit 7,h		;5bf6
 	jp z,L_5BFC		;5bf8
 	inc hl			;5bfb
@@ -3821,24 +3821,26 @@ L_5BFC:
 L_5C03:
 	ld hl,(0dc3ah)		;5c03
 L_5C06:
-	ld a,(0dc39h)		;5c06
+	ld a,(0dc39h)		;5c06   ; por la ganancia de RES
 	or a			;5c09
 	jp z,L_5C10		;5c0a
-	call L_5C24		;5c0d
+	call por_a_entre_256		;5c0d
 L_5C10:
 	ld a,l			;5c10
 	ret			;5c11
 
 ; ----------------------------------------------------------------------
-; DATOS pasos_del_lfo: 9 valores por (0xDC05) que 0x5710 copia a 0xDC38
+; DATOS realimentacion_por_res: la realimentacion del filtro por RES (0xDC05,
+;   de 0 a 8): 0x5710 la copia a 0xDC38
 ;   0x5c12..0x5c1b  (9 bytes)
-DATA_pasos_del_lfo:
+DATA_realimentacion_por_res:
 	defb 000h,030h,050h,070h,090h,0a0h,0a8h,0b0h,0b8h	; 5c12  .0Pp.....
 
 ; ----------------------------------------------------------------------
-; DATOS pasos_del_lfo_2: 9 valores por (0xDC05) que 0x5718 copia a 0xDC39
+; DATOS ganancia_por_res: la ganancia de salida del filtro por RES (0xDC05):
+;   0x5718 la copia a 0xDC39
 ;   0x5c1b..0x5c24  (9 bytes)
-DATA_pasos_del_lfo_2:
+DATA_ganancia_por_res:
 	defb 000h,0cfh,09bh,071h,04dh,03ah,028h,022h,00eh	; 5c1b  ...qM:(".
 
 ; ======================================================================
@@ -3846,7 +3848,7 @@ DATA_pasos_del_lfo_2:
 ; ======================================================================
 
 
-L_5C24:
+por_a_entre_256:		; HL con signo por A / 256: primero la mitad, luego suma
 	ld b,008h		;5c24
 	ld c,a			;5c26
 	ex de,hl			;5c27
@@ -3864,7 +3866,7 @@ L_5C31:
 L_5C3B:
 	djnz L_5C2B		;5c3b
 	ret			;5c3d
-L_5C3E:
+por_a_entre_128:		; HL con signo por A / 128: suma antes de dividir
 	ld b,008h		;5c3e
 	ld c,a			;5c40
 	ex de,hl			;5c41
@@ -3882,7 +3884,7 @@ L_5C51:
 	rr e		;5c53
 	djnz L_5C45		;5c55
 	ret			;5c57
-L_5C58:
+por_a_bit7_doble:		; como 0x5C3E, con el bit 7 de A valiendo el doble
 	ld c,a			;5c58
 	ex de,hl			;5c59
 	ld hl,00000h		;5c5a
@@ -3908,23 +3910,23 @@ L_5C77:
 	rr e		;5c79
 	djnz L_5C6B		;5c7b
 	ret			;5c7d
-L_5C7E:
+amplitud:		; la muestra por el LFO del DCA y por el nivel de la envolvente del DCA
 	push af			;5c7e
-	ld a,(0dc08h)		;5c7f
+	ld a,(0dc08h)		;5c7f   ; sin LFO del DCA, directo al volumen
 	or a			;5c82
 	jp z,L_5CB1		;5c83
 	ld d,a			;5c86
 	ld c,a			;5c87
-	ld a,(0dc45h)		;5c88
-	call L_5CB5		;5c8b
+	ld a,(0dc45h)		;5c88   ; el factor: 0x80 - LFO + LFO por la onda del LFO
+	call multiplica_con_signo		;5c8b
 	ld c,a			;5c8e
 	ld a,080h		;5c8f
 	sub d			;5c91
 	add a,c			;5c92
 	ld c,a			;5c93
 	pop af			;5c94
-	call L_5CB5		;5c95
-L_5C98:
+	call multiplica_con_signo		;5c95
+por_el_dca:		; A = E con signo por el nivel 0xDC30 / 128
 	ld e,a			;5c98
 	ld a,(0dc30h)		;5c99
 	ld c,a			;5c9c
@@ -3944,8 +3946,8 @@ L_5CAE:
 	ret			;5cb0
 L_5CB1:
 	pop af			;5cb1
-	jp L_5C98		;5cb2
-L_5CB5:
+	jp por_el_dca		;5cb2
+multiplica_con_signo:		; A = suma de E >> k (E con signo) por cada bit de C
 	ld e,a			;5cb5
 	ld b,008h		;5cb6
 	xor a			;5cb8
@@ -3961,10 +3963,10 @@ L_5CC5:
 	sra e		;5cc5
 	djnz L_5CB9		;5cc7
 	ret			;5cc9
-L_5CCA:
+lfo:		; salta por 0xDC40: 0x5CCE o 0x5D39
 	ld hl,(0dc40h)		;5cca
 	jp (hl)			;5ccd
-L_5CCE:
+lfo_paso:		; cada (retencion + 1) muestras toma el valor de la onda del LFO; la fase avanza FEET * 16
 	ld a,(0dc02h)		;5cce
 	ld b,a			;5cd1
 	ld a,(0dc06h)		;5cd2
@@ -3973,20 +3975,20 @@ L_5CCE:
 	ld a,(0dc08h)		;5cd7
 	or b			;5cda
 	ret z			;5cdb
-	ld a,(0dc16h)		;5cdc
+	ld a,(0dc16h)		;5cdc   ; onda 15 o mas: muestreo y retencion
 	cp 00fh		;5cdf
-	jp nc,L_5D18		;5ce1
-	ld a,(0dc46h)		;5ce4
+	jp nc,lfo_ruido		;5ce1
+	ld a,(0dc46h)		;5ce4   ; 0xDC46: la cuenta de la retencion
 	dec a			;5ce7
 	cp 0ffh		;5ce8
 	jp nz,L_5CF7		;5cea
-	ld hl,(0dc43h)		;5ced
+	ld hl,(0dc43h)		;5ced   ; se acabo la cuenta: el valor nuevo, 0xDC45
 	ld a,(hl)			;5cf0
 	ld (0dc45h),a		;5cf1
 	ld a,(0dc15h)		;5cf4
 L_5CF7:
 	ld (0dc46h),a		;5cf7
-	ld hl,(0dc42h)		;5cfa
+	ld hl,(0dc42h)		;5cfa   ; la fase del LFO avanza FEET del LFO * 16
 	ld a,(0dc17h)		;5cfd
 	ld e,a			;5d00
 	ld d,000h		;5d01
@@ -4001,7 +4003,7 @@ L_5CF7:
 	add hl,de			;5d13
 	ld (0dc42h),hl		;5d14
 	ret			;5d17
-L_5D18:
+lfo_ruido:		; muestreo y retencion: el valor nuevo sale del ruido (como 0x5AD4)
 	ld a,(0dc46h)		;5d18
 	dec a			;5d1b
 	cp 0ffh		;5d1c
@@ -4018,9 +4020,9 @@ L_5D18:
 	ld a,(0dc15h)		;5d33
 L_5D36:
 	ld (0dc46h),a		;5d36
-L_5D39:
+lfo_apagado:		; sin LFO: nada
 	ret			;5d39
-L_5D3A:
+play:		; PLAY: sin pagina de bucle (0xDCFD = 0) las rutinas de 0x6709; con bucle, las de 0x5E8B
 	di			;5d3a
 	ld a,(0dcfdh)		;5d3b
 	or a			;5d3e
