@@ -3651,3 +3651,712 @@ C 0x57E3 F2
 C 0x57E8 F4 (bit 0) pulsada?
 C 0x57ED F4
 C 0x57F2 F5
+
+C 0x401B sin interrupciones mientras suenan los efectos
+C 0x4022 ocupado?
+C 0x4030 libre
+C 0x4036 el bit 7, al signo
+C 0x403B y se dejan entrar otra vez
+C 0x4040 L + A...
+C 0x4043 ...con el acarreo a H
+C 0x4045 E + A...
+C 0x4048 ...con el acarreo a D
+C 0x404B dos bytes por entrada
+C 0x4052 HL = el destino
+C 0x405D 5 bytes
+C 0x406E sin interrupciones
+C 0x4090 0x6FF bytes mas
+C 0x40AA libre
+C 0x40C5 0xD8F6: SYN pedido?
+C 0x40CB la sintesis
+C 0x40CE hecho
+C 0x40D4 DE = donde se guardan
+C 0x40DA el registro, para la pagina 1
+C 0x40E5 0xD855
+C 0x40EA el secundario de los bits 2-3...
+C 0x40EC ...con el primario y el bit de expandido
+C 0x40EF los bits de la pagina a 0-1
+C 0x40F3 C = el slot primario
+C 0x40F6 EXPTBL (0xFCC1)
+C 0x40FB bit 7: expandido
+C 0x40FF SLTTBL (0xFCC5), cuatro mas alla
+C 0x4103 A = su registro secundario
+C 0x4105 la pagina 2...
+C 0x4107 ...el slot de la RAM, y ENASLT
+C 0x410D la pagina 2...
+C 0x410F ...el slot del cartucho, y ENASLT
+C 0x411F el siguiente
+C 0x4127 H.KEYI apunta a 0x4015
+C 0x412F la fase
+C 0x4132 menor que 3?
+C 0x413E A = la fase
+C 0x413F a su rutina
+C 0x4159 bit 0 al acarreo
+C 0x4163 paso 2 aqui; paso 3 y 0 mas abajo
+C 0x4168 un cuadro menos
+C 0x4170 0x428 bytes
+C 0x417D 0xD910: las pasadas que quedan
+C 0x4182 paso 3 aqui; paso 0 mas abajo
+C 0x4194 el origen mas la pasada...
+C 0x4198 ...y el destino
+C 0x419E 0x85 vueltas
+C 0x41AB ocho bytes mas alla...
+C 0x41B0 ...en los dos
+C 0x41B9 una pasada menos
+C 0x41BE el rotulo
+C 0x41D6 un cuadro menos
+C 0x41D8 a la fase 2
+C 0x41DB paso 1 aqui; paso 0 mas abajo
+C 0x41E6 fase 0
+C 0x41E9 0xD804 = 0x20
+C 0x41F3 quedan columnas
+C 0x41F7 0xD804 = 0x20
+C 0x4201 paso 1 aqui; los demas, mas abajo
+C 0x4203 la segunda linea del rotulo
+C 0x4218 un cuadro menos
+C 0x421E timbres, ondas, LAYOUT y sprites
+C 0x4223 0x50 cuadros
+C 0x422E la fase siguiente
+C 0x4233 el paso a 0
+C 0x4237 0x78 cuadros
+C 0x4248 las recien pulsadas
+C 0x4250 0xD804 = 0
+C 0x4262 0xD801 = 0
+C 0x426A el efecto 8 si el programa esta en marcha
+C 0x4272 el mezclador
+C 0x427D 16 KB
+C 0x4289 desde el R0
+C 0x428B el valor
+C 0x4290 el registro siguiente
+C 0x429F WRTVDP
+C 0x42A9 las de ahora
+C 0x42AD las nuevas
+C 0x42B2 con repeticion en (HL + 2)
+C 0x42BD SELECT del bit 6...
+C 0x42BE ...al 5
+C 0x42C9 B = la fila 8 girada dos veces
+C 0x42CA izquierda
+C 0x42CF girada cuatro veces
+C 0x42D2 derecha y ESPACIO
+C 0x42D7 girada cinco veces
+C 0x42D8 arriba y abajo
+C 0x42E2 0x300 nombres
+C 0x42E9 guarda A
+C 0x42ED en los registros alternativos...
+C 0x42F1 ...C' = el puerto
+C 0x42F8 en los alternativos...
+C 0x42F9 ...el puerto de lectura de la BIOS...
+C 0x42FC ...en C'
+C 0x42FF HL = origen, DE = destino
+C 0x4304 tres tercios
+C 0x430F 0x800 mas alla
+C 0x4316 tres tercios
+C 0x4320 0x800 mas alla
+C 0x4327 tres tercios
+C 0x4331 0x800 mas alla
+C 0x4337 C = 0xFF: tal cual
+C 0x433A la palabra...
+C 0x433D ...a HL
+C 0x4343 0xFF + 1 = 0
+C 0x4345 0xFE + 2 = 0
+C 0x434B la siguiente posicion
+C 0x434E C = 0: ceros
+C 0x4353 la palabra...
+C 0x4356 ...a HL
+C 0x4357 DE = el primer tramo
+C 0x4358 SETWRT en HL, el puerto en C'
+C 0x435E el siguiente
+C 0x4369 un byte...
+C 0x436F ...n veces
+C 0x4374 el siguiente
+C 0x4379 n veces
+C 0x4380 0x1800 bytes
+C 0x4389 0x3AA bytes
+C 0x4392 `ret`: sin disco
+C 0x43A4 los patrones de los sprites (0x8000)
+C 0x43A8 DE = HL + 1...
+C 0x43AB ...el primero a cero...
+C 0x43AD ...y se arrastra
+C 0x43B3 una columna menos
+C 0x43B4 se acabo: M
+C 0x43B6 la tabla de nombres
+C 0x43CC 0x80 bytes
+C 0x43D5 0xD0: fin de la lista de sprites
+C 0x43DC tiles 0x10 + cifra
+C 0x43E0 tiles 0x40 + cifra
+C 0x43EA la ultima
+C 0x43EB a la izquierda
+C 0x43F8 el siguiente byte
+C 0x4403 desde el tile 0x10
+C 0x440B los colores desde el tile 0x10
+C 0x440E 0x158 bytes
+C 0x4539 16 tiles
+C 0x4543 de 8 en 8
+C 0x4546 16 tiles
+C 0x4549 un tile
+C 0x4551 el siguiente
+C 0x4557 linea 0, fila 0
+C 0x4566 0x3C0 bytes
+C 0x4574 al final de la fila, 12 mas
+C 0x457C el tile siguiente...
+C 0x457D ...con el numero siguiente
+C 0x4581 la fila siguiente
+C 0x458C 20 por fila
+C 0x4592 por 8
+C 0x4595 desde 0x0A00
+C 0x459F de 8 en 8: la misma linea de cada tile
+C 0x45AD la linea siguiente...
+C 0x45AF ...de 0 a 7
+C 0x45B4 la fila siguiente
+C 0x470E 0x428 bytes en los tres tercios
+
+C 0x4719 sprites fuera y nombres a cero
+C 0x471C la fuente
+C 0x4721 desde 0x0248...
+C 0x4724 ...0x368 bytes
+C 0x472A 0x0620...
+C 0x472D ...8 bytes
+C 0x4735 0x05B0...
+C 0x4738 ...0x70 bytes
+C 0x4741 desde 0x0200
+C 0x4747 los patrones
+C 0x474A los nombres
+C 0x4750 el rotulo
+C 0x4754 el flujo de los nombres
+C 0x475A R7 = 0xB8...
+C 0x475C ...los tres tonos, sin ruido
+C 0x4768 tres canales
+C 0x476A de 5 en 5 bytes
+C 0x4772 activo: su nota
+C 0x4778 el canal siguiente
+C 0x4780 R7 del PSG...
+C 0x4786 (sin uso)
+C 0x478C quedan cuadros
+C 0x4793 el byte de la lista
+C 0x479A 0x2n?
+C 0x479F n...
+C 0x47A1 ...duracion de cada nota
+C 0x47A8 B = volumen << 4
+C 0x47A9 D = tono grueso
+C 0x47AB E = tono fino
+C 0x47B1 la lista avanza
+C 0x47B4 H = grueso, L = fino
+C 0x47B6 E = grueso
+C 0x47BB C - 1: el registro fino
+C 0x47BC E = fino
+C 0x47C1 el volumen...
+C 0x47C5 ...a H
+C 0x47C9 la cuenta = la duracion
+C 0x47CF inactivo
+C 0x47D2 volumen 0
+C 0x47D5 el registro de volumen
+C 0x47D7 E = el volumen
+C 0x47DB la pantalla en curso
+C 0x47DE destino 0x3B00...
+C 0x47E1 ...origen 0xD870...
+C 0x47E4 ...128 bytes
+C 0x47EF ocupado
+C 0x47F7 sin cambiar de pantalla
+C 0x4802 a la pantalla 0xD8F4
+C 0x481A el programa en marcha?
+C 0x481F la fila B
+C 0x4823 pulsadas a 1
+C 0x4828 la fila siguiente
+C 0x482A hasta la 8
+C 0x4832 8 bits
+C 0x4837 el bit siguiente al acarreo
+C 0x483E la fila * 8
+C 0x4841 + bit + 1
+C 0x4846 la de antes
+C 0x4847 la de ahora
+C 0x484D la nueva (o 0)
+C 0x4851 C = la nueva
+C 0x4852 la de ahora
+C 0x4855 donde va la repetida
+C 0x4859 la que se repite?
+C 0x485C su cuenta
+C 0x485E 0x28 cuadros?
+C 0x4863 uno mas
+C 0x4864 todavia: la nueva (0)
+C 0x4867 la apunta
+C 0x4869 cuenta a cero
+C 0x486B repite la de ahora
+C 0x486D el programa en marcha?
+C 0x4873 la tecla nueva
+C 0x4879 antes de F1
+C 0x487C despues de F5
+C 0x4883 la primera pagina del menu
+C 0x488A como mucho la 8
+C 0x48A1 0xD804 = 0x20
+C 0x48A8 el efecto 5
+C 0x48AF SHIFT?
+C 0x48B5 el programa en marcha?
+C 0x48BB la pagina del menu
+C 0x48BF 0 -> 1
+C 0x48C2 1 -> 0
+C 0x48C7 el menu de la primera pagina...
+C 0x48CD ...o de la segunda
+C 0x48D0 en las filas 22 y 23
+C 0x48D3 64 bytes
+C 0x48DC sin acabar
+C 0x48E6 a la copia de los atributos
+C 0x48E9 16 bytes
+C 0x490E 0: preparar
+C 0x4912 el programa en marcha?
+C 0x491E sin acabar
+C 0x4925 a la copia
+C 0x492D 0xD907 = 0
+C 0x493C quedan columnas
+C 0x4944 A = 0xFF: M
+C 0x4957 los patrones del teclado...
+C 0x495D ...otros...
+C 0x4966 ...los colores...
+C 0x496F ...y mas colores
+C 0x497B el juego de caracteres
+C 0x497F el dibujo para los teclados no japoneses
+C 0x4994 los nombres
+C 0x499D la entrada en 0xBCCA...
+C 0x49A5 ...que es la del LAYOUT
+C 0x49A9 0xD905
+C 0x49B4 la tecla siguiente
+C 0x49B9 la 0x16 se salta...
+C 0x49BA ...y su entrada
+C 0x49BC hasta la 0x30
+C 0x49C9 0xD901
+C 0x49D2 la tabla de 0x5800
+C 0x49D6 la entrada
+C 0x49DC por 6
+C 0x49E2 DE = origen
+C 0x49E6 destino...
+C 0x49EA ...y longitud
+C 0x49FF copia
+C 0x4A04 RLE
+C 0x4A09 copia en los tres tercios
+C 0x4A0E relleno en los tres tercios
+C 0x4A14 colores de la tecla hundida...
+C 0x4A19 ...en los sprites 0 y 1
+C 0x4A1E pulsada
+C 0x4A22 sin color
+C 0x4A29 soltada
+C 0x4A30 la entrada
+C 0x4A37 la tecla negra...
+C 0x4A39 ...su columna...
+C 0x4A3C ...en la fila 0x39xx
+C 0x4A42 un byte...
+C 0x4A44 ...de 0x4B63 o 0x4B64
+C 0x4A53 a la VRAM
+C 0x4A5B soltada
+C 0x4A61 la entrada
+C 0x4A6C negra: X = 0x19 + 7 * n
+C 0x4A76 Y = 0x56...
+C 0x4A7B ...X
+C 0x4A7F el segundo sprite igual
+C 0x4A86 blanca: Y = 0x41...
+C 0x4A89 ...X de 0x4B2D
+C 0x4A95 el segundo sprite igual
+
+C 0x4A9E dos bytes por tecla
+C 0x4AA4 la fila 0x38xx...
+C 0x4AA6 ...y la columna
+C 0x4AAB soltada:
+C 0x4AAE ...el dibujo de 6 mas alla
+C 0x4AB3 pulsada
+C 0x4AB4 los tiles de 0x4B65
+C 0x4ABB la direccion al VDP
+C 0x4ABE dos tiles
+C 0x4AC5 la tecla
+C 0x4ACB su entrada del LAYOUT
+C 0x4ACD sin nota: nada
+C 0x4AD4 su indice...
+C 0x4ADA ...a 0xD905
+C 0x4AE7 la tecla
+C 0x4AED dos tiles arriba...
+C 0x4AF3 ...y dos debajo
+C 0x4B07 de 1 a 0
+C 0x4B13 el puerto de control
+C 0x4B15 la parte baja...
+C 0x4B18 ...y la alta
+C 0x4B24 a 0xD200
+C 0x4B27 0x30 teclas
+C 0x4BA4 el efecto sigue
+C 0x4BA9 0xD904 = 1
+C 0x4BB2 25 bytes
+C 0x4BBB las filas 22 y 23...
+C 0x4BBE ...64 tiles a cero
+C 0x4BC7 la pantalla de esa tecla
+C 0x4BCB los contadores del tic a cero
+C 0x4BD7 interrupciones otra vez
+C 0x4BDD el nibble bajo
+C 0x4BE0 no es el momento
+C 0x4BE6 el alto...
+C 0x4BEC ...menor que 5
+C 0x4BF2 8 bytes por entrada
+C 0x4BF9 su entrada en 0x4C61
+C 0x4BFD dos cambios
+C 0x4BFF la direccion, baja...
+C 0x4C03 ...y alta, para escribir
+C 0x4C0A el puerto de datos
+C 0x4C14 dos bytes
+C 0x4C19 interrupciones otra vez
+C 0x4C1E el dibujo en curso
+C 0x4C21 0xD902: la fase de la animacion
+C 0x4C26 la otra fase
+C 0x4C2B X + 1
+C 0x4C2F hasta 0x98
+C 0x4C31 al llegar, dibujo 0...
+C 0x4C33 ...y fase 1
+C 0x4C3C el dibujo siguiente...
+C 0x4C3D ...de tres
+C 0x4C44 dos bytes por dibujo
+C 0x4C4C los patrones de los dos sprites
+C 0x4C50 Y del primero
+C 0x4C52 su patron
+C 0x4C56 la misma Y para el segundo...
+C 0x4C58 ...y su patron
+C 0x4C89 fase 1 aqui; la 2 mas abajo
+C 0x4C8E una vez mas
+C 0x4C93 se acabo: fase 2
+C 0x4C95 bit 2: un dibujo u otro
+C 0x4C9C a la copia de los atributos
+C 0x4CA5 fase 2
+C 0x4CAA el tile 0
+C 0x4CBD el patron del primer sprite
+C 0x4CC1 una vez mas
+C 0x4CC2 los patrones 0x38 y 0x3C...
+C 0x4CC9 ...o 0x40 y 0x44
+C 0x4CCE el segundo sprite
+C 0x4D07 sin interrupciones
+C 0x4D0D fallo
+C 0x4D17 el tipo
+C 0x4D1D 16 veces
+C 0x4D23 fallo
+C 0x4D28 7 letras
+C 0x4D2A una letra
+C 0x4D35 fallo
+C 0x4D3A dos bytes
+C 0x4D44 BC = la longitud
+C 0x4D4A SAMP?
+C 0x4D5A fallo
+C 0x4D5F un byte
+C 0x4D65 el siguiente
+C 0x4D66 hasta la longitud
+C 0x4D78 el motor parado
+C 0x4D7F acarreo: fallo
+C 0x4D84 TAPOUT
+C 0x4D8F sin interrupciones
+C 0x4D90 el tipo
+C 0x4D9D fallo
+C 0x4DA2 C = el tipo
+C 0x4DA5 un byte
+C 0x4DAA el tipo?
+C 0x4DB5 la letra
+C 0x4DB6 espacio?
+C 0x4DBF la cabecera del nombre
+C 0x4DD2 el nombre que llega
+C 0x4DD5 otro nombre: a buscar otra vez
+C 0x4DE4 "FOUND"
+C 0x4DEA en 0x3A0D...
+C 0x4DED ...las siete letras
+C 0x4DF0 la RAM otra vez
+C 0x4DFE un byte de la longitud
+C 0x4E0B SAMP?
+C 0x4E24 BC = la longitud
+C 0x4E27 HL = la direccion
+C 0x4E2A un byte...
+C 0x4E30 ...a su sitio
+C 0x4E32 hasta la longitud
+C 0x4E4D 0x80...
+C 0x4E4F ...en todo
+C 0x4E54 TAPIN
+C 0x4E5D 0, 1 o 2
+C 0x4E60 la tabla...
+C 0x4E63 ...a 0xDBF0
+C 0x4E69 la entrada
+C 0x4E6F 65536 vueltas...
+C 0x4E77 ...B veces
+C 0x4E8D cambiando de pantalla
+C 0x4E96 el nombre
+C 0x4E9F el FCB listo
+C 0x4EA5 la longitud
+C 0x4EB2 la pagina de bucle
+C 0x4EB5 la direccion de los datos
+C 0x4EBE BDOS 0x1A: la DMA
+C 0x4EC4 la longitud en registros de 1 byte
+C 0x4ED1 la pila, para los errores
+C 0x4EDB el FCB...
+C 0x4EDE ...con el nombre
+C 0x4EF1 el FCB listo
+C 0x4EF7 0xDCFE
+C 0x4F04 0xDCFD
+C 0x4F10 BDOS 0x1A: la DMA
+C 0x4F16 la longitud en registros
+C 0x4F23 la pila, para los errores
+C 0x4F2D el FCB...
+C 0x4F30 ...con el nombre
+C 0x4F43 error?
+C 0x4F4D la pila, para los errores
+C 0x4F5A 0x1A1 bytes mas
+C 0x4F67 el FCB de busqueda a cero
+C 0x4F74 el nombre...
+C 0x4F77 ...todo '?'
+C 0x4F7F ninguno encontrado
+C 0x4F82 la lista desde el 0
+C 0x4F92 BDOS 0x11
+C 0x4F95 ninguno
+C 0x4F9B la extension del encontrado
+C 0x4FA3 las otras dos letras...
+C 0x4FA4 ...espacios?
+C 0x4FAE uno mas
+C 0x4FB4 cuantos
+C 0x4FB7 0x23: lleno
+C 0x4FBE BDOS 0x12
+C 0x4FC1 no hay mas
+C 0x4FC7 alguno?
+C 0x4FD1 el rotulo a la lista
+C 0x4FD9 el efecto 2
+C 0x4FFA la primera fila de la lista
+C 0x5008 RETURN?
+C 0x500C RETURN: fuera...
+C 0x500F ...con acarreo
+C 0x5012 en la primera:
+C 0x5013 nada
+C 0x5016 una arriba
+C 0x501E cuantos quedan por debajo
+C 0x5020 diez o menos: nada
+C 0x5025 una abajo
+C 0x5027 la lista otra vez
+C 0x502D sin acarreo
+C 0x5034 0xD901
+
+C 0x50CC A...
+C 0x50D1 ...por 3...
+C 0x50D3 ...por 4, menos A: por 11
+C 0x50D8 desde la lista
+C 0x50DE el codigo de error...
+C 0x50E1 ...de 0 a 7
+C 0x50E4 0 y 1: los mensajes 4 y 3
+C 0x50E6 2 a 5: el mensaje 0; de 6 en adelante, el 3
+C 0x51CE el tipo, de 0 a 2
+C 0x51D0 la letra en 0x51D8
+C 0x51DD 0xD9DF: ya vino un espacio
+C 0x51E3 la primera letra...
+C 0x51E4 ...no puede ser espacio
+C 0x51E8 las otras seis
+C 0x51EB tras un espacio...
+C 0x51EF ...no puede haber letra
+C 0x5235 el registro aleatorio, FCB + 0x21
+C 0x5239 el bajo...
+C 0x523B ...y el alto
+C 0x52A4 el bajo...
+C 0x52A9 ...y el alto
+C 0x52AC el bajo...
+C 0x52B1 ...y el alto
+C 0x5340 256 vueltas...
+C 0x5342 ...por 256...
+C 0x5345 ...por H
+C 0x5348 el menu otra vez
+C 0x5361 guarda todo
+C 0x5367 A, dos veces
+C 0x537C A, que se imprimio
+C 0x539E (0xF3E6)
+C 0x53A3 4: 0
+C 0x53A6 si no, 1
+C 0x53FD el nibble alto...
+C 0x5400 ...al bajo
+C 0x5405 Y / 8...
+C 0x540A ...con los bits de X
+C 0x5412 L = (Y / 8) * 32 + X / 8 bajo
+C 0x5415 H = 0x38 + lo alto
+C 0x5499 el byte
+C 0x549D modo 0x72?
+C 0x54A0 si: otra vez
+C 0x54AC el byte
+C 0x54AE 0xFF: se acabo
+C 0x54B0 a la impresora
+C 0x54EA las tramas de 0x54F6
+C 0x54ED dos bytes por color
+C 0x54F1 D y E
+C 0x5534 cinco espacios
+C 0x5539 la cifra en ASCII
+C 0x553A hasta el 7
+C 0x553E a la impresora
+C 0x5595 la cifra...
+C 0x5596 ...en ASCII...
+C 0x5598 ...a la impresora
+C 0x559E dos espacios
+C 0x55A8 la muestra siguiente
+C 0x55AB fin de la fila
+C 0x55AF la fila siguiente
+C 0x57F7 255 - S...
+C 0x57FA ...en E
+C 0x57FB B = el ataque
+C 0x57FC HL = C (la caida) * (255 - S)
+C 0x57FF DE = eso
+C 0x5800 HL = ataque * 256
+C 0x5804 ataque distinto de 0: * 255
+C 0x5807 ataque 0: una muestra
+C 0x5D81 dos bytes por codigo
+C 0x5D86 la tabla de teclas (0xD230 - 2)
+C 0x5D8A A = la rutina
+C 0x5D8C D = el retardo
+C 0x5D8D 0xFF: sin nota
+C 0x5D90 guarda AF, BC y DE
+C 0x5D93 la tecla hundida
+C 0x5D9B dos bytes por rutina
+C 0x5DA0 la entrada A
+C 0x5DA1 DE = la rutina
+C 0x5DA4 a IX
+C 0x6727 0xDC47 y la mascara
+C 0x672A su rutina y su retardo
+C 0x672E la tecla hundida
+C 0x6731 IX = la rutina de 0x6709
+C 0x6739 la RAM del sample
+C 0x6741 a la rutina
+C 0xA721 la cifra siguiente...
+C 0xA722 ...+ 1...
+C 0xA725 ...en BCD
+C 0xA730 cada byte...
+C 0xA733 ...una cifra a la derecha
+C 0xA7A8 la letra siguiente
+C 0xA7AA hasta la 6
+C 0xA7AE y vuelta a la 0
+C 0xA7BB la cifra
+C 0xA7BE L = cifra * E
+C 0xA7C5 a lo que habia
+C 0xA7CC HL = A * E
+C 0xA7D0 pasa de 255?
+C 0xA7D3 si: 0xFF
+C 0xA86B el maximo
+C 0xA86F sin maximo:
+C 0xA873 suma...
+C 0xA876 ...como mucho 0xFF
+C 0xA92E en los alternativos
+C 0xA930 B = el campo
+C 0xA932 la lista de 0xA947
+C 0xA96C el campo...
+C 0xA970 ...por dos
+C 0xA974 DE = su palabra
+C 0xAACB el conmutador...
+C 0xAACD ...por 3
+C 0xAACF su entrada de 0xAB35
+C 0xAAD5 cuanto se corre...
+C 0xAAD7 ...y donde va
+C 0xAAE1 tres posiciones
+C 0xAAE4 los bits 0-1
+C 0xADA6 el siguiente bit de HL:E'...
+C 0xADAC ...entra en E...
+C 0xADB0 ...D...
+C 0xADB4 ...C...
+C 0xADB8 ...y B, todos en BCD
+C 0xADBC un bit menos
+C 0xADDB desde 0xD000
+C 0xADE1 el 0: ya esta
+C 0xADE4 0x20 por timbre
+C 0xAF77 L a BCD
+C 0xAF7B a 0xDBF0
+C 0xAF82 tres cifras
+C 0xB0EB C contra D
+C 0xB0EE C contra E
+C 0xB0F1 la mas baja
+C 0xB0F3 D contra E
+C 0xB0FE D contra E
+C 0xB102 la mas baja
+C 0xB104 C contra E
+C 0xB17D el bit de la columna
+C 0xB17F quedan puntos?
+C 0xB183 uno menos
+C 0xB188 la linea siguiente
+C 0xB190 un tile...
+C 0xB193 ...a la VRAM
+C 0xB196 el de debajo
+C 0xB1A4 0xC000...
+C 0xB1A7 ...+ 0x100 * onda
+C 0xB1A9 + la muestra
+C 0xB225 la posicion del tramo...
+C 0xB228 ...avanza un paso
+C 0xB22D tramos que quedan
+C 0xB232 hecho
+C 0xB2E4 la muestra intermedia
+C 0xB2E6 la posicion...
+C 0xB2E9 ...dentro del paso
+C 0xB2F6 0x80 - valor
+C 0xB30D DE:HL * 2...
+C 0xB312 ...si sale un bit, suma BC
+C 0xB317 con acarreo a DE
+C 0xB31D negativa?
+C 0xB321 0x80 - A
+C 0xB392 la fuente desde la A
+C 0xB395 en el tile 0x20
+C 0xB39B su color, desde 0x0100
+C 0xB39E blanco sobre negro
+C 0xB4C1 los sprites de 0xB555
+C 0xB4C7 8 bytes
+C 0xB4CC el rotulo de 0xB5A1
+C 0xB53D A en C
+C 0xB540 sin decena: el tile 0
+C 0xB542 la decena...
+C 0xB546 ...en tile
+C 0xB67E la Y del cursor de cada opcion (0xB729)
+C 0xB685 los dos sprites
+C 0xB6A0 B = la opcion
+C 0xB6A2 su mascara y su bit en 0xB733
+C 0xB6AB borra el grupo...
+C 0xB6AE ...y pone la opcion
+C 0xB6B1 0 o 1: el aparato
+C 0xB716 dos bytes por opcion
+C 0xB71D DE = su direccion
+C 0xB896 la letra
+C 0xB897 espacio?
+C 0xB89C las siete
+C 0xB89E todo espacios: cualquier nombre
+C 0xB8F9 sin operacion
+C 0xB8FC paso 0
+C 0xB8FF la letra 0
+C 0xB902 el cursor en la opcion 9
+C 0xB98B el paso
+C 0xB98D 1: el nombre
+C 0xB98F 0: pedirlo
+C 0xB992 2: a cargar
+C 0xB99B la carga
+C 0xB9BB el paso
+C 0xB9BD 1: el nombre
+C 0xB9BF 0: pedirlo
+C 0xB9C2 2: a grabar
+C 0xB9CB la grabacion
+C 0xB9E0 el paso
+C 0xB9E2 1: el nombre
+C 0xB9E4 0: pedirlo
+C 0xB9EA el borrado
+C 0xB9FE el tipo y el nombre
+C 0xBA01 borra el rotulo de 0xBB1E
+C 0xBA07 y pone el de 0xBB2A
+C 0xBA4E el rotulo de fallo
+C 0xBA52 la linea en blanco
+C 0xBA56 el rotulo
+C 0xBA59 a reposo
+C 0xBC3D de 1 a 0
+C 0xBC41 la direccion de la tecla en 0xBDE1
+C 0xBC4A HL = la direccion
+C 0xBC4C DE = su entrada del LAYOUT
+C 0xBCA7 de la lista
+C 0xBCA9 0xFF: se acabo
+C 0xBCAD esta?
+C 0xBCB1 acarreo: esta
+C 0xBCBE la tabla de 0xBCCA
+C 0xBCC4 el byte de la nota...
+C 0xBCC5 ...a 0xD906
+C 0xBD01 Y = C
+C 0xBD03 X + 4
+C 0xBD08 el patron
+C 0xBD0B el segundo sprite, patron E
+C 0xBD17 Y = C
+C 0xBD19 X - 4
+C 0xBD1E el patron
+C 0xBD21 el segundo sprite, patron E
+C 0xBEA6 sin interrupciones
+C 0xBEA8 el programa en marcha?
+C 0xBEAD no: nada
+C 0xBEB3 guarda los registros
+C 0xBEB6 arranca el efecto
+L 0x433F escribe_desde_hl  los bytes de DE en la VRAM de HL, AND C, hasta 0xFF; 0xFE trae otra direccion
+L 0x4BD9 animacion_del_tic  cada tic de SYN: dos cambios en la VRAM (0x4C61) cada 16 tics y el sprite que avanza y cambia de dibujo
