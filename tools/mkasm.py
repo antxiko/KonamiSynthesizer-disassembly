@@ -24,6 +24,8 @@ Formato del fichero .notes (todo opcional, una directiva por linea):
     F 0x4787 2          un numero = bytes por linea, wN = N palabras (defw), y
     F 0x4000 2,w4,6     varios tramos separados por comas (el ultimo se repite)
                         -> el volcado sale en filas del tamano de su estructura
+    F 0x4E7A w!         w! = palabras SIN cruzar con las etiquetas: la tabla
+                        guarda direcciones de RAM, no apunta a la ROM
 """
 import json
 import os
@@ -58,10 +60,12 @@ def parse_fmt(spec):
     tramos = []
     for it in spec.lower().split(","):
         it = it.strip()
+        ref = not it.endswith("!")
+        it = it.rstrip("!")
         pal = it.startswith("w")
         n = it[1:] if pal else it
-        tramos.append((int(n) if n else 8, pal))
-    return tramos or [(16, False)]
+        tramos.append((int(n) if n else 8, pal, ref))
+    return tramos or [(16, False, True)]
 
 
 class Notes:
@@ -342,12 +346,12 @@ def emit_data_range(data, org, a, b, nm, desc, notes, names, rango=None):
             et = f"{et}_{a:04X}"
         out.append((et or f"DATA_{a:04X}") + ":")
     tramos = notes.fmt.get(a) or (notes.fmt.get(rango[0]) if rango else None) \
-        or [(16, False)]
+        or [(16, False, True)]
     # Una etiqueta -o una cabecera B- puede caer dentro de una fila: hay que
     # partir la fila para que quede exactamente en su direccion.
     i, k = a, 0
     while i < b:
-        ancho, palabras = tramos[min(k, len(tramos) - 1)]
+        ancho, palabras, ref = tramos[min(k, len(tramos) - 1)]
         k += 1
         fin = min(i + ancho * (2 if palabras else 1), b)
         corte = next((x for x in range(i + 1, fin)
@@ -355,7 +359,7 @@ def emit_data_range(data, org, a, b, nm, desc, notes, names, rango=None):
                       or x in notes.blocks), None)
         if corte:
             fin = corte
-        out += fila_datos(data, org, i, fin, palabras, names)
+        out += fila_datos(data, org, i, fin, palabras, names, ref)
         i = fin
         if i < b:
             out += banner(notes.blocks.get(i), i)
@@ -366,13 +370,15 @@ def emit_data_range(data, org, a, b, nm, desc, notes, names, rango=None):
     return out
 
 
-def fila_datos(data, org, i, fin, palabras, names):
-    """Una fila del volcado. En defw se anota a donde apunta, si se sabe."""
+def fila_datos(data, org, i, fin, palabras, names, ref=True):
+    """Una fila del volcado. En defw se anota a donde apunta, si se sabe
+    (y si la directiva F no lo prohibe con `w!`)."""
     row = data[i - org:fin - org]
     if palabras and len(row) >= 2:
         vals = [row[2 * k] | (row[2 * k + 1] << 8) for k in range(len(row) // 2)]
         cmt = f"; {i:04x}"
-        dest = [names.get(v) or _DATANAMES.get(v) for v in vals]
+        dest = [(names.get(v) or _DATANAMES.get(v)) if ref else None
+                for v in vals]
         if len(vals) <= 4 and any(dest):
             cmt += "  -> " + " ".join(d or f"{v:#06x}"
                                      for v, d in zip(vals, dest))

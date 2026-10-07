@@ -1909,7 +1909,7 @@ L_4E72:
 ;   LAYOUT y SAMP (0x4E5A, por 0xDB18)
 ;   0x4e7a..0x4e80  (6 bytes)
 DATA_direcciones_de_carga:
-	defw 0c000h,0d200h,08000h	; 4e7a  -> 0xc000 0xd200 DATA_sprites_patrones
+	defw 0c000h,0d200h,08000h	; 4e7a
 
 ; ----------------------------------------------------------------------
 ; DATOS rotulo_found: lista de 0x4337: "FOUND" en 0x3A07
@@ -4802,7 +4802,7 @@ L_61E6:
 L_61EC:
 	dec a			;61ec
 	jp nz,L_61EC		;61ed
-	add a,(ix+000h)		;61f0
+	add a,(ix+000h)		;61f0   ; relleno: iguala los ciclos
 	nop			;61f3   ; relleno: iguala los ciclos
 	in a,(0a9h)		;61f4   ; la fila de la tecla:
 	and c			;61f6   ; su bit a 1, suelta
@@ -4814,7 +4814,7 @@ L_61EC:
 L_6200:
 	dec a			;6200
 	jp nz,L_6200		;6201
-	add a,(ix+000h)		;6204
+	add a,(ix+000h)		;6204   ; relleno: iguala los ciclos
 	cp 000h		;6207   ; relleno: iguala los ciclos
 	nop			;6209   ; relleno: iguala los ciclos
 	ld a,e			;620a   ; en la pagina de bucle?
@@ -4828,7 +4828,7 @@ L_620F:
 L_6215:
 	dec a			;6215
 	jp nz,L_6215		;6216
-	add a,(ix+000h)		;6219
+	add a,(ix+000h)		;6219   ; relleno: iguala los ciclos
 	ld h,e			;621c   ; se queda en la pagina de bucle
 	in a,(0a9h)		;621d   ; la fila de la tecla:
 	and c			;621f   ; su bit a 1, suelta
@@ -4841,7 +4841,7 @@ L_6223:
 L_6229:
 	dec a			;6229
 	jp nz,L_6229		;622a
-	add a,(ix+000h)		;622d
+	add a,(ix+000h)		;622d   ; relleno: iguala los ciclos
 	cp 000h		;6230   ; relleno: iguala los ciclos
 	nop			;6232   ; relleno: iguala los ciclos
 	ld a,l			;6233   ; hasta acabar la pagina
@@ -4855,7 +4855,7 @@ L_6238:
 L_623E:
 	dec a			;623e
 	jp nz,L_623E		;623f
-	add a,(ix+000h)		;6242
+	add a,(ix+000h)		;6242   ; relleno: iguala los ciclos
 	inc ix		;6245   ; relleno: iguala los ciclos
 	in a,(0aah)		;6247   ; la fila siguiente...
 	inc a			;6249
@@ -4867,7 +4867,7 @@ L_623E:
 L_6251:
 	dec a			;6251
 	jp nz,L_6251		;6252
-	add a,(ix+000h)		;6255
+	add a,(ix+000h)		;6255   ; relleno: iguala los ciclos
 	cp 000h		;6258   ; relleno: iguala los ciclos
 	ld a,e			;625a
 	and 0f7h		;625b   ; ...de la 0 a la 7
@@ -4879,7 +4879,7 @@ L_6251:
 L_6265:
 	dec a			;6265
 	jp nz,L_6265		;6266
-	add a,(ix+000h)		;6269
+	add a,(ix+000h)		;6269   ; relleno: iguala los ciclos
 	nop			;626c   ; relleno: iguala los ciclos
 	in a,(0a9h)		;626d   ; alguna tecla en esta fila?
 	inc a			;626f
@@ -4891,7 +4891,7 @@ L_6265:
 L_6279:
 	dec a			;6279
 	jp nz,L_6279		;627a
-	add a,(ix+000h)		;627d
+	add a,(ix+000h)		;627d   ; relleno: iguala los ciclos
 	neg		;6280   ; relleno: iguala los ciclos
 	ld a,0c0h		;6282   ; hasta el final del sample
 	cp h			;6284
@@ -5224,7 +5224,7 @@ con_bucle_10:		; rutina 10 de 0x5E8B: como 0x5EC9, con otro relleno de ciclos
 L_6479:
 	dec a			;6479
 	jp nz,L_6479		;647a
-	ld a,i		;647d
+	ld a,i		;647d   ; relleno: iguala los ciclos
 	nop			;647f   ; relleno: iguala los ciclos
 	in a,(0a9h)		;6480   ; la fila de la tecla:
 	and c			;6482   ; su bit a 1, suelta
@@ -5236,7 +5236,7 @@ L_6479:
 L_648C:
 	dec a			;648c
 	jp nz,L_648C		;648d
-	ld a,i		;6490
+	ld a,i		;6490   ; relleno: iguala los ciclos
 	cp 000h		;6492   ; relleno: iguala los ciclos
 	nop			;6494   ; relleno: iguala los ciclos
 	ld a,e			;6495   ; en la pagina de bucle?
@@ -5250,7 +5250,7 @@ L_649A:
 L_64A0:
 	dec a			;64a0
 	jp nz,L_64A0		;64a1
-	ld a,i		;64a4
+	ld a,i		;64a4   ; relleno: iguala los ciclos
 	ld h,e			;64a6   ; se queda en la pagina de bucle
 	in a,(0a9h)		;64a7   ; la fila de la tecla:
 	and c			;64a9   ; su bit a 1, suelta
@@ -5263,7 +5263,7 @@ L_64AD:
 L_64B3:
 	dec a			;64b3
 	jp nz,L_64B3		;64b4
-	ld a,i		;64b7
+	ld a,i		;64b7   ; relleno: iguala los ciclos
 	cp 000h		;64b9   ; relleno: iguala los ciclos
 	nop			;64bb   ; relleno: iguala los ciclos
 	ld a,l			;64bc   ; hasta acabar la pagina
@@ -5277,7 +5277,7 @@ L_64C1:
 L_64C7:
 	dec a			;64c7
 	jp nz,L_64C7		;64c8
-	ld a,i		;64cb
+	ld a,i		;64cb   ; relleno: iguala los ciclos
 	inc ix		;64cd   ; relleno: iguala los ciclos
 	in a,(0aah)		;64cf   ; la fila siguiente...
 	inc a			;64d1
@@ -5289,7 +5289,7 @@ L_64C7:
 L_64D9:
 	dec a			;64d9
 	jp nz,L_64D9		;64da
-	ld a,i		;64dd
+	ld a,i		;64dd   ; relleno: iguala los ciclos
 	cp 000h		;64df   ; relleno: iguala los ciclos
 	ld a,e			;64e1
 	and 0f7h		;64e2   ; ...de la 0 a la 7
@@ -5301,7 +5301,7 @@ L_64D9:
 L_64EC:
 	dec a			;64ec
 	jp nz,L_64EC		;64ed
-	ld a,i		;64f0
+	ld a,i		;64f0   ; relleno: iguala los ciclos
 	nop			;64f2   ; relleno: iguala los ciclos
 	in a,(0a9h)		;64f3   ; alguna tecla en esta fila?
 	inc a			;64f5
@@ -5313,7 +5313,7 @@ L_64EC:
 L_64FF:
 	dec a			;64ff
 	jp nz,L_64FF		;6500
-	ld a,i		;6503
+	ld a,i		;6503   ; relleno: iguala los ciclos
 	neg		;6505   ; relleno: iguala los ciclos
 	ld a,0c0h		;6507   ; hasta el final del sample
 	cp h			;6509
@@ -6158,7 +6158,7 @@ L_6A0F:
 L_6A15:
 	dec a			;6a15
 	jp nz,L_6A15		;6a16
-	add a,(ix+000h)		;6a19
+	add a,(ix+000h)		;6a19   ; relleno: iguala los ciclos
 	nop			;6a1c   ; relleno: iguala los ciclos
 	in a,(0a9h)		;6a1d   ; la fila de la tecla:
 	and c			;6a1f   ; su bit a 1, suelta
@@ -6170,7 +6170,7 @@ L_6A15:
 L_6A29:
 	dec a			;6a29
 	jp nz,L_6A29		;6a2a
-	add a,(ix+000h)		;6a2d
+	add a,(ix+000h)		;6a2d   ; relleno: iguala los ciclos
 	neg		;6a30   ; relleno: iguala los ciclos
 	ld a,0c0h		;6a32   ; hasta el final del sample
 	cp h			;6a34
@@ -6184,7 +6184,7 @@ L_6A3B:
 L_6A41:
 	dec a			;6a41
 	jp nz,L_6A41		;6a42
-	add a,(ix+000h)		;6a45
+	add a,(ix+000h)		;6a45   ; relleno: iguala los ciclos
 	cp 000h		;6a48   ; relleno: iguala los ciclos
 	nop			;6a4a   ; relleno: iguala los ciclos
 	ld a,l			;6a4b   ; hasta acabar la pagina
@@ -6198,7 +6198,7 @@ L_6A50:
 L_6A56:
 	dec a			;6a56
 	jp nz,L_6A56		;6a57
-	add a,(ix+000h)		;6a5a
+	add a,(ix+000h)		;6a5a   ; relleno: iguala los ciclos
 	inc ix		;6a5d   ; relleno: iguala los ciclos
 	in a,(0aah)		;6a5f   ; la fila siguiente...
 	inc a			;6a61
@@ -6210,7 +6210,7 @@ L_6A56:
 L_6A69:
 	dec a			;6a69
 	jp nz,L_6A69		;6a6a
-	add a,(ix+000h)		;6a6d
+	add a,(ix+000h)		;6a6d   ; relleno: iguala los ciclos
 	cp 000h		;6a70   ; relleno: iguala los ciclos
 	ld a,e			;6a72
 	and 0f7h		;6a73   ; ...de la 0 a la 7
@@ -6222,7 +6222,7 @@ L_6A69:
 L_6A7D:
 	dec a			;6a7d
 	jp nz,L_6A7D		;6a7e
-	add a,(ix+000h)		;6a81
+	add a,(ix+000h)		;6a81   ; relleno: iguala los ciclos
 	nop			;6a84   ; relleno: iguala los ciclos
 	in a,(0a9h)		;6a85   ; alguna tecla en esta fila?
 	inc a			;6a87
@@ -6234,7 +6234,7 @@ L_6A7D:
 L_6A91:
 	dec a			;6a91
 	jp nz,L_6A91		;6a92
-	add a,(ix+000h)		;6a95
+	add a,(ix+000h)		;6a95   ; relleno: iguala los ciclos
 	neg		;6a98   ; relleno: iguala los ciclos
 	ld a,0c0h		;6a9a   ; hasta el final del sample
 	cp h			;6a9c
@@ -6527,7 +6527,7 @@ sin_bucle_10:		; rutina 10 de 0x6709: como 0x6743, con otro relleno de ciclos
 L_6C5F:
 	dec a			;6c5f
 	jp nz,L_6C5F		;6c60
-	ld a,i		;6c63
+	ld a,i		;6c63   ; relleno: iguala los ciclos
 	nop			;6c65   ; relleno: iguala los ciclos
 	in a,(0a9h)		;6c66   ; la fila de la tecla:
 	and c			;6c68   ; su bit a 1, suelta
@@ -6539,7 +6539,7 @@ L_6C5F:
 L_6C72:
 	dec a			;6c72
 	jp nz,L_6C72		;6c73
-	ld a,i		;6c76
+	ld a,i		;6c76   ; relleno: iguala los ciclos
 	neg		;6c78   ; relleno: iguala los ciclos
 	ld a,0c0h		;6c7a   ; hasta el final del sample
 	cp h			;6c7c
@@ -6553,7 +6553,7 @@ L_6C83:
 L_6C89:
 	dec a			;6c89
 	jp nz,L_6C89		;6c8a
-	ld a,i		;6c8d
+	ld a,i		;6c8d   ; relleno: iguala los ciclos
 	cp 000h		;6c8f   ; relleno: iguala los ciclos
 	nop			;6c91   ; relleno: iguala los ciclos
 	ld a,l			;6c92   ; hasta acabar la pagina
@@ -6567,7 +6567,7 @@ L_6C97:
 L_6C9D:
 	dec a			;6c9d
 	jp nz,L_6C9D		;6c9e
-	ld a,i		;6ca1
+	ld a,i		;6ca1   ; relleno: iguala los ciclos
 	inc ix		;6ca3   ; relleno: iguala los ciclos
 	in a,(0aah)		;6ca5   ; la fila siguiente...
 	inc a			;6ca7
@@ -6579,7 +6579,7 @@ L_6C9D:
 L_6CAF:
 	dec a			;6caf
 	jp nz,L_6CAF		;6cb0
-	ld a,i		;6cb3
+	ld a,i		;6cb3   ; relleno: iguala los ciclos
 	cp 000h		;6cb5   ; relleno: iguala los ciclos
 	ld a,e			;6cb7
 	and 0f7h		;6cb8   ; ...de la 0 a la 7
@@ -6591,7 +6591,7 @@ L_6CAF:
 L_6CC2:
 	dec a			;6cc2
 	jp nz,L_6CC2		;6cc3
-	ld a,i		;6cc6
+	ld a,i		;6cc6   ; relleno: iguala los ciclos
 	nop			;6cc8   ; relleno: iguala los ciclos
 	in a,(0a9h)		;6cc9   ; alguna tecla en esta fila?
 	inc a			;6ccb
@@ -6603,7 +6603,7 @@ L_6CC2:
 L_6CD5:
 	dec a			;6cd5
 	jp nz,L_6CD5		;6cd6
-	ld a,i		;6cd9
+	ld a,i		;6cd9   ; relleno: iguala los ciclos
 	neg		;6cdb   ; relleno: iguala los ciclos
 	ld a,0c0h		;6cdd   ; hasta el final del sample
 	cp h			;6cdf
@@ -6974,7 +6974,7 @@ escucha_01:		; rutina 1 de 0x6EBB: la pagina 0xDD una y otra vez mientras se tie
 L_6F22:
 	dec a			;6f22
 	jp nz,L_6F22		;6f23
-	ld h,e			;6f26   ; se queda en la pagina de bucle
+	ld h,e			;6f26   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;6f27   ; la fila de la tecla:
 	and c			;6f29   ; su bit a 1, suelta
 	jp z,escucha_01		;6f2a
@@ -7003,7 +7003,7 @@ L_6F47:
 	dec a			;6f47
 	jp nz,L_6F47		;6f48
 	add ix,ix		;6f4b   ; relleno: iguala los ciclos
-	ld h,e			;6f4d   ; se queda en la pagina de bucle
+	ld h,e			;6f4d   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;6f4e   ; la fila de la tecla:
 	and c			;6f50   ; su bit a 1, suelta
 	jp z,L_6F41		;6f51
@@ -7034,7 +7034,7 @@ L_6F70:
 	jp nz,L_6F70		;6f71
 	neg		;6f74   ; relleno: iguala los ciclos
 	neg		;6f76   ; relleno: iguala los ciclos
-	ld h,e			;6f78   ; se queda en la pagina de bucle
+	ld h,e			;6f78   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;6f79   ; la fila de la tecla:
 	and c			;6f7b   ; su bit a 1, suelta
 	jp z,L_6F6A		;6f7c
@@ -7066,7 +7066,7 @@ L_6F9D:
 	jp nz,L_6F9D		;6f9e
 	inc ix		;6fa1   ; relleno: iguala los ciclos
 	cp 000h		;6fa3   ; relleno: iguala los ciclos
-	ld h,e			;6fa5   ; se queda en la pagina de bucle
+	ld h,e			;6fa5   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;6fa6   ; la fila de la tecla:
 	and c			;6fa8   ; su bit a 1, suelta
 	jp z,L_6F97		;6fa9
@@ -7095,7 +7095,7 @@ L_6FC9:
 	dec a			;6fc9
 	jp nz,L_6FC9		;6fca
 	nop			;6fcd   ; relleno: iguala los ciclos
-	ld h,e			;6fce   ; se queda en la pagina de bucle
+	ld h,e			;6fce   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;6fcf   ; la fila de la tecla:
 	and c			;6fd1   ; su bit a 1, suelta
 	jp z,escucha_05		;6fd2
@@ -7124,8 +7124,8 @@ L_6FEA:
 L_6FF0:
 	dec a			;6ff0
 	jp nz,L_6FF0		;6ff1
-	add a,(ix+000h)		;6ff4
-	ld h,e			;6ff7   ; se queda en la pagina de bucle
+	add a,(ix+000h)		;6ff4   ; relleno: iguala los ciclos
+	ld h,e			;6ff7   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;6ff8   ; la fila de la tecla:
 	and c			;6ffa   ; su bit a 1, suelta
 	jp z,L_6FEA		;6ffb
@@ -7137,7 +7137,7 @@ L_6FFE:
 L_7004:
 	dec a			;7004
 	jp nz,L_7004		;7005
-	add a,(ix+000h)		;7008
+	add a,(ix+000h)		;7008   ; relleno: iguala los ciclos
 	cp 000h		;700b   ; relleno: iguala los ciclos
 	nop			;700d   ; relleno: iguala los ciclos
 	ld a,l			;700e   ; hasta acabar la pagina
@@ -7156,7 +7156,7 @@ L_701B:
 	jp nz,L_701B		;701c
 	inc ix		;701f   ; relleno: iguala los ciclos
 	inc ix		;7021   ; relleno: iguala los ciclos
-	ld h,e			;7023   ; se queda en la pagina de bucle
+	ld h,e			;7023   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;7024   ; la fila de la tecla:
 	and c			;7026   ; su bit a 1, suelta
 	jp z,L_7015		;7027
@@ -7185,7 +7185,7 @@ L_7047:
 	dec a			;7047
 	jp nz,L_7047		;7048
 	cp 000h		;704b   ; relleno: iguala los ciclos
-	ld h,e			;704d   ; se queda en la pagina de bucle
+	ld h,e			;704d   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;704e   ; la fila de la tecla:
 	and c			;7050   ; su bit a 1, suelta
 	jp z,escucha_08		;7051
@@ -7213,7 +7213,7 @@ L_706F:
 	dec a			;706f
 	jp nz,L_706F		;7070
 	neg		;7073   ; relleno: iguala los ciclos
-	ld h,e			;7075   ; se queda en la pagina de bucle
+	ld h,e			;7075   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;7076   ; la fila de la tecla:
 	and c			;7078   ; su bit a 1, suelta
 	jp z,escucha_09		;7079
@@ -7240,8 +7240,8 @@ escucha_10:		; rutina 10 de 0x6EBB: como 0x6F1C, con otro relleno de ciclos
 L_7097:
 	dec a			;7097
 	jp nz,L_7097		;7098
-	ld a,i		;709b
-	ld h,e			;709d   ; se queda en la pagina de bucle
+	ld a,i		;709b   ; relleno: iguala los ciclos
+	ld h,e			;709d   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;709e   ; la fila de la tecla:
 	and c			;70a0   ; su bit a 1, suelta
 	jp z,escucha_10		;70a1
@@ -7253,7 +7253,7 @@ L_70A4:
 L_70AA:
 	dec a			;70aa
 	jp nz,L_70AA		;70ab
-	ld a,i		;70ae
+	ld a,i		;70ae   ; relleno: iguala los ciclos
 	cp 000h		;70b0   ; relleno: iguala los ciclos
 	nop			;70b2   ; relleno: iguala los ciclos
 	ld a,l			;70b3   ; hasta acabar la pagina
@@ -7269,7 +7269,7 @@ L_70BF:
 	dec a			;70bf
 	jp nz,L_70BF		;70c0
 	inc ix		;70c3   ; relleno: iguala los ciclos
-	ld h,e			;70c5   ; se queda en la pagina de bucle
+	ld h,e			;70c5   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;70c6   ; la fila de la tecla:
 	and c			;70c8   ; su bit a 1, suelta
 	jp z,escucha_11		;70c9
@@ -7298,7 +7298,7 @@ L_70E7:
 	jp nz,L_70E7		;70e8
 	cp 000h		;70eb   ; relleno: iguala los ciclos
 	nop			;70ed   ; relleno: iguala los ciclos
-	ld h,e			;70ee   ; se queda en la pagina de bucle
+	ld h,e			;70ee   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;70ef   ; la fila de la tecla:
 	and c			;70f1   ; su bit a 1, suelta
 	jp z,escucha_12		;70f2
@@ -7328,7 +7328,7 @@ L_7111:
 	jp nz,L_7111		;7112
 	neg		;7115   ; relleno: iguala los ciclos
 	nop			;7117   ; relleno: iguala los ciclos
-	ld h,e			;7118   ; se queda en la pagina de bucle
+	ld h,e			;7118   ; se queda en la pagina 0xDD
 	in a,(0a9h)		;7119   ; la fila de la tecla:
 	and c			;711b   ; su bit a 1, suelta
 	jp z,escucha_13		;711c

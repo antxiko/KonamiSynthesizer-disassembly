@@ -130,7 +130,7 @@ F 0x4CD4 4
 # FILE: CINTA, DISCO E IMPRESORA
 # ======================================================================
 D 0x4E7A 0x4E80 direcciones_de_carga  las tres direcciones de RAM donde se carga TONE, LAYOUT y SAMP (0x4E5A, por 0xDB18)
-F 0x4E7A w
+F 0x4E7A w!
 D 0x4E80 0x4E89 rotulo_found  lista de 0x4337: "FOUND" en 0x3A07
 D 0x4FDE 0x4FF4 rotulos_end_y_no_file  "END" y "NO FILE", con los tiles de borde 0x40 y 0x96
 D 0x511F 0x512D mensajes_de_disco_punteros  7 punteros a los mensajes de error de disco
@@ -821,7 +821,6 @@ C 0x4E08 SAMP: la pagina de bucle
 C 0x4E18 la cabecera de los datos
 C 0x4E1E 0xDBF0 = su direccion
 C 0x4E21 BC = la longitud
-C 0x4E2A los datos
 C 0x4E37 una pausa
 C 0x4E3C fin de la lectura
 C 0x4E44 0x80 desde 0x8000...
@@ -1068,6 +1067,11 @@ L 0x710B escucha_13  rutina 13 de 0x6EBB: como 0x6F1C, con otro relleno de ciclo
 # tiene en 0xD230 (0x5DA9) una de 13 rutinas y un retardo D: la rutina pone
 # el relleno de ciclos fijo de cada muestra y D el bucle de espera; entre
 # los dos dan la altura de la nota. Las muestras salen de 0x8000 al DAC.
+# Contado instruccion a instruccion (ciclos de catalogo del Z80): dentro de
+# cada rutina TODOS los caminos cuestan lo mismo por muestra, y el periodo es
+# 59 + r + 14 * D ciclos (r = rutina, 0-12). En un MSX cada M1 lleva un
+# estado de espera: medido en openMSX (work/ritmo), 67 + 16 * D en la rutina
+# 0; tools/sonido.py usa los valores medidos de las trece.
 # Con pagina de bucle (0xDCFD) la tabla es 0x5E8B: suena hasta esa pagina,
 # la repite mientras se tiene la tecla y al soltarla sigue hasta 0xC000.
 # Sin bucle, 0x6709: suena de corrido hasta 0xC000. Mientras suena la cola
@@ -2422,7 +2426,7 @@ C 0x6E92 hasta el final del sample
 C 0x6F1C la muestra...
 C 0x6F1D ...al DAC
 C 0x6F21 el retardo D
-C 0x6F26 se queda en la pagina de bucle
+C 0x6F26 se queda en la pagina 0xDD
 C 0x6F27 la fila de la tecla:
 C 0x6F29 su bit a 1, suelta
 C 0x6F2D la muestra...
@@ -2436,7 +2440,7 @@ C 0x6F41 la muestra...
 C 0x6F42 ...al DAC
 C 0x6F46 el retardo D
 C 0x6F4B relleno: iguala los ciclos
-C 0x6F4D se queda en la pagina de bucle
+C 0x6F4D se queda en la pagina 0xDD
 C 0x6F4E la fila de la tecla:
 C 0x6F50 su bit a 1, suelta
 C 0x6F54 la muestra...
@@ -2452,7 +2456,7 @@ C 0x6F6B ...al DAC
 C 0x6F6F el retardo D
 C 0x6F74 relleno: iguala los ciclos
 C 0x6F76 relleno: iguala los ciclos
-C 0x6F78 se queda en la pagina de bucle
+C 0x6F78 se queda en la pagina 0xDD
 C 0x6F79 la fila de la tecla:
 C 0x6F7B su bit a 1, suelta
 C 0x6F7F la muestra...
@@ -2469,7 +2473,7 @@ C 0x6F98 ...al DAC
 C 0x6F9C el retardo D
 C 0x6FA1 relleno: iguala los ciclos
 C 0x6FA3 relleno: iguala los ciclos
-C 0x6FA5 se queda en la pagina de bucle
+C 0x6FA5 se queda en la pagina 0xDD
 C 0x6FA6 la fila de la tecla:
 C 0x6FA8 su bit a 1, suelta
 C 0x6FAC la muestra...
@@ -2484,7 +2488,7 @@ C 0x6FC3 la muestra...
 C 0x6FC4 ...al DAC
 C 0x6FC8 el retardo D
 C 0x6FCD relleno: iguala los ciclos
-C 0x6FCE se queda en la pagina de bucle
+C 0x6FCE se queda en la pagina 0xDD
 C 0x6FCF la fila de la tecla:
 C 0x6FD1 su bit a 1, suelta
 C 0x6FD5 la muestra...
@@ -2498,7 +2502,7 @@ C 0x6FE9 D - 1 para esta rutina
 C 0x6FEA la muestra...
 C 0x6FEB ...al DAC
 C 0x6FEF el retardo D
-C 0x6FF7 se queda en la pagina de bucle
+C 0x6FF7 se queda en la pagina 0xDD
 C 0x6FF8 la fila de la tecla:
 C 0x6FFA su bit a 1, suelta
 C 0x6FFE la muestra...
@@ -2513,7 +2517,7 @@ C 0x7016 ...al DAC
 C 0x701A el retardo D
 C 0x701F relleno: iguala los ciclos
 C 0x7021 relleno: iguala los ciclos
-C 0x7023 se queda en la pagina de bucle
+C 0x7023 se queda en la pagina 0xDD
 C 0x7024 la fila de la tecla:
 C 0x7026 su bit a 1, suelta
 C 0x702A la muestra...
@@ -2528,7 +2532,7 @@ C 0x7041 la muestra...
 C 0x7042 ...al DAC
 C 0x7046 el retardo D
 C 0x704B relleno: iguala los ciclos
-C 0x704D se queda en la pagina de bucle
+C 0x704D se queda en la pagina 0xDD
 C 0x704E la fila de la tecla:
 C 0x7050 su bit a 1, suelta
 C 0x7054 la muestra...
@@ -2542,7 +2546,7 @@ C 0x7069 la muestra...
 C 0x706A ...al DAC
 C 0x706E el retardo D
 C 0x7073 relleno: iguala los ciclos
-C 0x7075 se queda en la pagina de bucle
+C 0x7075 se queda en la pagina 0xDD
 C 0x7076 la fila de la tecla:
 C 0x7078 su bit a 1, suelta
 C 0x707C la muestra...
@@ -2555,7 +2559,7 @@ C 0x708B hasta acabar la pagina
 C 0x7091 la muestra...
 C 0x7092 ...al DAC
 C 0x7096 el retardo D
-C 0x709D se queda en la pagina de bucle
+C 0x709D se queda en la pagina 0xDD
 C 0x709E la fila de la tecla:
 C 0x70A0 su bit a 1, suelta
 C 0x70A4 la muestra...
@@ -2568,7 +2572,7 @@ C 0x70B9 la muestra...
 C 0x70BA ...al DAC
 C 0x70BE el retardo D
 C 0x70C3 relleno: iguala los ciclos
-C 0x70C5 se queda en la pagina de bucle
+C 0x70C5 se queda en la pagina 0xDD
 C 0x70C6 la fila de la tecla:
 C 0x70C8 su bit a 1, suelta
 C 0x70CC la muestra...
@@ -2583,7 +2587,7 @@ C 0x70E2 ...al DAC
 C 0x70E6 el retardo D
 C 0x70EB relleno: iguala los ciclos
 C 0x70ED relleno: iguala los ciclos
-C 0x70EE se queda en la pagina de bucle
+C 0x70EE se queda en la pagina 0xDD
 C 0x70EF la fila de la tecla:
 C 0x70F1 su bit a 1, suelta
 C 0x70F5 la muestra...
@@ -2599,7 +2603,7 @@ C 0x710C ...al DAC
 C 0x7110 el retardo D
 C 0x7115 relleno: iguala los ciclos
 C 0x7117 relleno: iguala los ciclos
-C 0x7118 se queda en la pagina de bucle
+C 0x7118 se queda en la pagina 0xDD
 C 0x7119 la fila de la tecla:
 C 0x711B su bit a 1, suelta
 C 0x711F la muestra...
@@ -4360,3 +4364,38 @@ C 0xBEB3 guarda los registros
 C 0xBEB6 arranca el efecto
 L 0x433F escribe_desde_hl  los bytes de DE en la VRAM de HL, AND C, hasta 0xFF; 0xFE trae otra direccion
 L 0x4BD9 animacion_del_tic  cada tic de SYN: dos cambios en la VRAM (0x4C61) cada 16 tics y el sprite que avanza y cambia de dibujo
+# Rellenos con prefijo (add a,(ix+0): 19 ciclos; ld a,i: 9) de las rutinas 5 y 9.
+C 0x61F0 relleno: iguala los ciclos
+C 0x6204 relleno: iguala los ciclos
+C 0x6219 relleno: iguala los ciclos
+C 0x622D relleno: iguala los ciclos
+C 0x6242 relleno: iguala los ciclos
+C 0x6255 relleno: iguala los ciclos
+C 0x6269 relleno: iguala los ciclos
+C 0x627D relleno: iguala los ciclos
+C 0x647D relleno: iguala los ciclos
+C 0x6490 relleno: iguala los ciclos
+C 0x64A4 relleno: iguala los ciclos
+C 0x64B7 relleno: iguala los ciclos
+C 0x64CB relleno: iguala los ciclos
+C 0x64DD relleno: iguala los ciclos
+C 0x64F0 relleno: iguala los ciclos
+C 0x6503 relleno: iguala los ciclos
+C 0x6A19 relleno: iguala los ciclos
+C 0x6A2D relleno: iguala los ciclos
+C 0x6A45 relleno: iguala los ciclos
+C 0x6A5A relleno: iguala los ciclos
+C 0x6A6D relleno: iguala los ciclos
+C 0x6A81 relleno: iguala los ciclos
+C 0x6A95 relleno: iguala los ciclos
+C 0x6C63 relleno: iguala los ciclos
+C 0x6C76 relleno: iguala los ciclos
+C 0x6C8D relleno: iguala los ciclos
+C 0x6CA1 relleno: iguala los ciclos
+C 0x6CB3 relleno: iguala los ciclos
+C 0x6CC6 relleno: iguala los ciclos
+C 0x6CD9 relleno: iguala los ciclos
+C 0x6FF4 relleno: iguala los ciclos
+C 0x7008 relleno: iguala los ciclos
+C 0x709B relleno: iguala los ciclos
+C 0x70AE relleno: iguala los ciclos
