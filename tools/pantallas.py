@@ -203,19 +203,22 @@ def campos_1_a_20(rom, v, t):
     de 0xA9EF; la barra es la entrada (valor >> 0xA99F[i]) de 0xAA17, como
     poco la 1 si el valor no es cero (0xA8FC); si 0xA99F[i] es 0, valor * 2 y
     como poco la 1 aunque el valor sea cero.
-    Los campos de la lista 0xA947 (1, 10, 11 y 20) con valor 0 dicen OFF:
-    los tres tiles de 0xA92A delante de las cifras y la barra vacia.
+    Los campos de la lista 0xA947 (1, 10, 11 y 20) con valor 0 dicen OFF
+    (los tres tiles de 0xA92A delante de las cifras) solo con (0xDB04) = 1,
+    que 0xAAA5 pone cuando el bit 7 del byte 24 (EG TYP) esta a cero; con
+    el bit a uno pintan 000 (0xA7E9). Cotejado con los dieciseis timbres.
     """
     apagables = []
     a = 0xA947
     while rom[a - ORG] != 0xFF:
         apagables.append(rom[a - ORG])
         a += 1
+    dice_off = not (t[24] & 0x80)
     for f in range(1, 21):
         valor = t[1 + f]
         cifras = w(rom, 0xA9C7 + 2 * (f - 1))
         barra = w(rom, 0xA9EF + 2 * (f - 1))
-        if f in apagables and valor == 0:
+        if f in apagables and valor == 0 and dice_off:
             v.copia(rom, 0xA92A, cifras - 2, 3)
         else:
             digitos(v, cifras, valor)
