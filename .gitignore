@@ -31,3 +31,4 @@ __pycache__/
 *.pyc
 .forja/
 *.omr
+!docs/sonido/*.wav
