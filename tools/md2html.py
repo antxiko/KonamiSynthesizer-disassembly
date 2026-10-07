@@ -107,7 +107,7 @@ def ruta(href):
             "LEGAL-NOTICE.md", "Makefile"):
         return f"{REPO}/blob/main/{plano}"
     if h.startswith("../"):
-        return h if h.endswith((".html", ".png", ".txt")) else plano
+        return h if h.endswith((".html", ".png", ".txt", ".wav")) else plano
     # el ancla (THE-GAME.md#the-vendors) se aparta para cambiar la extension
     h, almohadilla, ancla_ = plano.partition("#")
     if h.endswith(".md"):
@@ -196,6 +196,11 @@ def convierte(texto, titulo, actual, idioma="en"):
         parr = []                                   # parrafo
         while i < len(ln) and ln[i].strip() and not re.match(
                 r"^(#{1,4}\s|```|>|\s*([-*]|\d+\.)\s|---+\s*$|\s*\|)", ln[i]):
+            parr.append(ln[i].strip()); i += 1
+        if not parr:
+            # una linea que parece de tabla o de lista pero no lo es (una fila
+            # suelta sin separador debajo): va como parrafo, y se AVANZA, que
+            # sin esto el bucle no salia de ella
             parr.append(ln[i].strip()); i += 1
         out.append(f"<p>{enlinea(' '.join(parr))}</p>")
 

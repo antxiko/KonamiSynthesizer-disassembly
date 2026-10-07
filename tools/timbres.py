@@ -33,7 +33,7 @@ def timbre(rom, n):
 
 
 def onda(v):
-    return "15 (ruido)" if v >= 15 else "15 (usuario)" if v == 14 else "%d" % (v + 1)
+    return "16 (ruido)" if v >= 15 else "15 (usuario)" if v == 14 else "%d" % (v + 1)
 
 
 def main():

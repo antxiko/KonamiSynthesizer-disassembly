@@ -1,0 +1,112 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>El programa — Konami&#x27;s Synthesizer (Konami, 1986)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Portada</a><a href="EMPEZAR.html">Empezar</a><a href="EL-JUEGO.html" style=color:var(--tinta)>El juego</a><a href="EL-CARTUCHO.html">El cartucho</a><a href="EL-CODIGO.html">El código</a><a href="HALLAZGOS.html">Hallazgos</a><a href="EN-EL-EMULADOR.html">En el emulador</a><a href="PREGUNTAS-ABIERTAS.html">Preguntas abiertas</a><a href="../THE-GAME.html" style="margin-left:auto;color:var(--oro)">English</a></nav>
+<h1 id="el-programa">El programa</h1>
+<p><em>Konami&#x27;s Synthesizer</em> no es un juego: es un sintetizador. El cartucho lleva un convertidor digital-analógico de 8 bits que suena con cada byte que el Z80 escribe en <code>0x4000</code>, y el programa es un sintetizador sustractivo (oscilador, filtro, amplificador, tres envolventes y un LFO) que <b>calcula la nota muestra a muestra</b> en la RAM del ordenador y luego la toca por ese convertidor. Todo lo que suena lo hace el Z80.</p>
+<p><img src="../imagenes/titulo.png" alt="El título"></p>
+<p>Al encender, el logotipo de Konami se destapa línea a línea, el 新世SIZER se pinta en siete pasadas, un byte de cada ocho en cada una, y el título espera un SPACE. Si no llega, la intro enseña durante 512 cuadros una de las cuatro pantallas del programa (<code>0xBE5E</code>) y vuelve a empezar.</p>
+<h2 id="las-pantallas">Las pantallas</h2>
+<p>Cinco teclas de función, y con SHIFT otras cuatro (<code>0x4877</code>):</p>
+<table><tr><th>tecla</th><th>pantalla</th></tr><tr><td>F1</td><td>TONE EDIT: los 29 campos del timbre</td></tr><tr><td>F2</td><td>WAVE EDIT: dibujar una onda a mano</td></tr><tr><td>F3</td><td>SYN: sintetizar el timbre</td></tr><tr><td>F4</td><td>PLAY: tocar</td></tr><tr><td>F5</td><td>FILE: la cinta</td></tr><tr><td>SHIFT F1</td><td>copiar un timbre, con su onda, en otro</td></tr><tr><td>SHIFT F2</td><td>la lista de los dieciséis timbres</td></tr><tr><td>SHIFT F3</td><td>la impresora</td></tr><tr><td>SHIFT F4</td><td>LAYOUT: qué nota da cada tecla</td></tr></table>
+<p><img src="../imagenes/tone-01.png" alt="TONE EDIT con el timbre 1"></p>
+<p><b>TONE EDIT</b> (<code>0xA5AA</code>) edita los 25 parámetros del timbre y su nombre. El oscilador (DCO) elige una de las catorce ondas de la ROM, la del usuario o ruido, y su altura en pies; el filtro (DCF) tiene corte, resonancia de 0 a 8 y tres salidas, paso alto, paso banda y paso bajo; el amplificador (DCA) tiene su envolvente, y cada una de las tres envolventes es ADSR. El LFO puede mover al oscilador, al filtro y al amplificador, con su propia onda y, con S/H, con ruido muestreado. Los cursores van de campo en campo, INS y DEL suben y bajan, y las cifras escriben el valor.</p>
+<p><img src="../imagenes/wave.png" alt="WAVE EDIT"></p>
+<p><b>WAVE EDIT</b> (<code>0xADF7</code>) dibuja a mano la onda 15, la del usuario: 256 muestras con signo, un punto por muestra. Las dieciséis ondas del usuario (una por timbre) arrancan como la onda 1, un seno (<code>0x55CF</code>). Izquierda y derecha mueven el cursor de paso en paso (MODE, SELECT lo cambia), arriba y abajo cambian la muestra y el tramo entre el cursor y su paso anterior se rellena en línea recta (<code>0xB236</code>). Una tecla del teclado musical la hace sonar; CTRL y HOME la ponen a cero.</p>
+<p><img src="../imagenes/syn.png" alt="SYN"></p>
+<p><b>SYN</b> (<code>0x55F0</code>) es el sintetizador: calcula la nota entera, muestra a muestra, en los 16 KB de <code>0x8000</code> a <code>0xBFFF</code>, con la pantalla parada y las interrupciones cerradas. Cuánto dura la calcula de las envolventes (<code>0x5613</code>), y mientras trabaja un cursor avanza por la pantalla y, cada 16 tics, cambian dos tiles del dibujo (<code>0x4BD9</code>). Al acabar salta a PLAY; F1, F2, F4 y F5 la cortan (<code>0x5767</code>).</p>
+<p><img src="../imagenes/play.png" alt="PLAY"></p>
+<p><b>PLAY</b> (<code>0x5D3A</code>) toca con el teclado del MSX como si fuera un piano: las cuatro filas de letras y números son 48 teclas, blancas y negras, con la nota de cada una escrita encima según el LAYOUT; el de fábrica da nota a 40 (<code>0x4B71</code>). Suena <b>una tecla cada vez</b>: el programa lee el sample y lo manda al DAC byte a byte, y la altura de la nota la pone cuánto tarda entre byte y byte (<a href="HALLAZGOS.html">Hallazgos</a>). Con el EG TYP del timbre en DEC, la nota se sostiene mientras se tiene la tecla repitiendo una página del sample, y al soltar sigue hasta el final; en DUR suena entera de una vez.</p>
+<p><img src="../imagenes/file.png" alt="FILE MODE"></p>
+<p><b>FILE</b> (<code>0xB5DB</code>) graba y carga en cinta tres clases de fichero: TONE (los dieciséis timbres con sus dieciséis ondas, 4.608 bytes), LAYOUT (176 bytes) y SAMP (el sample sintetizado, hasta 16 KB, con su página de bucle). El formato está en <a href="EL-CODIGO.html">El código</a>. La cinta que venía con el cartucho trae en sus dos caras siete SAMP: PIANO, BRASS y ORCHE de 16.384 bytes, TRUMPET de 12.288, SAMISEN de 7.792, DOG de 3.072 y CRASH de 16.384.</p>
+<h2 id="los-dieciseis-timbres-de-fabrica">Los dieciséis timbres de fábrica</h2>
+<p>Están en la ROM, en <code>0xA3AA</code>, 32 bytes cada uno: 25 parámetros y el nombre. Así los enseña TONE EDIT (los ADSR como ataque/caída/sostenido/relajación, el filtro con su salida, <code>-</code> si la envolvente del filtro resta e <code>i</code> si la del oscilador va invertida):</p>
+<table><tr><th>n</th><th>nombre</th><th>onda</th><th>FEET</th><th>LFO DCO</th><th>ENV DCO</th><th>CUT</th><th>RES</th><th>LFO DCF</th><th>ENV DCF</th><th>LFO DCA</th><th>ADSR DCO</th><th>ADSR DCF</th><th>ADSR DCA</th><th>S/H</th><th>onda LFO</th><th>FEET LFO</th><th>filtro</th><th>EG</th></tr><tr><td>1</td><td>EBASS1</td><td>2</td><td>16&#x27;</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>128</td><td>0</td><td>0/0/0/0</td><td>0/4/32/96</td><td>0/0/255/12</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DEC</td></tr><tr><td>2</td><td>EBASS2</td><td>14</td><td>32&#x27;</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>128</td><td>0</td><td>0/0/0/0</td><td>0/4/32/96</td><td>0/0/255/12</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DEC</td></tr><tr><td>3</td><td>BRASS</td><td>2</td><td>8&#x27;</td><td>0</td><td>0</td><td>20</td><td>0</td><td>0</td><td>128</td><td>0</td><td>0/0/0/0</td><td>1/6/64/4</td><td>0/0/255/15</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DEC</td></tr><tr><td>4</td><td>TRUMPET</td><td>12</td><td>8&#x27;</td><td>0</td><td>0</td><td>20</td><td>0</td><td>0</td><td>128</td><td>0</td><td>0/0/0/0</td><td>1/6/64/4</td><td>0/0/255/15</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DEC</td></tr><tr><td>5</td><td>STRINGS</td><td>2</td><td>4&#x27;</td><td>0</td><td>0</td><td>180</td><td>0</td><td>0</td><td>75</td><td>0</td><td>0/0/0/0</td><td>0/4/100/10</td><td>3/4/220/6</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DEC</td></tr><tr><td>6</td><td>EORGAN</td><td>9</td><td>8&#x27;</td><td>0</td><td>0</td><td>255</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0/0/0/0</td><td>0/0/0/0</td><td>0/0/255/1</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DEC</td></tr><tr><td>7</td><td>PORGAN</td><td>6</td><td>8&#x27;</td><td>0</td><td>0</td><td>255</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0/0/0/0</td><td>0/0/0/0</td><td>0/0/255/1</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DEC</td></tr><tr><td>8</td><td>EPIANO</td><td>8</td><td>8&#x27;</td><td>0</td><td>0</td><td>255</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0/0/0/0</td><td>0/0/0/0</td><td>0/0/255/20</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DUR</td></tr><tr><td>9</td><td>GLOCKEN</td><td>7</td><td>16&#x27;</td><td>0</td><td>0</td><td>100</td><td>0</td><td>0</td><td>100</td><td>0</td><td>0/0/0/0</td><td>0/4/0/0</td><td>0/0/255/20</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DUR</td></tr><tr><td>10</td><td>KOTO</td><td>11</td><td>8&#x27;</td><td>2</td><td>0</td><td>0</td><td>0</td><td>0</td><td>128</td><td>0</td><td>0/0/0/0</td><td>0/4/48/128</td><td>0/4/224/32</td><td>0</td><td>1</td><td>512.00&#x27;</td><td>LPF</td><td>DUR</td></tr><tr><td>11</td><td>CONGA</td><td>1</td><td>16&#x27;</td><td>0</td><td>128</td><td>255</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0/1/0/0</td><td>0/0/0/0</td><td>0/1/239/8</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DUR</td></tr><tr><td>12</td><td>SYNDRUM</td><td>1</td><td>8&#x27;</td><td>0</td><td>255</td><td>255</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0/1/192/20</td><td>0/0/0/0</td><td>0/1/192/20</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DUR</td></tr><tr><td>13</td><td>IMAGE</td><td>1</td><td>8&#x27;</td><td>255</td><td>255</td><td>255</td><td>0</td><td>0</td><td>0</td><td>0</td><td>32/0/255/32</td><td>0/0/0/0</td><td>2/0/255/64</td><td>0</td><td>1</td><td>8.00&#x27;</td><td>LPF</td><td>DUR</td></tr><tr><td>14</td><td>PARC1</td><td>4</td><td>2&#x27;</td><td>96</td><td>0</td><td>255</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0/0/0/0</td><td>0/0/0/0</td><td>0/4/224/32</td><td>4</td><td>S/H</td><td>64.00&#x27;</td><td>LPF</td><td>DUR</td></tr><tr><td>15</td><td>PARC2</td><td>1</td><td>4&#x27;</td><td>255</td><td>0</td><td>255</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0/0/0/0</td><td>0/0/0/0</td><td>0/4/240/32</td><td>0</td><td>1</td><td>8.00&#x27;</td><td>LPF</td><td>DUR</td></tr><tr><td>16</td><td>(sin nombre)</td><td>1</td><td>8&#x27;</td><td>0</td><td>0</td><td>255</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0/0/0/0</td><td>0/0/0/0</td><td>0/0/255/0</td><td>0</td><td>1</td><td>64.00&#x27;</td><td>LPF</td><td>DEC</td></tr></table>
+<p><img src="../imagenes/tone-edit.png" alt="Los dieciséis TONE EDIT"></p>
+<p>Y así suenan, sintetizados con <code>tools/motor.py</code> y tocados con <code>tools/sonido.py</code> en LA3 con la tecla sostenida un segundo. Son los bytes que el cartucho manda al DAC: el timbre 1 está cotejado contra openMSX, 22.273 bytes y 0 distintos (<a href="EN-EL-EMULADOR.html">En el emulador</a>).</p>
+<table><tr><th>timbre</th><th></th><th>timbre</th><th></th></tr><tr><td>1 EBASS1</td><td><a href="../sonido/timbre-01.wav">timbre-01.wav</a></td><td>9 GLOCKEN</td><td><a href="../sonido/timbre-09.wav">timbre-09.wav</a></td></tr><tr><td>2 EBASS2</td><td><a href="../sonido/timbre-02.wav">timbre-02.wav</a></td><td>10 KOTO</td><td><a href="../sonido/timbre-10.wav">timbre-10.wav</a></td></tr><tr><td>3 BRASS</td><td><a href="../sonido/timbre-03.wav">timbre-03.wav</a></td><td>11 CONGA</td><td><a href="../sonido/timbre-11.wav">timbre-11.wav</a></td></tr><tr><td>4 TRUMPET</td><td><a href="../sonido/timbre-04.wav">timbre-04.wav</a></td><td>12 SYNDRUM</td><td><a href="../sonido/timbre-12.wav">timbre-12.wav</a></td></tr><tr><td>5 STRINGS</td><td><a href="../sonido/timbre-05.wav">timbre-05.wav</a></td><td>13 IMAGE</td><td><a href="../sonido/timbre-13.wav">timbre-13.wav</a></td></tr><tr><td>6 EORGAN</td><td><a href="../sonido/timbre-06.wav">timbre-06.wav</a></td><td>14 PARC1</td><td><a href="../sonido/timbre-14.wav">timbre-14.wav</a></td></tr><tr><td>7 PORGAN</td><td><a href="../sonido/timbre-07.wav">timbre-07.wav</a></td><td>15 PARC2</td><td><a href="../sonido/timbre-15.wav">timbre-15.wav</a></td></tr><tr><td>8 EPIANO</td><td><a href="../sonido/timbre-08.wav">timbre-08.wav</a></td><td>16 (sin nombre)</td><td><a href="../sonido/timbre-16.wav">timbre-16.wav</a></td></tr></table>
+<h2 id="las-catorce-ondas">Las catorce ondas</h2>
+<p>El oscilador lee una de las catorce ondas de <code>0x7200</code>, 256 muestras con signo cada una, en la página <code>0x72</code> + onda (<code>0x56FF</code>). La 1 es el seno con el que arrancan las ondas del usuario; la 15 es la del usuario, y la 16 es ruido, que no es una tabla: sale de leer la BIOS (<a href="HALLAZGOS.html">Hallazgos</a>).</p>
+<p><img src="../imagenes/ondas.png" alt="Las catorce ondas del oscilador"></p>
+<footer><p><em>Konami's Synthesizer</em> lo public&oacute; Konami para MSX en 1986; su n&uacute;mero de cat&aacute;logo es RC-741 y son 32 KB con un DAC. Todos los derechos sobre el programa siguen siendo de sus titulares. Este trabajo es de preservaci&oacute;n, estudio y documentaci&oacute;n, y la imagen del cartucho no se distribuye.</p></footer></div>

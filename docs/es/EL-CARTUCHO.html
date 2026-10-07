@@ -1,0 +1,100 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>El cartucho — Konami&#x27;s Synthesizer (Konami, 1986)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Portada</a><a href="EMPEZAR.html">Empezar</a><a href="EL-JUEGO.html">El juego</a><a href="EL-CARTUCHO.html" style=color:var(--tinta)>El cartucho</a><a href="EL-CODIGO.html">El código</a><a href="HALLAZGOS.html">Hallazgos</a><a href="EN-EL-EMULADOR.html">En el emulador</a><a href="PREGUNTAS-ABIERTAS.html">Preguntas abiertas</a><a href="../THE-CARTRIDGE.html" style="margin-left:auto;color:var(--oro)">English</a></nav>
+<h1 id="el-cartucho">El cartucho</h1>
+<p>32 KB sin mapeador, en las páginas 1 y 2 (<code>0x4000</code>-<code>0xBFFF</code>), y el convertidor digital-analógico: <b>el DAC es cualquier escritura en <code>0x4000</code></b>, 8 bits sin signo con el reposo en <code>0x80</code>. El cartucho <b>no lleva RAM</b>: el sample vive en la RAM del ordenador, en <code>0x8000</code>-<code>0xBFFF</code>, y el programa cambia esa página entre la RAM (<code>0x4105</code>) y el cartucho (<code>0x410D</code>) con ENASLT, según toque tocar o pintar.</p>
+<h2 id="el-arranque">El arranque</h2>
+<p><code>0x4000</code>: &quot;AB&quot; e INIT en <code>0x4054</code>. INIT apunta las ranuras de las páginas 1 y 2 (<code>0x40D4</code>) y copia a <code>H.STKE</code> un <code>rst 0x30</code> a <code>0x406E</code>: el programa arranca cuando el BASIC termina de arrancar. Entonces borra las variables, pone <code>H.KEYI</code> y, antes de dejar entrar interrupciones, llena el sample de silencio.</p>
+<p>La primera rutina de interrupción (<code>0x4118</code>) no hace más que subir el DAC de 0 a <code>0x80</code>, un paso por interrupción, 129 veces; luego cede el gancho a la rutina de cada cuadro (<code>0x4015</code>). Así el altavoz no da el golpe del encendido.</p>
+<h2 id="el-mapa-de-la-rom">El mapa de la ROM</h2>
+<table><tr><th>desde</th><th>hasta</th><th>qué</th></tr><tr><td><code>0x4012</code></td><td><code>0x4D04</code></td><td>el arranque, la intro, las pantallas, el teclado, los efectos del PSG</td></tr><tr><td><code>0x4D04</code></td><td><code>0x55E8</code></td><td>FILE: la cinta, el código de disco y la impresora</td></tr><tr><td><code>0x55E8</code></td><td><code>0x5D3A</code></td><td>SYN: el sintetizador</td></tr><tr><td><code>0x5D3A</code></td><td><code>0x7135</code></td><td>PLAY: las 39 rutinas que tocan el sample</td></tr><tr><td><code>0x7200</code></td><td><code>0x8000</code></td><td>las catorce ondas del oscilador, 256 bytes cada una</td></tr><tr><td><code>0x8000</code></td><td><code>0xA3AA</code></td><td>los gráficos de todas las pantallas, en RLE</td></tr><tr><td><code>0xA3AA</code></td><td><code>0xA5AA</code></td><td>los dieciséis timbres de fábrica, 32 bytes cada uno</td></tr><tr><td><code>0xA5AA</code></td><td><code>0xBB6D</code></td><td>TONE EDIT, WAVE EDIT, la copia, la lista y FILE</td></tr><tr><td><code>0xBB6D</code></td><td><code>0xBEA6</code></td><td>LAYOUT y la demo de la intro</td></tr><tr><td><code>0xBEA6</code></td><td><code>0xBF62</code></td><td>los efectos del PSG y sus listas</td></tr><tr><td><code>0xBF62</code></td><td><code>0xC000</code></td><td><code>RC741 86 5 31</code>, relleno y la marca oculta de Konami</td></tr></table>
+<p>El reparto entero, byte a byte, está en <code>src/synth.notes</code>: el código son 16.229 bytes y los datos 16.539, y no queda ninguno sin explicar.</p>
+<h2 id="la-ram">La RAM</h2>
+<table><tr><th>dirección</th><th>qué</th></tr><tr><td><code>0x8000</code>-<code>0xBFFF</code></td><td>el sample: 16 KB de muestras de 8 bits, silencio en <code>0x80</code></td></tr><tr><td><code>0xC000</code>-<code>0xCFFF</code></td><td>las dieciséis ondas del usuario, 256 bytes cada una</td></tr><tr><td><code>0xD000</code>-<code>0xD1FF</code></td><td>los dieciséis timbres, 32 bytes cada uno</td></tr><tr><td><code>0xD200</code>-<code>0xD22F</code></td><td>el LAYOUT: la nota de cada una de las 48 teclas</td></tr><tr><td><code>0xD230</code>-<code>0xD2AF</code></td><td>por tecla, la rutina de PLAY y su retardo</td></tr><tr><td><code>0xD800</code>-<code>0xDEFF</code></td><td>las variables: la fase, las teclas, la pantalla, la copia de los sprites</td></tr><tr><td><code>0xD854</code> / <code>0xD855</code></td><td>las ranuras de la RAM y del cartucho en la página 2</td></tr><tr><td><code>0xDB00</code></td><td>el timbre en curso</td></tr><tr><td><code>0xDC00</code>-<code>0xDC18</code></td><td>el timbre que SYN está sintetizando</td></tr><tr><td><code>0xDC19</code></td><td>el puntero de escritura de SYN</td></tr><tr><td><code>0xDCFD</code> / <code>0xDCFE</code></td><td>la página de bucle y la longitud del sample</td></tr><tr><td><code>0xDD00</code>-<code>0xDDFF</code></td><td>la onda del usuario preparada para escucharla</td></tr><tr><td><code>0xDF00</code></td><td>la pila, hacia abajo</td></tr></table>
+<h2 id="la-vram">La VRAM</h2>
+<p>SCREEN 2, con los registros de <code>0x4295</code>: colores en <code>0x0000</code>, patrones en <code>0x2000</code>, nombres en <code>0x3800</code>, atributos de sprite en <code>0x3B00</code> y patrones de sprite en <code>0x1800</code>. Los tiles 0 a 15 son cuadros lisos de los dieciséis colores, la fuente va del <code>0x10</code> (las cifras) y del <code>0x21</code> (las letras), y cada pantalla trae sus patrones, colores y nombres en RLE desde la página 2 del cartucho (<code>0x4358</code>): un byte de control menor que <code>0x80</code> repite el siguiente, <code>0x80</code> + n copia n bytes, <code>0x80</code> trae otra dirección y 0 acaba.</p>
+<h2 id="el-psg">El PSG</h2>
+<p>Solo para los efectos: tres canales (<code>0xD810</code>, cinco bytes cada uno) con listas de notas en <code>0xBEFE</code>. El cursor hace el efecto 1, una operación acabada el 2, un cambio de pantalla el 5 y la intro el 8 (<code>0xBEBF</code>).</p>
+<footer><p><em>Konami's Synthesizer</em> lo public&oacute; Konami para MSX en 1986; su n&uacute;mero de cat&aacute;logo es RC-741 y son 32 KB con un DAC. Todos los derechos sobre el programa siguen siendo de sus titulares. Este trabajo es de preservaci&oacute;n, estudio y documentaci&oacute;n, y la imagen del cartucho no se distribuye.</p></footer></div>

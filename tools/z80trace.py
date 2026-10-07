@@ -64,7 +64,7 @@ class Tracer:
         # saltos: {direccion_llamada: n} -> tras un CALL a esa direccion, los n
         # bytes siguientes son PARAMETROS EN LINEA (la rutina hace `pop hl` y
         # los lee), no codigo: se marcan como datos y el flujo sigue detras.
-        # Konami lo usa (Athletic Land: 0x5F65 con 6 bytes, en 19 sitios); un
+        # Konami lo usa (otro juego: 0x5F65 con 6 bytes, en 19 sitios); un
         # trazador que siga de largo se los traga como instrucciones.
         self.saltos = dict(saltos or {})
         self.params = []                       # (ini, fin) de parametros en linea

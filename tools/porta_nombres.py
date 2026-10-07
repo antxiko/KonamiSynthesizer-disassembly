@@ -115,7 +115,7 @@ def main():
         for d in range(ln):
             # solo cuenta si el byte es el PRIMERO de su instruccion en las dos
             # ROM: al estirar un tramo hacia atras se pueden emparejar los
-            # ultimos bytes de dos instrucciones DISTINTAS -en Goonies un
+            # ultimos bytes de dos instrucciones DISTINTAS -en otro juego un
             # `ld sp,nn` y aqui un `ld (nn),hl`- y el nombre acabaria puesto en
             # la instruccion de al lado
             if not (inA[i + d] and inB[k + d]):
