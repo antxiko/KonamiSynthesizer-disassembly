@@ -46,60 +46,60 @@ DATA_ceros_tras_la_cabecera:
 ; ======================================================================
 
 
-L_4012:
+salto_sin_uso:		; `jp` a 0x455D detras de la cabecera; nadie salta aqui
 	jp L_455D		;4012
-L_4015:
-	call 0013eh		;4015   ; BIOS RDVDP - Reads VDP status register
-	call 0fd9fh		;4018
+interrupcion:		; la rutina de cada cuadro, por H.KEYI (0xFD9A) desde que 0x4118 acaba
+	call 0013eh		;4015   ; BIOS RDVDP - Reads VDP status register | lee el estado del VDP: lo borra
+	call 0fd9fh		;4018   ; y llama el mismo a H.TIMI
 	di			;401b
-	call L_475A		;401c
-	ld hl,0d805h		;401f
+	call efectos_por_cuadro		;401c   ; los efectos de sonido del PSG, cada cuadro
+	ld hl,0d805h		;401f   ; 0xD805: ocupado (bit 0)
 	bit 0,(hl)		;4022
-	jr nz,L_4033		;4024
-	inc (hl)			;4026
+	jr nz,L_4033		;4024   ; si el cuadro anterior no ha acabado, solo los efectos
+	inc (hl)			;4026   ; marca ocupado y deja entrar otra interrupcion
 	ei			;4027
-	call L_42A2		;4028
-	call L_412B		;402b
-	ld a,000h		;402e
+	call lee_teclas		;4028   ; las teclas
+	call fase_de_pantalla		;402b   ; la fase de la pantalla
+	ld a,000h		;402e   ; libre
 	ld (0d805h),a		;4030
 L_4033:
-	call 0013eh		;4033   ; BIOS RDVDP - Reads VDP status register
+	call 0013eh		;4033   ; BIOS RDVDP - Reads VDP status register | si ha llegado otro cuadro mientras tanto (bit 7)...
 	or a			;4036
 	di			;4037
-	call m,L_475A		;4038
+	call m,efectos_por_cuadro		;4038   ; ...otra vuelta de los efectos
 	ei			;403b
 	ret			;403c
-L_403D:
+escribe_registro_vdp:		; WRTVDP: registro C, valor B
 	jp 00047h		;403d   ; BIOS WRTVDP - Writes data in the VDP-register
-L_4040:
+hl_mas_a:		; HL = HL + A
 	add a,l			;4040
 	ld l,a			;4041
 	ret nc			;4042
 	inc h			;4043
 	ret			;4044
-L_4045:
+de_mas_a:		; DE = DE + A
 	add a,e			;4045
 	ld e,a			;4046
 	ret nc			;4047
 	inc d			;4048
 	ret			;4049
-L_404A:
-	pop hl			;404a
+salta_por_tabla:		; salta a la entrada A de la tabla de palabras que sigue al `call`
+	pop hl			;404a   ; HL = la tabla, detras del `call`
 	add a,a			;404b
-	call L_4040		;404c
-	ld e,(hl)			;404f
+	call hl_mas_a		;404c
+	ld e,(hl)			;404f   ; DE = la entrada A
 	inc hl			;4050
 	ld d,(hl)			;4051
 	ex de,hl			;4052
-	jp (hl)			;4053
-L_4054:
-	call L_40D4		;4054
-	ld hl,04069h		;4057
-	ld de,0fedah		;405a
+	jp (hl)			;4053   ; y alli
+init:		; INIT: la llama la BIOS al encontrar el cartucho; deja el arranque para cuando el BASIC termine
+	call apunta_slots		;4054   ; 0xD854/0xD855: los slots de las paginas 2 y 1
+	ld hl,04069h		;4057   ; los 5 bytes de 0x4069...
+	ld de,0fedah		;405a   ; ...a H.STKE (0xFEDA)
 	ld bc,00005h		;405d
 	ldir		;4060
-	ld a,(0d855h)		;4062
-	ld (0fedbh),a		;4065
+	ld a,(0d855h)		;4062   ; el slot del cartucho...
+	ld (0fedbh),a		;4065   ; ...en el `rst 0x30` del gancho
 	ret			;4068
 
 ; ----------------------------------------------------------------------
@@ -113,68 +113,68 @@ DATA_gancho_para_h_stke:
 ; ======================================================================
 
 
-L_406E:
+arranque:		; el arranque de verdad: H.STKE salta aqui cuando el BASIC ha terminado de arrancar
 	di			;406e
-	im 1		;406f
-	call L_40D4		;4071
-	ld a,0f7h		;4074
+	im 1		;406f   ; modo 1: las interrupciones van a 0x0038
+	call apunta_slots		;4071   ; los slots otra vez: ahora la pagina 2 es la RAM del ordenador
+	ld a,0f7h		;4074   ; H.KEYI (0xFD9A) = `rst 0x30`...
 	ld (0fd9ah),a		;4076
-	ld a,(0d855h)		;4079
+	ld a,(0d855h)		;4079   ; ...el slot del cartucho...
 	ld (0fd9bh),a		;407c
-	ld hl,L_4118		;407f
+	ld hl,interrupcion_sube_el_dac		;407f   ; ...0x4118...
 	ld (0fd9ch),hl		;4082
-	ld a,0c9h		;4085
+	ld a,0c9h		;4085   ; ...y `ret`
 	ld (0fd9eh),a		;4087
-	ld sp,0df00h		;408a
-	ld hl,0d800h		;408d
+	ld sp,0df00h		;408a   ; la pila, bajo 0xDF00
+	ld hl,0d800h		;408d   ; borra las variables, 0xD800-0xDEFF
 	ld de,0d801h		;4090
 	ld bc,006ffh		;4093
 	ld (hl),000h		;4096
 	ldir		;4098
-	call L_40D4		;409a
-	ld h,080h		;409d
+	call apunta_slots		;409a   ; A = el slot del cartucho...
+	ld h,080h		;409d   ; ...tambien en la pagina 2, donde siguen sus graficos
 	call 00024h		;409f   ; BIOS ENASLT - Switches to specified slot and page definitively
-	ld a,001h		;40a2
+	ld a,001h		;40a2   ; ocupado: la interrupcion no toca nada
 	ld (0d805h),a		;40a4
-	call L_4270		;40a7
+	call prepara_vdp_y_psg		;40a7   ; VDP, PSG y la VRAM en blanco
 	xor a			;40aa
 	ld (0d805h),a		;40ab
-	call L_4105		;40ae
-	call L_4E44		;40b1
-	call L_410D		;40b4
-	xor a			;40b7
+	call ram_en_la_pagina_2		;40ae   ; la RAM en la pagina 2...
+	call llena_de_silencio		;40b1   ; ...llena de silencio (0x80)...
+	call cartucho_en_la_pagina_2		;40b4   ; ...y vuelve el cartucho
+	xor a			;40b7   ; 0xDCFD = 0
 	ld (0dcfdh),a		;40b8
-	ld hl,00001h		;40bb
+	ld hl,00001h		;40bb   ; 0xDCFE: el sample mide 1 byte
 	ld (0dcfeh),hl		;40be
-	call 0013eh		;40c1   ; BIOS RDVDP - Reads VDP status register
+	call 0013eh		;40c1   ; BIOS RDVDP - Reads VDP status register | borra el estado del VDP antes de dejar entrar interrupciones
 	ei			;40c4
-L_40C5:
+bucle_principal:		; espera a que la pantalla pida trabajo en 0xD8F6 (0x48F0) y llama a 0x4BA1
 	ld a,(0d8f6h)		;40c5
 	or a			;40c8
-	jr z,L_40C5		;40c9
+	jr z,bucle_principal		;40c9
 	call L_4BA1		;40cb
 	xor a			;40ce
 	ld (0d8f6h),a		;40cf
-	jr L_40C5		;40d2
-L_40D4:
+	jr bucle_principal		;40d2
+apunta_slots:		; 0xD854 = slot de la pagina 2, 0xD855 = slot de la pagina 1 (el cartucho); vuelve con A = 0xD855
 	ld de,0d854h		;40d4
-	call 00138h		;40d7   ; BIOS RSLREG - Reads the primary slot register
+	call 00138h		;40d7   ; BIOS RSLREG - Reads the primary slot register | A = registro de slots primarios (RSLREG)
 	push af			;40da
-	rrca			;40db
+	rrca			;40db   ; bits 2-3, la pagina 1, a 0-1
 	rrca			;40dc
-	call L_40EF		;40dd
-	rrca			;40e0
+	call slot_de_la_pagina		;40dd   ; C = slot primario de la pagina 2 y A = su registro secundario
+	rrca			;40e0   ; el secundario de la pagina 2 a los bits 2-3
 	rrca			;40e1
-	call L_40EA		;40e2
+	call guarda_slot		;40e2   ; 0xD854
 	inc de			;40e5
-	pop af			;40e6
-	call L_40EF		;40e7
-L_40EA:
+	pop af			;40e6   ; la pagina 1
+	call slot_de_la_pagina		;40e7   ; C = slot primario y A = secundario de la pagina 1: 0xD855
+guarda_slot:		; (DE) = C con el secundario de los bits 2-3 de A: el formato de slot de ENASLT
 	and 00ch		;40ea
 	or c			;40ec
 	ld (de),a			;40ed
 	ret			;40ee
-L_40EF:
+slot_de_la_pagina:		; de los bits 2-3 de A: C = slot primario (+0x80 si esta expandido, 0xFCC1) y A = su registro secundario (0xFCC5)
 	rrca			;40ef
 	rrca			;40f0
 	and 003h		;40f1
@@ -192,43 +192,43 @@ L_40EF:
 	inc hl			;4102
 	ld a,(hl)			;4103
 	ret			;4104
-L_4105:
+ram_en_la_pagina_2:		; pone en 0x8000-0xBFFF la RAM del ordenador: el slot que 0x40D4 guarda en 0xD854
 	ld h,080h		;4105
 	ld a,(0d854h)		;4107
 	jp 00024h		;410a   ; BIOS ENASLT - Switches to specified slot and page definitively
-L_410D:
+cartucho_en_la_pagina_2:		; vuelve a poner el cartucho en 0x8000-0xBFFF (0xD855)
 	ld h,080h		;410d
 	ld a,(0d855h)		;410f
 	jp 00024h		;4112   ; BIOS ENASLT - Switches to specified slot and page definitively
-L_4115:
+efecto_de_sonido:		; arranca el efecto A en el PSG (0xBEB1)
 	jp L_BEB1		;4115
-L_4118:
-	ld hl,0d856h		;4118
+interrupcion_sube_el_dac:		; la primera rutina de H.KEYI: lleva el DAC de 0 a 0x80 (el reposo) de uno en uno, un paso por interrupcion
+	ld hl,0d856h		;4118   ; 0xD856: el valor que toca (las variables empiezan a 0)
 	ld a,(hl)			;411b
-	ld (04000h),a		;411c
+	ld (04000h),a		;411c   ; al DAC
 	inc a			;411f
 	ld (hl),a			;4120
-	cp 081h		;4121
+	cp 081h		;4121   ; al llegar a 0x80...
 	ret nz			;4123
-	ld hl,04015h		;4124
+	ld hl,04015h		;4124   ; ...H.KEYI pasa a 0x4015
 	ld (0fd9ch),hl		;4127
 	ret			;412a
-L_412B:
-	ld hl,0d803h		;412b
+fase_de_pantalla:		; cada cuadro: 0xD803 cuenta cuadros y salta a la fase 0xD800, con B = el paso 0xD801
+	ld hl,0d803h		;412b   ; 0xD803: contador de cuadros
 	inc (hl)			;412e
 	ld a,(0d800h)		;412f
 	cp 003h		;4132
-	jr nc,L_413A		;4134
-	ld hl,04242h		;4136
+	jr nc,L_413A		;4134   ; en las fases 0, 1 y 2...
+	ld hl,04242h		;4136   ; ...vuelve por 0x4242
 	push hl			;4139
 L_413A:
-	ld bc,(0d800h)		;413a
+	ld bc,(0d800h)		;413a   ; C = fase (0xD800), B = paso (0xD801)
 	ld a,c			;413e
-	call L_404A		;413f
+	call salta_por_tabla		;413f
 
 ; ----------------------------------------------------------------------
-; DATOS saltos_del_arranque: 9 destinos por (0xD805); la tabla cierra en
-;   0x4154, su entrada mas baja
+; DATOS saltos_del_arranque: 9 destinos por la fase (0xD800); la tabla cierra
+;   en 0x4154, su entrada mas baja
 ;   0x4142..0x4154  (18 bytes)
 DATA_saltos_del_arranque:
 	defw 04154h,041d3h,041dbh,04201h,04227h,0423fh,04242h,04242h	; 4142
@@ -271,9 +271,9 @@ L_4182:
 	ld de,09e97h		;418d
 	ld a,(0d910h)		;4190
 	push af			;4193
-	call L_4045		;4194
+	call de_mas_a		;4194
 	pop af			;4197
-	call L_4040		;4198
+	call hl_mas_a		;4198
 	ld bc,08500h		;419b
 L_419E:
 	push bc			;419e
@@ -284,9 +284,9 @@ L_419E:
 	pop hl			;41a7
 	pop de			;41a8
 	ld a,008h		;41a9
-	call L_4040		;41ab
+	call hl_mas_a		;41ab
 	ld a,008h		;41ae
-	call L_4045		;41b0
+	call de_mas_a		;41b0
 	pop bc			;41b3
 	djnz L_419E		;41b4
 	ld hl,0d910h		;41b6
@@ -297,7 +297,7 @@ L_419E:
 	xor a			;41c1
 	jp L_422B		;41c2
 L_41C5:
-	call L_4284		;41c5
+	call pon_registros_vdp		;41c5
 	call L_42DC		;41c8
 	call L_43FD		;41cb
 	call L_4557		;41ce
@@ -393,16 +393,16 @@ L_4266:
 	ld a,008h		;4268
 	call L_BEA6		;426a
 	jp L_4747		;426d
-L_4270:
+prepara_vdp_y_psg:		; mezclador del PSG, efecto 8, la VRAM a cero y los 8 registros del VDP
 	ld a,0b8h		;4270
-	call L_477D		;4272
+	call mezclador_psg		;4272
 	ld a,008h		;4275
-	call L_4115		;4277
+	call efecto_de_sonido		;4277
 	ld hl,00000h		;427a
 	ld bc,04000h		;427d
 	xor a			;4280
 	call 00056h		;4281   ; BIOS FILVRM - Fills VRAM with value
-L_4284:
+pon_registros_vdp:		; los 8 registros del VDP de 0x4295, del R0 al R7
 	ld hl,04295h		;4284
 	ld d,008h		;4287
 	ld c,000h		;4289
@@ -432,8 +432,8 @@ DATA_registros_del_vdp:
 
 L_429D:
 	ld c,007h		;429d
-	jp L_403D		;429f
-L_42A2:
+	jp escribe_registro_vdp		;429f
+lee_teclas:		; 0xD807 = teclas pulsadas ahora, 0xD806 = las recien pulsadas
 	call L_42B7		;42a2
 	ld hl,0d807h		;42a5
 L_42A8:
@@ -778,7 +778,7 @@ L_458C:
 	ld de,00a00h		;4595
 	add hl,de			;4598
 	ld a,c			;4599
-	call L_4040		;459a
+	call hl_mas_a		;459a
 	ld b,014h		;459d
 	ld de,00008h		;459f
 	ld a,0f0h		;45a2
@@ -863,7 +863,7 @@ L_4747:
 L_4754:
 	ld de,0a2e5h		;4754
 	jp L_4352		;4757
-L_475A:
+efectos_por_cuadro:		; los efectos de sonido: R7 = 0xB8 y los tres canales de 0xD810, 5 bytes cada uno
 	ld e,0b8h		;475a
 	ld a,007h		;475c
 	call 00093h		;475e   ; BIOS WRTPSG - Writes data to PSG-register
@@ -883,7 +883,7 @@ L_476D:
 	add ix,de		;4778
 	djnz L_476D		;477a
 	ret			;477c
-L_477D:
+mezclador_psg:		; R7 del PSG = A (y copia en 0xD81F)
 	ld (0d81fh),a		;477d
 	ld e,a			;4780
 	ld a,007h		;4781
@@ -962,7 +962,7 @@ L_47EB:
 	call L_486D		;47fc
 L_47FF:
 	ld a,(0d8f4h)		;47ff
-	call L_404A		;4802
+	call salta_por_tabla		;4802
 
 ; ----------------------------------------------------------------------
 ; DATOS saltos_por_pantalla: 9 destinos por (0xD8F4), la pantalla en curso;
@@ -1373,7 +1373,7 @@ L_4A85:
 	ld (hl),041h		;4a86
 	dec a			;4a88
 	ld de,04b2dh		;4a89
-	call L_4045		;4a8c
+	call de_mas_a		;4a8c
 	inc hl			;4a8f
 	ld a,(de)			;4a90
 	ld (hl),a			;4a91
@@ -1389,7 +1389,7 @@ L_4A9C:
 	dec a			;4a9c
 	add a,a			;4a9d
 	ld hl,04b3fh		;4a9e
-	call L_4040		;4aa1
+	call hl_mas_a		;4aa1
 	ld d,038h		;4aa4
 	ld e,(hl)			;4aa6
 	inc hl			;4aa7
@@ -1403,13 +1403,13 @@ L_4AB3:
 	ld a,(hl)			;4ab3
 L_4AB4:
 	ld hl,04b65h		;4ab4
-	call L_4040		;4ab7
+	call hl_mas_a		;4ab7
 	ex de,hl			;4aba
 	call L_4B0F		;4abb
 	ld b,002h		;4abe
 	jr L_4A4E		;4ac0
 L_4AC2:
-	call L_410D		;4ac2
+	call cartucho_en_la_pagina_2		;4ac2
 	ld a,(0dc47h)		;4ac5
 	call L_BC3D		;4ac8
 	ld a,(de)			;4acb
@@ -1427,9 +1427,9 @@ L_4AD4:
 	ld (0d905h),a		;4ada
 	pop hl			;4add
 	call L_BC01		;4ade
-	jp L_4105		;4ae1
+	jp ram_en_la_pagina_2		;4ae1
 L_4AE4:
-	call L_410D		;4ae4
+	call cartucho_en_la_pagina_2		;4ae4
 	ld a,(0dc47h)		;4ae7
 	call L_BC3D		;4aea
 	ld de,04b00h		;4aed
@@ -1438,7 +1438,7 @@ L_4AE4:
 	add hl,de			;4af6
 	ld de,04b02h		;4af7
 	call L_BC37		;4afa
-	jp L_4105		;4afd
+	jp ram_en_la_pagina_2		;4afd
 
 ; ----------------------------------------------------------------------
 ; DATOS tiles_marcador: dos pares de tiles que escribe 0xBC37 (0x4AED y
@@ -1457,7 +1457,7 @@ L_4B04:
 	ld a,(0dc47h)		;4b04
 	dec a			;4b07
 	ld hl,0d200h		;4b08
-	call L_4040		;4b0b
+	call hl_mas_a		;4b0b
 	ret			;4b0e
 L_4B0F:
 	push af			;4b0f
@@ -1545,7 +1545,7 @@ L_4BF2:
 	djnz L_4BF2		;4bf4
 L_4BF6:
 	ld de,04c61h		;4bf6
-	call L_4045		;4bf9
+	call de_mas_a		;4bf9
 	di			;4bfc
 	ld b,002h		;4bfd
 L_4BFF:
@@ -1598,7 +1598,7 @@ L_4C43:
 	ld a,(de)			;4c43
 	add a,a			;4c44
 	ld de,04c5bh		;4c45
-	call L_4045		;4c48
+	call de_mas_a		;4c48
 	ex de,hl			;4c4b
 	ld c,(hl)			;4c4c
 	inc hl			;4c4d
@@ -1698,7 +1698,7 @@ DATA_sprites_de_la_mano:
 
 
 L_4D04:
-	call L_4105		;4d04
+	call ram_en_la_pagina_2		;4d04
 	di			;4d07
 	ld a,0ffh		;4d08
 	call 000eah		;4d0a   ; BIOS TAPOON - Turns on the cassette motor and writes the header
@@ -1758,13 +1758,13 @@ L_4D5F:
 	ld b,005h		;4d6b
 	call L_4E6F		;4d6d
 	call 000f0h		;4d70   ; BIOS TAPOOF - Stops writing on the tape
-	call L_410D		;4d73
+	call cartucho_en_la_pagina_2		;4d73
 	ei			;4d76
 	ret			;4d77
 L_4D78:
 	xor a			;4d78
 	call 000f3h		;4d79   ; BIOS STMOTR - Sets the cassette motor action
-	call L_410D		;4d7c
+	call cartucho_en_la_pagina_2		;4d7c
 	scf			;4d7f
 	ei			;4d80
 	ret			;4d81
@@ -1778,13 +1778,13 @@ L_4D82:
 L_4D8A:
 	jr L_4D8F		;4d8a
 L_4D8C:
-	call L_4105		;4d8c
+	call ram_en_la_pagina_2		;4d8c
 L_4D8F:
 	di			;4d8f
 	ld a,(0db18h)		;4d90
 	cp 023h		;4d93
 	jr nz,L_4D9A		;4d95
-	call L_4E44		;4d97
+	call llena_de_silencio		;4d97
 L_4D9A:
 	call 000e1h		;4d9a   ; BIOS TAPION - Reads the header block after turning the cassette motor on
 	jr c,L_4D78		;4d9d
@@ -1824,14 +1824,14 @@ L_4DD7:
 	ld (hl),a			;4dd7
 	inc hl			;4dd8
 	djnz L_4DCB		;4dd9
-	call L_410D		;4ddb
+	call cartucho_en_la_pagina_2		;4ddb
 	call L_BA66		;4dde
 	ld de,04e80h		;4de1
 	call L_4337		;4de4
 	ld de,0db0fh		;4de7
 	ld hl,03a0dh		;4dea
 	call L_AD21		;4ded
-	call L_4105		;4df0
+	call ram_en_la_pagina_2		;4df0
 	call 000e1h		;4df3   ; BIOS TAPION - Reads the header block after turning the cassette motor on
 	jp c,L_4D78		;4df6
 	ld hl,0dcfeh		;4df9
@@ -1869,10 +1869,10 @@ L_4E2A:
 	ld b,001h		;4e37
 	call L_4E6F		;4e39
 	call 000e7h		;4e3c   ; BIOS TAPIOF - Stops reading from the tape
-	call L_410D		;4e3f
+	call cartucho_en_la_pagina_2		;4e3f
 	ei			;4e42
 	ret			;4e43
-L_4E44:
+llena_de_silencio:		; 0x8000-0xBFFF a 0x80, el reposo del DAC: el sample en blanco
 	ld hl,08000h		;4e44
 	ld bc,03fffh		;4e47
 	ld d,h			;4e4a
@@ -1895,7 +1895,7 @@ L_4E5A:
 	ld hl,04e7ah		;4e60
 	ld de,0dbf0h		;4e63
 	ld bc,00002h		;4e66
-	call L_4040		;4e69
+	call hl_mas_a		;4e69
 	ldir		;4e6c
 	ret			;4e6e
 L_4E6F:
@@ -1929,7 +1929,7 @@ DATA_rotulo_found:
 L_4E89:
 	ld (0d972h),sp		;4e89
 	call L_502F		;4e8d
-	call L_4105		;4e90
+	call ram_en_la_pagina_2		;4e90
 	ld de,0d980h		;4e93
 	ld hl,0db0fh		;4e96
 	call L_5191		;4e99
@@ -1950,20 +1950,20 @@ L_4EB5:
 	ld hl,(0dcfeh)		;4ec1
 	call L_5277		;4ec4
 	call L_525A		;4ec7
-	call L_410D		;4eca
+	call cartucho_en_la_pagina_2		;4eca
 	call L_5033		;4ecd
 	ret			;4ed0
 L_4ED1:
 	ld (0d972h),sp		;4ed1
 	call L_502F		;4ed5
-	call L_4105		;4ed8
+	call ram_en_la_pagina_2		;4ed8
 	ld de,0d980h		;4edb
 	ld hl,0db0fh		;4ede
 	call L_5191		;4ee1
 	ld a,(0db18h)		;4ee4
 	cp 023h		;4ee7
 	jr nz,L_4EEE		;4ee9
-	call L_4E44		;4eeb
+	call llena_de_silencio		;4eeb
 L_4EEE:
 	call L_523D		;4eee
 	call L_520D		;4ef1
@@ -1982,13 +1982,13 @@ L_4F07:
 	ld hl,(0dcfeh)		;4f13
 	call L_5267		;4f16
 	call L_525A		;4f19
-	call L_410D		;4f1c
+	call cartucho_en_la_pagina_2		;4f1c
 	call L_5033		;4f1f
 	ret			;4f22
 L_4F23:
 	ld (0d972h),sp		;4f23
 	call L_502F		;4f27
-	call L_4105		;4f2a
+	call ram_en_la_pagina_2		;4f2a
 	ld de,0d980h		;4f2d
 	ld hl,0db0fh		;4f30
 	call L_5191		;4f33
@@ -1999,12 +1999,12 @@ L_4F23:
 	ld c,001h		;4f41
 	or a			;4f43
 	jp nz,L_50F7		;4f44
-	call L_410D		;4f47
+	call cartucho_en_la_pagina_2		;4f47
 	jp L_5033		;4f4a
 L_4F4D:
 	ld (0d972h),sp		;4f4d
 	call L_502F		;4f51
-	call L_4105		;4f54
+	call ram_en_la_pagina_2		;4f54
 	ld hl,0d2c0h		;4f57
 	ld de,0d2c1h		;4f5a
 	ld (hl),020h		;4f5d
@@ -2066,7 +2066,7 @@ L_4FC4:
 	ld de,04fdeh		;4fce
 L_4FD1:
 	call L_50B0		;4fd1
-	call L_410D		;4fd4
+	call cartucho_en_la_pagina_2		;4fd4
 	ld a,002h		;4fd7
 	call L_BEB1		;4fd9
 	jr $+75		;4fdc
@@ -2260,7 +2260,7 @@ L_50F5:
 	ld c,000h		;50f5
 L_50F7:
 	push bc			;50f7
-	call L_410D		;50f8
+	call cartucho_en_la_pagina_2		;50f8
 	call L_BA66		;50fb
 	call L_5033		;50fe
 	pop bc			;5101
@@ -2352,7 +2352,7 @@ L_51CB:
 	ld a,(0db18h)		;51cb
 	sub 021h		;51ce
 	ld hl,051d8h		;51d0
-	call L_4040		;51d3
+	call hl_mas_a		;51d3
 	ld a,(hl)			;51d6
 	ret			;51d7
 
@@ -2838,7 +2838,7 @@ L_54E9:
 	push hl			;54e9
 	ld hl,054f6h		;54ea
 	add a,a			;54ed
-	call L_4040		;54ee
+	call hl_mas_a		;54ee
 	ld d,(hl)			;54f1
 	inc hl			;54f2
 	ld e,(hl)			;54f3
@@ -2985,7 +2985,7 @@ L_55F0:
 	di			;55f0
 	xor a			;55f1
 	ld (0dc24h),a		;55f2
-	call L_4105		;55f5
+	call ram_en_la_pagina_2		;55f5
 	ld a,(0dc03h)		;55f8
 	or a			;55fb
 	jp nz,L_5605		;55fc
@@ -3211,7 +3211,7 @@ L_57C3:
 	ld a,039h		;57d0
 L_57D2:
 	ld (0dc47h),a		;57d2
-	call L_410D		;57d5
+	call cartucho_en_la_pagina_2		;57d5
 	ret			;57d8
 L_57D9:
 	bit 5,a		;57d9
@@ -4254,7 +4254,7 @@ L_5EA9:
 	call L_5D9A		;5eb6
 	push bc			;5eb9
 	push de			;5eba
-	call L_4105		;5ebb
+	call ram_en_la_pagina_2		;5ebb
 	pop de			;5ebe
 	pop bc			;5ebf
 	ld hl,08000h		;5ec0
@@ -5644,12 +5644,12 @@ L_66E5:
 	jp L_66F7		;66f4
 L_66F7:
 	call L_4A22		;66f7
-	call L_410D		;66fa
+	call cartucho_en_la_pagina_2		;66fa
 	ret			;66fd
 L_66FE:
 	push af			;66fe
 	call L_4A22		;66ff
-	call L_410D		;6702
+	call cartucho_en_la_pagina_2		;6702
 	pop af			;6705
 	jp L_5EA9		;6706
 
@@ -5678,7 +5678,7 @@ L_6727:
 	call L_5D9A		;6734
 	push bc			;6737
 	push de			;6738
-	call L_4105		;6739
+	call ram_en_la_pagina_2		;6739
 	pop de			;673c
 	pop bc			;673d
 	ld hl,08000h		;673e
@@ -6893,12 +6893,12 @@ L_6E89:
 	jp L_6E9B		;6e98
 L_6E9B:
 	call L_4A22		;6e9b
-	call L_410D		;6e9e
+	call cartucho_en_la_pagina_2		;6e9e
 	ret			;6ea1
 L_6EA2:
 	push af			;6ea2
 	call L_4A22		;6ea3
-	call L_410D		;6ea6
+	call cartucho_en_la_pagina_2		;6ea6
 	pop af			;6ea9
 	jp L_6727		;6eaa
 L_6EAD:
@@ -8534,14 +8534,14 @@ L_A5EA:
 	ld b,(hl)			;a5ed
 	add a,b			;a5ee
 	ld de,0ac26h		;a5ef
-	call L_4045		;a5f2
+	call de_mas_a		;a5f2
 	ld a,(de)			;a5f5
 	cp (hl)			;a5f6
 	jr z,L_A629		;a5f7
 	ld (hl),a			;a5f9
 	sla a		;a5fa
 	ld de,0ac9eh		;a5fc
-	call L_4045		;a5ff
+	call de_mas_a		;a5ff
 	ld b,002h		;a602
 	ld hl,0d870h		;a604
 L_A607:
@@ -8561,7 +8561,7 @@ L_A607:
 	ld hl,0a9b3h		;a618
 	ld a,(0db01h)		;a61b
 	dec a			;a61e
-	call L_4040		;a61f
+	call hl_mas_a		;a61f
 	ld a,(hl)			;a622
 	ld de,0db06h		;a623
 	ld (de),a			;a626
@@ -8593,7 +8593,7 @@ L_A629:
 	cp 01dh		;a65b
 	jp z,L_AC08		;a65d
 	ld a,017h		;a660
-	call L_4040		;a662
+	call hl_mas_a		;a662
 	ld a,(0db02h)		;a665
 	or a			;a668
 	jr nz,L_A693		;a669
@@ -8761,7 +8761,7 @@ L_A766:
 	ld a,(de)			;a76b
 	add a,019h		;a76c
 L_A76E:
-	call L_4040		;a76e
+	call hl_mas_a		;a76e
 	ld a,(0d8f1h)		;a771
 	or a			;a774
 	jr z,L_A792		;a775
@@ -8839,7 +8839,7 @@ L_A7D7:
 	ld a,(0db01h)		;a7d9
 	ld b,a			;a7dc
 	dec a			;a7dd
-	call L_4040		;a7de
+	call hl_mas_a		;a7de
 	ld c,000h		;a7e1
 	ld a,b			;a7e3
 	call L_A92D		;a7e4
@@ -8855,7 +8855,7 @@ L_A7F0:
 	ld a,(0db01h)		;a7fa
 	dec a			;a7fd
 	ld de,0a98bh		;a7fe
-	call L_4045		;a801
+	call de_mas_a		;a801
 	ld a,(de)			;a804
 	ld c,a			;a805
 	ld (0db1bh),a		;a806
@@ -9005,7 +9005,7 @@ L_A8D9:
 	ld a,(0db01h)		;a8df
 	dec a			;a8e2
 	ld hl,0a99fh		;a8e3
-	call L_4040		;a8e6
+	call hl_mas_a		;a8e6
 	ld b,(hl)			;a8e9
 	ld a,b			;a8ea
 	or a			;a8eb
@@ -9069,7 +9069,7 @@ L_A92D:
 	ld b,a			;a930
 	ld a,c			;a931
 	ld hl,0a947h		;a932
-	call L_4040		;a935
+	call hl_mas_a		;a935
 L_A938:
 	ld a,(hl)			;a938
 	inc a			;a939
@@ -9115,7 +9115,7 @@ L_A96C:
 	ld a,(0db01h)		;a96c
 	dec a			;a96f
 	rlca			;a970
-	call L_4040		;a971
+	call hl_mas_a		;a971
 	ld e,(hl)			;a974
 	inc hl			;a975
 	ld d,(hl)			;a976
@@ -9162,13 +9162,13 @@ DATA_tablas_de_tone_edit:
 
 L_AA5B:
 	ld a,018h		;aa5b
-	call L_4040		;aa5d
+	call hl_mas_a		;aa5d
 	ld a,(0db01h)		;aa60
 	sub 015h		;aa63
 	ld b,a			;aa65
 	push bc			;aa66
 	ld de,0ab31h		;aa67
-	call L_4045		;aa6a
+	call de_mas_a		;aa6a
 	ld a,(0db02h)		;aa6d
 	or a			;aa70
 	jr nz,L_AAA5		;aa71
@@ -9236,7 +9236,7 @@ L_AACA:
 	add a,b			;aacd
 	exx			;aace
 	ld hl,0ab35h		;aacf
-	call L_4040		;aad2
+	call hl_mas_a		;aad2
 	ld a,(hl)			;aad5
 	inc hl			;aad6
 	ld e,(hl)			;aad7
@@ -9261,7 +9261,7 @@ L_AAF1:
 	ld b,a			;aaf1
 	add a,a			;aaf2
 	add a,b			;aaf3
-	call L_4040		;aaf4
+	call hl_mas_a		;aaf4
 	ex de,hl			;aaf7
 	exx			;aaf8
 	ld b,003h		;aaf9
@@ -9317,7 +9317,7 @@ L_AB58:
 	jr z,L_AB6A		;ab60
 	ld de,03977h		;ab62
 	ld a,016h		;ab65
-	call L_4040		;ab67
+	call hl_mas_a		;ab67
 L_AB6A:
 	ld a,(0db02h)		;ab6a
 	or a			;ab6d
@@ -9388,7 +9388,7 @@ L_ABBA:
 	add a,a			;abca
 	add a,b			;abcb
 	ld de,0abd8h		;abcc
-	call L_4045		;abcf
+	call de_mas_a		;abcf
 	ld bc,00003h		;abd2
 	jp L_42FF		;abd5
 
@@ -9742,7 +9742,7 @@ L_AEC9:
 	push hl			;aed1
 	ld a,c			;aed2
 	ld hl,0aeddh		;aed3
-	call L_4040		;aed6
+	call hl_mas_a		;aed6
 	ld l,(hl)			;aed9
 	jp L_AF77		;aeda
 
@@ -10014,7 +10014,7 @@ L_B0AB:
 	ld c,a			;b0b7
 	and 007h		;b0b8
 	ld hl,0b1d9h		;b0ba
-	call L_4040		;b0bd
+	call hl_mas_a		;b0bd
 	ld a,(hl)			;b0c0
 	ld hl,0da81h		;b0c1
 	ld (hl),a			;b0c4
@@ -10104,7 +10104,7 @@ L_B111:
 	ld a,h			;b127
 	and 003h		;b128
 	ld de,0b1e1h		;b12a
-	call L_4045		;b12d
+	call de_mas_a		;b12d
 	ld a,(de)			;b130
 	ld h,a			;b131
 	ld l,000h		;b132
@@ -10154,7 +10154,7 @@ L_B164:
 	push de			;b175
 	ld a,(hl)			;b176
 	sub 020h		;b177
-	call L_4045		;b179
+	call de_mas_a		;b179
 L_B17C:
 	ld a,(de)			;b17c
 	or b			;b17d
@@ -10190,7 +10190,7 @@ L_B1A4:
 	add a,h			;b1a7
 	ld h,a			;b1a8
 	ld a,b			;b1a9
-	call L_4040		;b1aa
+	call hl_mas_a		;b1aa
 	ret			;b1ad
 L_B1AE:
 	push de			;b1ae
@@ -10293,7 +10293,7 @@ L_B241:
 	inc a			;b247
 	ld (0dbf0h),a		;b248
 L_B24B:
-	call L_42A2		;b24b
+	call lee_teclas		;b24b
 	di			;b24e
 	ld a,(0d807h)		;b24f
 	and 003h		;b252
@@ -10727,9 +10727,9 @@ L_B511:
 	inc hl			;b51b
 	call L_AD21		;b51c
 	ld a,019h		;b51f
-	call L_4045		;b521
+	call de_mas_a		;b521
 	ld a,036h		;b524
-	call L_4040		;b526
+	call hl_mas_a		;b526
 	pop af			;b529
 	add a,001h		;b52a
 	daa			;b52c
@@ -10884,7 +10884,7 @@ L_B67C:
 	ld a,(hl)			;b67c
 	ld b,a			;b67d
 	ld de,0b729h		;b67e
-	call L_4045		;b681
+	call de_mas_a		;b681
 	ld a,(de)			;b684
 	ld hl,0d870h		;b685
 	ld (hl),a			;b688
@@ -10908,7 +10908,7 @@ L_B6A0:
 	ld b,a			;b6a0
 	add a,a			;b6a1
 	ld hl,0b733h		;b6a2
-	call L_4040		;b6a5
+	call hl_mas_a		;b6a5
 	ld de,0db0eh		;b6a8
 	ld a,(de)			;b6ab
 	and (hl)			;b6ac
@@ -10969,7 +10969,7 @@ L_B70B:
 L_B716:
 	add a,a			;b716
 	ld hl,0b75ah		;b717
-	call L_4040		;b71a
+	call hl_mas_a		;b71a
 	ld e,(hl)			;b71d
 	inc hl			;b71e
 	ld d,(hl)			;b71f
@@ -11342,7 +11342,7 @@ L_BA10:
 	ld a,c			;ba1e
 	add a,a			;ba1f
 	ld hl,0ba80h		;ba20
-	call L_4040		;ba23
+	call hl_mas_a		;ba23
 	ld e,(hl)			;ba26
 	inc hl			;ba27
 	ld d,(hl)			;ba28
@@ -11444,14 +11444,14 @@ L_BBA4:
 	jp nc,L_BC53		;bbb2
 	dec a			;bbb5
 	ld de,0d200h		;bbb6
-	call L_4045		;bbb9
+	call de_mas_a		;bbb9
 	ld a,(0d906h)		;bbbc
 	ld (de),a			;bbbf
 	ld a,(0d8f1h)		;bbc0
 	dec a			;bbc3
 	sla a		;bbc4
 	ld de,0d230h		;bbc6
-	call L_4045		;bbc9
+	call de_mas_a		;bbc9
 	ld hl,0bd5dh		;bbcc
 	ld a,(0d906h)		;bbcf
 	or a			;bbd2
@@ -11459,7 +11459,7 @@ L_BBA4:
 	ld a,(0d905h)		;bbd5
 	sla a		;bbd8
 	ld hl,05e29h		;bbda
-	call L_4040		;bbdd
+	call hl_mas_a		;bbdd
 L_BBE0:
 	ld bc,00002h		;bbe0
 	ldir		;bbe3
@@ -11491,7 +11491,7 @@ L_BC0A:
 	add a,a			;bc11
 	push hl			;bc12
 	ld hl,0bd5fh		;bc13
-	call L_4040		;bc16
+	call hl_mas_a		;bc16
 	ld e,(hl)			;bc19
 	inc hl			;bc1a
 	ld d,(hl)			;bc1b
@@ -11504,7 +11504,7 @@ L_BC20:
 	jr L_BC20		;bc26
 L_BC28:
 	sla a		;bc28
-	call L_4045		;bc2a
+	call de_mas_a		;bc2a
 	call L_BC37		;bc2d
 	ld de,00020h		;bc30
 	add hl,de			;bc33
@@ -11517,14 +11517,14 @@ L_BC3D:
 	push af			;bc3e
 	sla a		;bc3f
 	ld hl,0bde1h		;bc41
-	call L_4040		;bc44
+	call hl_mas_a		;bc44
 	ld e,(hl)			;bc47
 	inc hl			;bc48
 	ld d,(hl)			;bc49
 	ex de,hl			;bc4a
 	pop af			;bc4b
 	ld de,0d200h		;bc4c
-	call L_4045		;bc4f
+	call de_mas_a		;bc4f
 	ret			;bc52
 L_BC53:
 	ld hl,0d905h		;bc53
@@ -11603,7 +11603,7 @@ DATA_lista_0xBCB6:
 L_BCBD:
 	push hl			;bcbd
 	ld hl,0bccah		;bcbe
-	call L_4040		;bcc1
+	call hl_mas_a		;bcc1
 	ld a,(hl)			;bcc4
 	ld (0d906h),a		;bcc5
 	pop hl			;bcc8
@@ -11737,7 +11737,7 @@ L_BE41:
 	ld a,(hl)			;be48
 	and 003h		;be49
 	ld de,0be5eh		;be4b
-	call L_4045		;be4e
+	call de_mas_a		;be4e
 	ld a,(de)			;be51
 	ld (0d8f4h),a		;be52
 	xor a			;be55

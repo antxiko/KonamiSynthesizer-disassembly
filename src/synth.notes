@@ -20,13 +20,91 @@ D 0x4010 0x4012 ceros_tras_la_cabecera  dos ceros antes del `jp` de 0x4012
 D 0x4069 0x406E gancho_para_h_stke  `rst 0x30`, slot (lo pone INIT), 0x406E y `ret`
 
 # 0x4105 pone en la pagina 2 la RAM del ordenador (el slot que 0x40D4 guarda
-# en 0xD854) y 0x410D devuelve el cartucho (0xD855). El volcado [a]
-# (sha1 73a40e7d) cambia estos 16 bytes por out (0xFE),3 / out (0xFE),1.
+# en 0xD854) y 0x410D devuelve el cartucho (0xD855).
+
+# ----------------------------------------------------------------------
+# EL ARRANQUE, LA INTERRUPCION Y LOS SLOTS (tanda 1 de comentarios)
+# ----------------------------------------------------------------------
+L 0x4012 salto_sin_uso  `jp` a 0x455D detras de la cabecera; nadie salta aqui
+L 0x4015 interrupcion  la rutina de cada cuadro, por H.KEYI (0xFD9A) desde que 0x4118 acaba
+C 0x4015 lee el estado del VDP: lo borra
+C 0x4018 y llama el mismo a H.TIMI
+C 0x401C los efectos de sonido del PSG, cada cuadro
+C 0x401F 0xD805: ocupado (bit 0)
+C 0x4024 si el cuadro anterior no ha acabado, solo los efectos
+C 0x4026 marca ocupado y deja entrar otra interrupcion
+C 0x4028 las teclas
+C 0x402B la fase de la pantalla
+C 0x402E libre
+C 0x4033 si ha llegado otro cuadro mientras tanto (bit 7)...
+C 0x4038 ...otra vuelta de los efectos
+L 0x403D escribe_registro_vdp  WRTVDP: registro C, valor B
+L 0x4040 hl_mas_a  HL = HL + A
+L 0x4045 de_mas_a  DE = DE + A
+L 0x404A salta_por_tabla  salta a la entrada A de la tabla de palabras que sigue al `call`
+C 0x404A HL = la tabla, detras del `call`
+C 0x404F DE = la entrada A
+C 0x4053 y alli
+L 0x4054 init  INIT: la llama la BIOS al encontrar el cartucho; deja el arranque para cuando el BASIC termine
+C 0x4054 0xD854/0xD855: los slots de las paginas 2 y 1
+C 0x4057 los 5 bytes de 0x4069...
+C 0x405A ...a H.STKE (0xFEDA)
+C 0x4062 el slot del cartucho...
+C 0x4065 ...en el `rst 0x30` del gancho
+L 0x406E arranque  el arranque de verdad: H.STKE salta aqui cuando el BASIC ha terminado de arrancar
+C 0x406F modo 1: las interrupciones van a 0x0038
+C 0x4071 los slots otra vez: ahora la pagina 2 es la RAM del ordenador
+C 0x4074 H.KEYI (0xFD9A) = `rst 0x30`...
+C 0x4079 ...el slot del cartucho...
+C 0x407F ...0x4118...
+C 0x4085 ...y `ret`
+C 0x408A la pila, bajo 0xDF00
+C 0x408D borra las variables, 0xD800-0xDEFF
+C 0x409A A = el slot del cartucho...
+C 0x409D ...tambien en la pagina 2, donde siguen sus graficos
+C 0x40A2 ocupado: la interrupcion no toca nada
+C 0x40A7 VDP, PSG y la VRAM en blanco
+C 0x40AE la RAM en la pagina 2...
+C 0x40B1 ...llena de silencio (0x80)...
+C 0x40B4 ...y vuelve el cartucho
+C 0x40B7 0xDCFD = 0
+C 0x40BB 0xDCFE: el sample mide 1 byte
+C 0x40C1 borra el estado del VDP antes de dejar entrar interrupciones
+L 0x40C5 bucle_principal  espera a que la pantalla pida trabajo en 0xD8F6 (0x48F0) y llama a 0x4BA1
+L 0x40D4 apunta_slots  0xD854 = slot de la pagina 2, 0xD855 = slot de la pagina 1 (el cartucho); vuelve con A = 0xD855
+C 0x40D7 A = registro de slots primarios (RSLREG)
+C 0x40DB bits 2-3, la pagina 1, a 0-1
+C 0x40DD C = slot primario de la pagina 2 y A = su registro secundario
+C 0x40E0 el secundario de la pagina 2 a los bits 2-3
+C 0x40E2 0xD854
+C 0x40E6 la pagina 1
+C 0x40E7 C = slot primario y A = secundario de la pagina 1: 0xD855
+L 0x40EA guarda_slot  (DE) = C con el secundario de los bits 2-3 de A: el formato de slot de ENASLT
+L 0x40EF slot_de_la_pagina  de los bits 2-3 de A: C = slot primario (+0x80 si esta expandido, 0xFCC1) y A = su registro secundario (0xFCC5)
+L 0x4105 ram_en_la_pagina_2  pone en 0x8000-0xBFFF la RAM del ordenador: el slot que 0x40D4 guarda en 0xD854
+L 0x410D cartucho_en_la_pagina_2  vuelve a poner el cartucho en 0x8000-0xBFFF (0xD855)
+L 0x4115 efecto_de_sonido  arranca el efecto A en el PSG (0xBEB1)
+L 0x4118 interrupcion_sube_el_dac  la primera rutina de H.KEYI: lleva el DAC de 0 a 0x80 (el reposo) de uno en uno, un paso por interrupcion
+C 0x4118 0xD856: el valor que toca (las variables empiezan a 0)
+C 0x411C al DAC
+C 0x4121 al llegar a 0x80...
+C 0x4124 ...H.KEYI pasa a 0x4015
+L 0x412B fase_de_pantalla  cada cuadro: 0xD803 cuenta cuadros y salta a la fase 0xD800, con B = el paso 0xD801
+C 0x412B 0xD803: contador de cuadros
+C 0x4134 en las fases 0, 1 y 2...
+C 0x4136 ...vuelve por 0x4242
+C 0x413A C = fase (0xD800), B = paso (0xD801)
+L 0x4270 prepara_vdp_y_psg  mezclador del PSG, efecto 8, la VRAM a cero y los 8 registros del VDP
+L 0x4284 pon_registros_vdp  los 8 registros del VDP de 0x4295, del R0 al R7
+L 0x42A2 lee_teclas  0xD807 = teclas pulsadas ahora, 0xD806 = las recien pulsadas
+L 0x475A efectos_por_cuadro  los efectos de sonido: R7 = 0xB8 y los tres canales de 0xD810, 5 bytes cada uno
+L 0x477D mezclador_psg  R7 del PSG = A (y copia en 0xD81F)
+L 0x4E44 llena_de_silencio  0x8000-0xBFFF a 0x80, el reposo del DAC: el sample en blanco
 
 # ======================================================================
 # LAS TABLAS DE SALTOS (despachador 0x404A: la tabla va pegada al `call`)
 # ======================================================================
-D 0x4142 0x4154 saltos_del_arranque  9 destinos por (0xD805); la tabla cierra en 0x4154, su entrada mas baja
+D 0x4142 0x4154 saltos_del_arranque  9 destinos por la fase (0xD800); la tabla cierra en 0x4154, su entrada mas baja
 F 0x4142 w
 D 0x4805 0x4817 saltos_por_pantalla  9 destinos por (0xD8F4), la pantalla en curso; cierra en 0x4817, que llama 0x47F0
 F 0x4805 w
