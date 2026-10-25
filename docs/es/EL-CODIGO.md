@@ -93,3 +93,30 @@ franjas de cuatro filas y 192 columnas (`0x5419`), con las secuencias de
 `0x54B6`; desde WAVE EDIT imprime además la tabla de la onda, 64 muestras con
 signo en ocho filas (`0x5516`). Sale del código: no se ha probado con una
 impresora.
+
+## Código compartido con otros cartuchos de Konami
+
+Este desensamblado se ha comparado, instrucción por instrucción, con
+todos los demás de Konami de la serie. Cuenta un bloque cuando las
+mismas instrucciones, al menos seis desde una etiqueta hasta su `ret`
+o su salto sin condición, están en los dos cartuchos; las direcciones
+no se miran, porque cambian de un cartucho a otro. De los otros 57,
+**48** tienen al menos un bloque en común con este; estos son los
+que más comparten:
+
+| Cartucho | Bloques | Instrucciones | Por ejemplo (aquí = allí) |
+|---|---:|---:|---|
+| [Konami’s Game Master 2](https://antxiko.github.io/GameMaster2-disassembly/es/) | 18 | 206 | `escribe_lista` (0x4337) = `th_pinta_texto` |
+| [Q*bert](https://antxiko.github.io/Qbert-disassembly/es/) | 18 | 195 | `rle_a_vram` (0x4352) = `guion_rle` |
+| [Konami’s Game Master](https://antxiko.github.io/GameMaster-disassembly/es/) | 15 | 177 | `nombre_del_punto` (0x5405) = `posicion_a_vram` |
+| [The Goonies](https://antxiko.github.io/Goonies-disassembly/es/) | 15 | 165 | `rle_a_vram` (0x4352) = `guion_rle` |
+| [Yie Ar Kung-Fu II](https://antxiko.github.io/YieArKungFu2-disassembly/es/) | 15 | 180 | `byte_de_teclas` (0x42B7) = `lee_las_filas_7_y_8_del_teclado` |
+| [Hyper Sports 3](https://antxiko.github.io/HyperSports3-disassembly/es/) | 14 | 176 | `byte_de_teclas` (0x42B7) = `teclado_del_jugador_1` |
+| [The Maze of Galious](https://antxiko.github.io/MazeOfGalious-disassembly/es/) | 13 | 177 | `rle_a_vram` (0x4352) = `rle_con_destino` |
+| [Konami's Ping Pong](https://antxiko.github.io/KonamisPingPong-disassembly/es/) | 13 | 159 | `byte_de_teclas` (0x42B7) = `lee_teclado_1` |
+| [F-1 Spirit — The Way to Formula 1](https://antxiko.github.io/F1Spirit-disassembly/es/) | 12 | 128 | `rle_a_vram` (0x4352) = `RLE_SIGUE_PUNTERO` |
+| [Nemesis / Gradius](https://antxiko.github.io/Nemesis-disassembly/es/) | 12 | 134 | `rle_a_vram` (0x4352) = `descomprime_con_destino` |
+
+La matriz entera, los 58 cartuchos entre sí, está en
+[Las rutinas](https://antxiko.github.io/MSX-disassembly-database/es/LAS-RUTINAS.html) de la base de datos de la
+serie, con el método y el programa que la mide.
